@@ -3,8 +3,8 @@ from __future__ import annotations
 import asyncio
 import logging
 
-from .app import Application
-from .config import get_settings
+from argo_automation_cpas.app import Application
+from argo_automation_cpas.config import get_settings
 
 
 def configure_logging() -> None:

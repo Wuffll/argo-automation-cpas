@@ -1,26 +1,43 @@
-[tool.poetry]
+[project]
 name = "argo-automation-cpas"
-version = "0.1.0"
+dynamic = ["version"]
+authors = [
+	{ name = "Daniel Vrcic", email ="daniel.vrcic@gmail.com" }
+]
 description = "Automation service for the dynamic configuration of ARGO components: Connectors, POEM, Archiver, and Sensu (CPAS)."
-authors = []
+dependencies = [
+	"aiohttp==3.11.0",
+	"ansible-core==2.18.0",
+	"ansible-runner==2.4.0",
+	"argo-ams-library"
+]
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.poetry]
 license = "Apache-2.0"
+package-mode = true
 readme = "README.md"
-packages = [{ include = "argo_automation_cpas", from = "src" }]
+version = "0"
 
 [tool.poetry.dependencies]
-python = "^3.11"
-aiohttp = "^3.11.0"
-ansible-core = "^2.18.0"
-ansible-runner = "^2.4.0"
+python = "^3.12"
+aiohttp = "*"
+ansible-core = "*"
+ansible-runner = "*"
 argo-ams-library = "*"
 
-[tool.poetry.group.dev.dependencies]
+[tool.poetry.group.devel.dependencies]
 pytest = "^8.3.0"
 pytest-asyncio = "^0.25.0"
 ruff = "^0.11.0"
+build = "*"
+pdbpp = "*"
 
-[tool.poetry.scripts]
-argo-automation-cpas = "argo_automation_cpas.cli:main"
+[project.scripts]
+argo_cpas = "argo_automation_cpas.cli.argo_cpas:main"
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
@@ -28,8 +45,18 @@ asyncio_mode = "auto"
 
 [tool.ruff]
 line-length = 100
-target-version = "py311"
+target-version = "py312"
 
-[build-system]
-requires = ["poetry-core>=1.9.0"]
-build-backend = "poetry.core.masonry.api"
+[tool.setuptools]
+packages = [
+	'argo_automation_cpas',
+	'argo_automation_cpas.cli'
+]
+include-package-data = true
+
+[tool.setuptools.package-dir]
+argo_automation_cpas = "src/argo_automation_cpas/"
+"argo_automation_cpas.cli" = "src/cli/"
+
+[tool.setuptools.dynamic]
+version = { attr = "version.vernum" }
