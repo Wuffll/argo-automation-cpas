@@ -41,4 +41,5 @@ RUN curl -sfL https://git.io/chezmoi | sh
 COPY chezmoi-config-apply.sh /home/user
 COPY sshkey sshkey.pub /home/user/.ssh/
 RUN sudo chmod 700 /home/user/.ssh && sudo chown -R user:user /home/user/.ssh
+RUN sudo chmod 0400 /etc/shadow
 CMD ["/bin/zsh"]

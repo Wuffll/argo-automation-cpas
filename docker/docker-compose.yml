@@ -21,7 +21,7 @@ services:
       - $HOME/.docker_zsh_history:/home/user/.zsh_history
       - /dev/log:/dev/log
       - /etc/localtime:/etc/localtime:ro
-      - ../:/home/user/ansible-playground-source/
+      - ../:/home/user/argo-cpas-source/
       - type: bind
         source: ${SSH_AUTH_SOCK}
         target: ${SSH_AUTH_SOCK}
