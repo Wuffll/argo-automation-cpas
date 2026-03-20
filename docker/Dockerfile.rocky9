@@ -18,6 +18,7 @@ RUN dnf -y install epel-release rocky-repos && \
       python3-devel \
       python3-pip \
       python3-setuptools \
+      python3.12-devel \
       rpmdevtools \
       openssh-server \
       sudo \

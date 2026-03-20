@@ -5,7 +5,7 @@ services:
     image: ${IMAGEC}
     command: sudo /usr/bin/supervisord -nc /etc/supervisor/supervisord.conf
     entrypoint: /sbin/init
-    container_name: auto-controller
+    container_name: controller
     privileged: true
     hostname: controller
     cgroup: host
@@ -38,7 +38,7 @@ services:
     image: ${IMAGES1}
     command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
     entrypoint: /sbin/init
-    container_name: auto-connectors
+    container_name: connectors
     hostname: connectors
     cgroup: host
     tty: true
@@ -68,7 +68,7 @@ services:
     image: ${IMAGES2}
     command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
     entrypoint: /sbin/init
-    container_name: auto-poem
+    container_name: poem
     hostname: poem
     cgroup: host
     tty: true
@@ -98,7 +98,7 @@ services:
     #image: ${IMAGES3}
     #command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
     #entrypoint: /sbin/init
-    #container_name: auto-archiver
+    #container_name: archiver
     #hostname: archiver
     #cgroup: host
     #tty: true
