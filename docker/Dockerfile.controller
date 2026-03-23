@@ -36,6 +36,13 @@ RUN passwd -d root
 VOLUME [ "/sys/fs/cgroup" ]
 RUN sed -r -i 's/(^Defaults.*always_set_home)/# \1/' /etc/sudoers
 RUN echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN sudo python3.12 -m venv /opt/poetry-tool/
+RUN sudo sh -c '\
+  . /opt/poetry-tool/bin/activate \
+  && pip install -U pip \
+  && pip install -U setuptools \
+  && pip install -U poetry==2.*'
+RUN sudo ln -s /opt/poetry-tool/bin/poetry /usr/local/bin/
 USER user
 WORKDIR /home/user
 RUN curl -sfL https://git.io/chezmoi | sh
