@@ -35,6 +35,7 @@ class Settings:
         general = self._get_section(parser, "general")
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
+        iam = self._get_section(parser, "iam")
 
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
@@ -53,6 +54,11 @@ class Settings:
         self.webapi = Section(
             host=webapi.get("host", ""),
             url=self._normalize_url(webapi.get("host", "")),
+        )
+        self.iam = Section(
+            host=iam.get("host", ""),
+            oidc_client_id=iam.get("oidc_client_id", ""),
+            oidc_client_secret=iam.get("oidc_client_secret", ""),
         )
 
         self.base_url = self.webapi.url
