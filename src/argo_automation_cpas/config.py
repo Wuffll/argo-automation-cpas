@@ -1,4 +1,6 @@
 import configparser
+import logging
+import logging.handlers
 import os
 
 
@@ -11,6 +13,12 @@ DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
 DEFAULT_ANSIBLE_PRIVATE_DATA_DIR = "ansible"
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
+
+_SYSLOG_FACILITIES = {
+    name.lower().removeprefix("log_"): getattr(logging.handlers.SyslogHandler, name)
+    for name in dir(logging.handlers.SyslogHandler)
+    if name.startswith("LOG_")
+}
 
 
 class Section:
@@ -30,6 +38,10 @@ class Settings:
 
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
+            log_level=self._parse_log_level(general.get("log_level", "INFO")),
+            log_file=general.get("log_file", "/var/log/argo-cpas.log"),
+            syslog_address=general.get("syslog_address", "/dev/log"),
+            syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
         )
         self.ams = Section(
             project=ams.get("project", ""),
@@ -67,6 +79,21 @@ class Settings:
         if not value:
             return []
         return [item.strip() for item in value.split(",") if item.strip()]
+
+    def _parse_log_level(self, value):
+        level = logging.getLevelName(value.upper())
+        if not isinstance(level, int):
+            raise ValueError("Unknown log_level %r in %s" % (value, self.path))
+        return level
+
+    def _parse_syslog_facility(self, value):
+        key = value.lower().removeprefix("log_")
+        if key not in _SYSLOG_FACILITIES:
+            raise ValueError(
+                "Unknown syslog_facility %r in %s. Supported: %s"
+                % (value, self.path, ", ".join(sorted(_SYSLOG_FACILITIES)))
+            )
+        return _SYSLOG_FACILITIES[key]
 
 
 def _resolve_config_path(path=None):

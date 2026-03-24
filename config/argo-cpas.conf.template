@@ -1,0 +1,21 @@
+[DEFAULT]
+VENV = /opt/argo-automation-cpas/
+
+[general]
+loggers = stdout, file, syslog
+log_level = INFO
+log_file = /var/log/argo-cpas.log
+syslog_address = /dev/log
+syslog_facility = user
+
+[ams]
+project = ARGO-MON-AUTOMATION
+host = api.devel.msg.argo.grnet.gr
+subscription = events-sub-2
+token = AUTOMATION_TOKEN
+
+[webapi]
+host = api.devel.mon.argo.grnet.gr
+
+
+# vim: ft=conf
