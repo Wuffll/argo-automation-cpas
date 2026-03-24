@@ -1,22 +1,17 @@
-from __future__ import annotations
-
 import asyncio
 import logging
-from typing import Any
 
 import aiohttp
 import ansible_runner
-
-from .config import Settings
 
 LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings):
         self.settings = settings
 
-    async def run(self) -> None:
+    async def run(self):
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
         connector = aiohttp.TCPConnector(ssl=self.settings.verify_ssl)
 
@@ -28,8 +23,8 @@ class Application:
             await self._probe(session)
             await self._run_ansible()
 
-    async def _probe(self, session: aiohttp.ClientSession) -> None:
-        LOG.info("Probing AMS endpoint %s", self.settings.base_url)
+    async def _probe(self, session):
+        LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
 
         try:
             async with session.get("/") as response:
@@ -39,16 +34,21 @@ class Application:
 
         await self._touch_ams_library()
 
-    async def _touch_ams_library(self) -> None:
+    async def _touch_ams_library(self):
         # The dependency is imported lazily because the exact public API will
         # depend on the AMS version you target next.
         try:
             __import__("argo_ams_library")
-            LOG.info("argo-ams-library import succeeded")
+            LOG.info(
+                "argo-ams-library import succeeded for project=%s subscription=%s host=%s",
+                self.settings.ams.project,
+                self.settings.ams.subscription,
+                self.settings.ams.host,
+            )
         except ImportError:
             LOG.warning("argo-ams-library is not installed or exposes a different import path")
 
-    async def _run_ansible(self) -> None:
+    async def _run_ansible(self):
         LOG.info(
             "Starting ansible-runner with private_data_dir=%s playbook=%s",
             self.settings.ansible_private_data_dir,
@@ -62,6 +62,6 @@ class Application:
             quiet=True,
         )
 
-        status: Any = getattr(runner, "status", "unknown")
-        rc: Any = getattr(runner, "rc", "unknown")
+        status = getattr(runner, "status", "unknown")
+        rc = getattr(runner, "rc", "unknown")
         LOG.info("Ansible runner finished with status=%s rc=%s", status, rc)
