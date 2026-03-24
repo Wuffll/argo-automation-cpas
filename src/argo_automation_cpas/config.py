@@ -15,8 +15,8 @@ DEFAULT_ANSIBLE_PRIVATE_DATA_DIR = "ansible"
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 
 _SYSLOG_FACILITIES = {
-    name.lower().removeprefix("log_"): getattr(logging.handlers.SyslogHandler, name)
-    for name in dir(logging.handlers.SyslogHandler)
+    name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
+    for name in dir(logging.handlers.SysLogHandler)
     if name.startswith("LOG_")
 }
 

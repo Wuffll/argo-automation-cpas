@@ -6,7 +6,7 @@ import sys
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_LOG_FILE = "/var/log/argo-cpas.log"
 DEFAULT_SYSLOG_ADDRESS = "/dev/log"
-DEFAULT_SYSLOG_FACILITY = logging.handlers.SyslogHandler.LOG_USER
+DEFAULT_SYSLOG_FACILITY = logging.handlers.SysLogHandler.LOG_USER
 
 LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(message)s"
 SYSLOG_FORMAT = "argo-cpas: %(name)s %(levelname)s %(message)s"
@@ -29,7 +29,7 @@ def _make_file_handler(path, level, formatter):
 
 
 def _make_syslog_handler(address, facility, level):
-    handler = logging.handlers.SyslogHandler(address=address, facility=facility)
+    handler = logging.handlers.SysLogHandler(address=address, facility=facility)
     handler.setLevel(level)
     handler.setFormatter(logging.Formatter(SYSLOG_FORMAT))
     return handler
