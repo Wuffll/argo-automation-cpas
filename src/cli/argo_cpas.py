@@ -3,7 +3,7 @@ import asyncio
 import logging
 
 from argo_automation_cpas.app import Application
-from argo_automation_cpas.config import get_settings
+from argo_automation_cpas.config import DEFAULT_ANSIBLE_PLAYBOOK, get_settings
 from argo_automation_cpas.log import setup_logging
 
 
@@ -11,9 +11,14 @@ def parse_args():
     parser = argparse.ArgumentParser(description="ARGO CPAS automation controller")
     parser.add_argument(
         "--only-ansible",
-        action="store_true",
-        default=False,
-        help="Run only the Ansible playbook without contacting AMS, Web API or IAM",
+        nargs="?",
+        const=DEFAULT_ANSIBLE_PLAYBOOK,
+        default=None,
+        metavar="PLAYBOOK",
+        help=(
+            "Run only the Ansible playbook without contacting AMS, Web API or IAM. "
+            "Optionally specify a playbook filename (default: %(const)s)"
+        ),
     )
     return parser.parse_args()
 

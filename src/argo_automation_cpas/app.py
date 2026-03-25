@@ -11,13 +11,13 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=False):
+    def __init__(self, settings, only_ansible=None):
         self.settings = settings
-        self.only_ansible = only_ansible
+        self.only_ansible = only_ansible  # None or playbook filename string
 
     async def run(self):
-        if self.only_ansible:
-            await self._run_ansible()
+        if self.only_ansible is not None:
+            await self._run_ansible(self.only_ansible)
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
@@ -37,7 +37,7 @@ class Application:
         ):
             await self._probe_webapi(webapi_session)
             token = await self._fetch_iam_token(iam_session)
-            await self._run_ansible()
+            await self._run_ansible(self.settings.ansible_playbook)
 
     async def _probe_webapi(self, session):
         LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
@@ -69,17 +69,17 @@ class Application:
             LOG.warning("IAM token request failed: %s", exc)
             return None
 
-    async def _run_ansible(self):
+    async def _run_ansible(self, playbook):
         LOG.info(
             "Starting ansible-runner with private_data_dir=%s playbook=%s",
             self.settings.ansible_private_data_dir,
-            self.settings.ansible_playbook,
+            playbook,
         )
 
         runner = await asyncio.to_thread(
             ansible_runner.run,
             private_data_dir=self.settings.ansible_private_data_dir,
-            playbook=self.settings.ansible_playbook,
+            playbook=playbook,
             quiet=True,
         )
 
