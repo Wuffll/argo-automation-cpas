@@ -61,6 +61,7 @@ argo_automation_cpas = "src/argo_automation_cpas/"
 "etc" = ["config/argo-cpas.conf.template"]
 "var/log" = ["var/log/.keep"]
 "ansible/project" = [
+	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
 	"ansible/project/connectors.yml",
 ]
