@@ -1,0 +1,212 @@
+---
+
+- name: VENVPY env variable in cron
+  ansible.builtin.cron:
+    name: VENVPY
+    job: "{{ connector_virtenv_path }}/bin/python"
+    env: true
+    user: root
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: VENVDIR env variable in cron
+  ansible.builtin.cron:
+    name: VENVDIR
+    job: "{{ connector_virtenv_path }}"
+    env: true
+    user: root
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: VIRTUAL_ENV env variable in cron
+  ansible.builtin.cron:
+    name: VIRTUAL_ENV
+    job: "{{ connector_virtenv_path }}"
+    env: true
+    user: root
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: VENVBIN env variable in cron
+  ansible.builtin.cron:
+    name: VENVBIN
+    job: "{{ connector_virtenv_path }}/usr/bin"
+    env: true
+    user: root
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: VENVETC env variable in cron
+  ansible.builtin.cron:
+    name: VENVETC
+    job: "{{ connector_virtenv_path }}/etc"
+    env: true
+    user: root
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: Add topology connector in cron
+  ansible.builtin.cron:
+    name: "topology connector"
+    job: "${VENVPY} ${VENVBIN}/topology-{{ item.tenant_topo_type | lower }}-connector.py
+          -g ${VENVETC}/global.conf -c ${VENVETC}/{{ item.tenant_name | lower }}-customer.conf"
+    minute: "{{ item.cron_schedules.topology.minute | default(connector_cron_default_minute) }}"
+    hour: "{{ item.cron_schedules.topology.hour | default(connector_cron_default_hour) }}"
+    user: "{{ connector_cron_default_user }}"
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: not item.tenant_cron_topology_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable topology connector in cron
+  ansible.builtin.cron:
+    name: "topology connector"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_topology_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Add topology combiner in cron
+  ansible.builtin.cron:
+    name: "topology combiner"
+    job: "${VENVPY} ${VENVBIN}/topology-combiner.py -c ${VENVETC}/{{ item.tenant_name | lower }}-combine.yml"
+    minute: "{{ item.cron_schedules.topology_combine.minute | default(connector_cron_default_minute) }}"
+    hour: "{{ item.cron_schedules.topology_combine.hour | default(connector_cron_default_hour) }}"
+    user: "{{ connector_cron_default_user }}"
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_topo_combine | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable topology combiner in cron
+  ansible.builtin.cron:
+    name: "topology combiner"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_topology_combine_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Add downtimes connector in cron
+  ansible.builtin.cron:
+    name: "downtimes connector"
+    job: "${VENVPY} ${VENVBIN}/downtimes-{{ item.tenant_topo_type | lower }}-connector.py
+          -g ${VENVETC}/global.conf -c ${VENVETC}/{{ item.tenant_name | lower }}-customer.conf
+          -d $(date --date '+1 days' \"+\\%Y-\\%m-\\%d\")"
+    minute: "{{ item.cron_schedules.downtimes.minute | default(connector_cron_downtimes_default_minute) }}"
+    hour: "{{ item.cron_schedules.downtimes.hour | default(connector_cron_downtimes_default_hour) }}"
+    user: "{{ connector_cron_default_user }}"
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: not item.tenant_cron_downtimes_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable downtimes connector in cron
+  ansible.builtin.cron:
+    name: "downtimes connector"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_downtimes_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Add service-types connector in cron
+  ansible.builtin.cron:
+    name: "service types connector"
+    job: "${VENVPY} ${VENVBIN}/service-types-{{ item.tenant_topo_type | lower }}-connector.py
+          -g ${VENVETC}/global.conf -c ${VENVETC}/{{ item.tenant_name | lower }}-customer.conf"
+    minute: "{{ item.cron_schedules.servicetypes.minute | default(connector_cron_default_minute) }}"
+    hour: "{{ item.cron_schedules.servicetypes.hour | default(connector_cron_default_hour) }}"
+    user: "{{ connector_cron_default_user }}"
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: not item.tenant_cron_servicetypes_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable service-types connector in cron
+  ansible.builtin.cron:
+    name: "service types connector"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_servicetypes_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable metric-profile-webapi connector in cron
+  ansible.builtin.cron:
+    name: "metric-profile-webapi connector"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_metricprofiles_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Add weights connector in cron
+  ansible.builtin.cron:
+    name: "weights connector"
+    job: "${VENVPY} ${VENVBIN}/weights-vapor-connector.py
+          -g ${VENVETC}/global.conf -c ${VENVETC}/{{ item.tenant_name | lower }}-customer.conf"
+    minute: "{{ item.cron_schedules.weights.minute | default(connector_cron_default_minute) }}"
+    hour: "{{ item.cron_schedules.weights.hour | default(connector_cron_default_hour) }}"
+    user: "{{ connector_cron_default_user }}"
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: not item.tenant_cron_weights_disable | default(false)
+  notify: Reload cron daemon
+
+
+- name: Disable weights connector in cron
+  ansible.builtin.cron:
+    name: "weights connector"
+    state: absent
+    cron_file: "{{ item.tenant_name | lower }}"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: item.tenant_cron_weights_disable | default(false)
+  notify: Reload cron daemon

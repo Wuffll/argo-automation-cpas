@@ -1,0 +1,7 @@
+---
+
+- name: Reload cron daemon on connector cron changes
+  listen: Reload cron daemon
+  ansible.builtin.systemd_service:
+    name: crond
+    state: reloaded

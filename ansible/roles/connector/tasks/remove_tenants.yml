@@ -1,0 +1,19 @@
+---
+
+- name: Remove tenant cron job
+  ansible.builtin.file:
+    name: "/etc/cron.d/{{ item | lower }}"
+    state: absent
+  loop: "{{ connector_remove_tenants }}"
+  loop_control:
+    label: "{{ item }}"
+  notify: Reload cron daemon
+
+
+- name: Remove argo-connectors tenant - customer.conf
+  ansible.builtin.file:
+    name: "{{ connector_virtenv_path }}/etc/{{ item | lower }}-customer.conf"
+    state: absent
+  loop: "{{ connector_remove_tenants }}"
+  loop_control:
+    label: "{{ item }}"

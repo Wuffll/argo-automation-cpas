@@ -1,0 +1,12 @@
+---
+
+- name: Playbook to configure connectors
+  hosts: all
+  become: true
+  vars:
+    errors_ignore: false
+  roles:
+    - { role: connector, connector_owner: dvrcic, connector_group: dvrcic }
+
+
+# vim: ft=yaml.ansible

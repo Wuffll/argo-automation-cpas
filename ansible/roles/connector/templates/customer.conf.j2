@@ -1,0 +1,79 @@
+[DEFAULT]
+VENV = {{ connector_virtenv_path }}
+
+[CUSTOMER_{{ item.tenant_name }}]
+Name = {{ item.tenant_name }}
+OutputDir = %(VENV)s/var/lib/argo-connectors/{{ item.tenant_name }}/
+Jobs = {% for job in item.tenant_jobs %}{{ job.name }}{% if not loop.last %}, {% endif %}{% endfor %}{{''}}
+WebAPIToken = {{ item.tenant_webapi_token }}
+{% if item.tenant_auth_useplainhttpauth %}
+AuthenticationUsePlainHttpAuth = True
+AuthenticationHttpUser = {{ item.tenant_auth_plainhttpuser }}
+AuthenticationHttpPass = {{ item.tenant_auth_plainhttppass }}
+{% endif %}
+{%- if item.tenant_feed_servicetype | default(false) %}
+ServiceTypesFeed = {{ item.tenant_feed_servicetype }}
+{% endif %}
+{%- if item.tenant_feed_weights | default(false) %}
+VaporPI = {{ item.tenant_feed_weights }}
+{% endif %}
+{%- if item.tenant_feed_downtimes | default(false) %}
+DowntimesFeed = {{ item.tenant_feed_downtimes }}
+{% endif %}
+{% if item.tenant_topo_feedpaging | default(false) %}
+TopoFeedPaging = True
+{% else %}
+TopoFeedPaging = False
+{% endif %}
+{% if item.tenant_topo_uidserviceendpoints | default(false) %}
+TopoUIDServiceEndpoints = True
+{% endif %}
+{% if item.tenant_topo_feed | default(false) %}
+TopoFeed = {{ item.tenant_topo_feed }}
+{% endif %}
+{% if item.tenant_topo_feedserviceendpoints | default(false) %}
+TopoFeedServiceEndpoints = {{ item.tenant_topo_feedserviceendpoints }}
+{% endif %}
+{% if item.tenant_topo_feedserviceendpointsext | default(false) %}
+TopoFeedServiceEndpointsExtensions = {{ item.tenant_topo_feedserviceendpointsext }}
+{% endif %}
+{% if item.tenant_topo_feedservicegroups | default(false) %}
+TopoFeedServiceGroups = {{ item.tenant_topo_feedservicegroups }}
+{% endif %}
+{% if item.tenant_topo_feedsites | default(false) %}
+TopoFeedSites = {{ item.tenant_topo_feedsites }}
+{% endif %}
+{% if item.tenant_topo_fetchtype | default(false) %}
+TopoFetchType = {{ item.tenant_topo_fetchtype }}
+{% endif %}
+{% if item.tenant_topo_scope | default(false) %}
+TopoScope = {{ item.tenant_topo_scope }}
+{% endif %}
+{% if item.tenant_honornotificationflag | default(false) %}
+HonorNotificationFlag = True
+{% endif %}
+{% if item.tenant_topo_type | default(false) %}
+TopoType = {{ item.tenant_topo_type }}
+{% endif %}
+{% if item.tenant_empty_weights | default(false) %}
+WeightsEmpty = True
+{% endif %}
+{% if item.tenant_empty_downtimes | default(false) %}
+DowntimesEmpty = True
+{% endif %}
+{% if item.tenant_bdii | default(false) %}
+BDII = True
+BDIIHost = {{ item.tenant_bdiihost }}
+BDIIPort = {{ item.tenant_bdiiport }}
+BDIIQueryBase = {{ item.tenant_bdiiquerybase }}
+BDIIQueryFilterSRM = {{ item.tenant_bdiiqueryfiltersrm }}
+BDIIQueryAttributesSRM = {{ item.tenant_bdiiqueryattributessrm }}
+BDIIQueryFilterSEPATH = {{ item.tenant_bdiiqueryfiltersepath }}
+BDIIQueryAttributesSEPATH = {{ item.tenant_bdiiqueryattributessepath }}
+{% endif %}
+
+{% for job in item.tenant_jobs %}
+[{{ job.name }}]
+Dirname = {{ job.dirname }}
+{{''}}
+{% endfor %}

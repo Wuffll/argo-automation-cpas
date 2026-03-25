@@ -1,0 +1,34 @@
+---
+
+- name: Configure argo-connectors global configuration
+  ansible.builtin.template:
+    src: global.conf.j2
+    dest: "{{ connector_virtenv_path }}/etc/global.conf"
+    owner: "{{ connector_owner }}"
+    group: "{{ connector_group }}"
+    mode: "0644"
+
+
+- name: Configure argo-connectors tenants - customer.conf
+  ansible.builtin.template:
+    src: customer.conf.j2
+    dest: "{{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf"
+    owner: "{{ connector_owner }}"
+    group: "{{ connector_group }}"
+    mode: "0644"
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: Configure argo-connectors combiners - combine.yml
+  ansible.builtin.template:
+    src: combine.yml.j2
+    dest: "{{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-combine.yml"
+    owner: "{{ connector_owner }}"
+    group: "{{ connector_group }}"
+    mode: "0644"
+  loop: "{{ connector_tenants }}"
+  when: item.tenant_combine_config
+  loop_control:
+    label: "{{ item.tenant_name }}"
