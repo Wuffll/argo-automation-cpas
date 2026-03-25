@@ -27,5 +27,12 @@ def parse_args():
 def main():
     args = parse_args()
     configure_logging()
-    app = Application(get_settings(), only_ansible=args.only_ansible)
+
+    try:
+        settings = get_settings()
+    except FileNotFoundError as exc:
+        logging.error("%s", exc)
+        raise SystemExit(1)
+
+    app = Application(settings, only_ansible=args.only_ansible)
     asyncio.run(app.run())
