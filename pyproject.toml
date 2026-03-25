@@ -50,13 +50,21 @@ target-version = "py312"
 [tool.setuptools]
 packages = [
 	'argo_automation_cpas',
-	'argo_automation_cpas.cli'
+	'argo_automation_cpas.cli',
+	'argo_automation_cpas.ansible',
 ]
 include-package-data = true
 
 [tool.setuptools.package-dir]
 argo_automation_cpas = "src/argo_automation_cpas/"
 "argo_automation_cpas.cli" = "src/cli/"
+"argo_automation_cpas.ansible" = "ansible/"
+
+[tool.setuptools.package-data]
+"argo_automation_cpas.ansible" = ["**/*"]
+
+[tool.setuptools.exclude-package-data]
+"argo_automation_cpas.ansible" = ["artifacts/*", "artifacts/**/*"]
 
 [tool.setuptools.dynamic]
 version = { attr = "version.vernum" }
