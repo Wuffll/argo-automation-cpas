@@ -51,24 +51,42 @@ target-version = "py312"
 packages = [
 	'argo_automation_cpas',
 	'argo_automation_cpas.cli',
-	'argo_automation_cpas.ansible',
 ]
-include-package-data = true
 
 [tool.setuptools.package-dir]
 argo_automation_cpas = "src/argo_automation_cpas/"
 "argo_automation_cpas.cli" = "src/cli/"
-"argo_automation_cpas.ansible" = "ansible/"
-
-[tool.setuptools.package-data]
-"argo_automation_cpas.ansible" = ["**/*"]
-
-[tool.setuptools.exclude-package-data]
-"argo_automation_cpas.ansible" = ["artifacts/*", "artifacts/**/*"]
 
 [tool.setuptools.data-files]
 "etc" = ["config/argo-cpas.conf.template"]
 "var/log" = ["var/log/.keep"]
+"ansible/project" = [
+	"ansible/project/init.yml",
+	"ansible/project/connectors.yml",
+]
+"ansible/inventory" = [
+	"ansible/inventory/connectors.ini",
+]
+"ansible/roles/connector/defaults" = [
+	"ansible/roles/connector/defaults/main.yml",
+]
+"ansible/roles/connector/handlers" = [
+	"ansible/roles/connector/handlers/main.yml",
+]
+"ansible/roles/connector/tasks" = [
+	"ansible/roles/connector/tasks/main.yml",
+	"ansible/roles/connector/tasks/conf-setup.yml",
+	"ansible/roles/connector/tasks/cron-setup.yml",
+	"ansible/roles/connector/tasks/remove_tenants.yml",
+]
+"ansible/roles/connector/templates" = [
+	"ansible/roles/connector/templates/combine.yml.j2",
+	"ansible/roles/connector/templates/customer.conf.j2",
+	"ansible/roles/connector/templates/global.conf.j2",
+]
+"ansible/roles/connector/vars" = [
+	"ansible/roles/connector/vars/main.yml",
+]
 
 [tool.setuptools.dynamic]
 version = { attr = "version.vernum" }
