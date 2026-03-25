@@ -66,5 +66,8 @@ argo_automation_cpas = "src/argo_automation_cpas/"
 [tool.setuptools.exclude-package-data]
 "argo_automation_cpas.ansible" = ["artifacts/*", "artifacts/**/*"]
 
+[tool.setuptools.data-files]
+"etc" = ["config/argo-cpas.conf.template"]
+
 [tool.setuptools.dynamic]
 version = { attr = "version.vernum" }
