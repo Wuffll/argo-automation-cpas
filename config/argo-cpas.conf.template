@@ -4,7 +4,7 @@ VENV = /opt/argo-automation-cpas/
 [general]
 loggers = stdout, file, syslog
 log_level = INFO
-log_file = /var/log/argo-cpas.log
+log_file = /opt/argo-automation-cpas/var/log/argo-cpas.log
 syslog_address = /dev/log
 syslog_facility = user
 

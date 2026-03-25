@@ -4,7 +4,6 @@ import sys
 
 
 DEFAULT_LOG_LEVEL = logging.INFO
-DEFAULT_LOG_FILE = "/var/log/argo-cpas.log"
 DEFAULT_SYSLOG_ADDRESS = "/dev/log"
 DEFAULT_SYSLOG_FACILITY = logging.handlers.SysLogHandler.LOG_USER
 
@@ -45,7 +44,7 @@ def setup_logging(settings):
 
     Additional [general] keys consumed here:
       log_level       — e.g. DEBUG, INFO, WARNING (default: INFO)
-      log_file        — path for the file handler (default: /var/log/argo-cpas.log)
+      log_file        — path for the file handler (default: <venv>/var/log/argo-cpas.log)
       syslog_address  — socket path or host:port (default: /dev/log)
       syslog_facility — syslog facility name, e.g. LOG_USER (default: LOG_USER)
     """
@@ -60,7 +59,7 @@ def setup_logging(settings):
         )
 
     level = getattr(general, "log_level", DEFAULT_LOG_LEVEL)
-    log_file = getattr(general, "log_file", DEFAULT_LOG_FILE)
+    log_file = getattr(general, "log_file", None)
     syslog_address = getattr(general, "syslog_address", DEFAULT_SYSLOG_ADDRESS)
     syslog_facility = getattr(general, "syslog_facility", DEFAULT_SYSLOG_FACILITY)
 

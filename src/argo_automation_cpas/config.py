@@ -5,13 +5,13 @@ import os
 
 
 CONFIG_ENV_VAR = "ARGO_CPAS_CONFIG"
+DEFAULT_VENV = "/opt/argo-automation-cpas"
 DEFAULT_CONFIG_LOCATIONS = (
-    "config/argo-cpas.conf",
+    os.path.join(DEFAULT_VENV, "etc", "argo-cpas.conf"),
     "/etc/argo-cpas.conf",
 )
 DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
-DEFAULT_ANSIBLE_PRIVATE_DATA_DIR = "ansible"
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 
 _SYSLOG_FACILITIES = {
@@ -30,7 +30,7 @@ class Settings:
     def __init__(self, path, parser):
         self.path = os.path.abspath(path)
         self.config_dir = os.path.dirname(self.path)
-        self.venv = parser.defaults().get("venv", "")
+        self.venv = parser.defaults().get("venv", DEFAULT_VENV).rstrip("/")
 
         general = self._get_section(parser, "general")
         ams = self._get_section(parser, "ams")
@@ -40,7 +40,9 @@ class Settings:
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
             log_level=self._parse_log_level(general.get("log_level", "INFO")),
-            log_file=general.get("log_file", "/var/log/argo-cpas.log"),
+            log_file=general.get(
+                "log_file", os.path.join(self.venv, "var", "log", "argo-cpas.log")
+            ),
             syslog_address=general.get("syslog_address", "/dev/log"),
             syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
         )
@@ -64,8 +66,7 @@ class Settings:
         self.base_url = self.webapi.url
         self.request_timeout = DEFAULT_REQUEST_TIMEOUT
         self.verify_ssl = DEFAULT_VERIFY_SSL
-        self.ansible_private_data_dir = os.path.join(self.config_dir, "..", "ansible")
-        self.ansible_private_data_dir = os.path.abspath(self.ansible_private_data_dir)
+        self.ansible_private_data_dir = os.path.join(self.venv, "ansible")
         self.ansible_playbook = DEFAULT_ANSIBLE_PLAYBOOK
 
     def _get_section(self, parser, section_name):
