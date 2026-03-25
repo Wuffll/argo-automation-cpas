@@ -20,6 +20,12 @@ def parse_args():
             "Optionally specify a playbook filename (default: %(const)s)"
         ),
     )
+    parser.add_argument(
+        "--inventory",
+        default=None,
+        metavar="INVENTORY",
+        help="Inventory file or directory to use instead of the default inventory/",
+    )
     return parser.parse_args()
 
 
@@ -35,5 +41,5 @@ def main():
 
     setup_logging(settings)
 
-    app = Application(settings, only_ansible=args.only_ansible)
+    app = Application(settings, only_ansible=args.only_ansible, inventory=args.inventory)
     asyncio.run(app.run())

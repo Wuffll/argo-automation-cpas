@@ -11,9 +11,10 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None):
+    def __init__(self, settings, only_ansible=None, inventory=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
+        self.inventory = inventory  # None or path to inventory file/directory
 
     async def run(self):
         if self.only_ansible is not None:
@@ -71,17 +72,21 @@ class Application:
 
     async def _run_ansible(self, playbook):
         LOG.info(
-            "Starting ansible-runner with private_data_dir=%s playbook=%s",
+            "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s",
             self.settings.ansible_private_data_dir,
             playbook,
+            self.inventory or "default",
         )
 
-        runner = await asyncio.to_thread(
-            ansible_runner.run,
+        kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
             quiet=True,
         )
+        if self.inventory:
+            kwargs["inventory"] = self.inventory
+
+        runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 
         status = getattr(runner, "status", "unknown")
         rc = getattr(runner, "rc", "unknown")
