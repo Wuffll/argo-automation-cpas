@@ -68,6 +68,7 @@ argo_automation_cpas = "src/argo_automation_cpas/"
 
 [tool.setuptools.data-files]
 "etc" = ["config/argo-cpas.conf.template"]
+"var/log" = ["var/log/.keep"]
 
 [tool.setuptools.dynamic]
 version = { attr = "version.vernum" }
