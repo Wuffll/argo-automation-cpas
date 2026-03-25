@@ -42,6 +42,7 @@ RUN sudo sh -c '\
   && pip install -U pip \
   && pip install -U setuptools \
   && pip install -U poetry==2.*'
+RUN sudo ln -s /opt/poetry-tool/bin/poetry /usr/local/bin/
 RUN sudo python3.12 -m venv /opt/argo-automation-cpas/
 RUN sudo sh -c '\
   . /opt/argo-automation-cpas/bin/activate \
