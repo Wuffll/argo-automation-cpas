@@ -1,3 +1,4 @@
+import argparse
 import asyncio
 import logging
 
@@ -12,7 +13,19 @@ def configure_logging():
     )
 
 
+def parse_args():
+    parser = argparse.ArgumentParser(description="ARGO CPAS automation controller")
+    parser.add_argument(
+        "--only-ansible",
+        action="store_true",
+        default=False,
+        help="Run only the Ansible playbook without contacting AMS, Web API or IAM",
+    )
+    return parser.parse_args()
+
+
 def main():
+    args = parse_args()
     configure_logging()
-    app = Application(get_settings())
+    app = Application(get_settings(), only_ansible=args.only_ansible)
     asyncio.run(app.run())

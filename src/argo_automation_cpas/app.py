@@ -11,10 +11,15 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings):
+    def __init__(self, settings, only_ansible=False):
         self.settings = settings
+        self.only_ansible = only_ansible
 
     async def run(self):
+        if self.only_ansible:
+            await self._run_ansible()
+            return
+
         ams = await asyncio.to_thread(init_ams, self.settings)
 
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
