@@ -71,11 +71,13 @@ class Application:
             return None
 
     async def _run_ansible(self, playbook):
+        private_key = self.settings.general.ssh_private_key
         LOG.info(
-            "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s",
+            "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s private_key=%s",
             self.settings.ansible_private_data_dir,
             playbook,
             self.inventory or "default",
+            private_key or "none",
         )
 
         kwargs = dict(
@@ -85,6 +87,8 @@ class Application:
         )
         if self.inventory:
             kwargs["inventory"] = self.inventory
+        if private_key:
+            kwargs["cmdline"] = "--private-key %s" % private_key
 
         runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 

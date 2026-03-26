@@ -45,6 +45,7 @@ class Settings:
             ),
             syslog_address=general.get("syslog_address", "/dev/log"),
             syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
+            ssh_private_key=general.get("ssh_private_key", ""),
         )
         self.ams = Section(
             project=ams.get("project", ""),
