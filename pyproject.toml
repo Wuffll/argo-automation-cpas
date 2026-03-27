@@ -79,6 +79,7 @@ argo_automation_cpas = "modules/"
 ]
 "ansible/roles/connector/tasks" = [
 	"ansible/roles/connector/tasks/main.yml",
+	"ansible/roles/connector/tasks/parse-tenants.yml",
 	"ansible/roles/connector/tasks/conf-setup-add.yml",
 	"ansible/roles/connector/tasks/conf-setup-remove.yml",
 	"ansible/roles/connector/tasks/cron-setup-add.yml",

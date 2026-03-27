@@ -47,6 +47,20 @@ def parse_args():
             "With role name(s) removes only runs that contain tasks from those role(s)."
         ),
     )
+    parser.add_argument(
+        "--add-tenants",
+        nargs="+",
+        default=None,
+        metavar="TENANT",
+        help="Tenant name(s) to add or update (sets connector_add_tenants extravars).",
+    )
+    parser.add_argument(
+        "--remove-tenants",
+        nargs="+",
+        default=None,
+        metavar="TENANT",
+        help="Tenant name(s) to remove (sets connector_remove_tenants extravars).",
+    )
     return parser.parse_args()
 
 
@@ -68,5 +82,7 @@ def main():
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,
+        add_tenants=args.add_tenants,
+        remove_tenants=args.remove_tenants,
     )
     asyncio.run(app.run())

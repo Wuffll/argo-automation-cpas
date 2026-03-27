@@ -15,12 +15,15 @@ LOG = logging.getLogger(__name__)
 
 class Application:
     def __init__(self, settings, only_ansible=None, inventory=None,
-                 show_artifacts=None, clean_artifacts=None):
+                 show_artifacts=None, clean_artifacts=None,
+                 add_tenants=None, remove_tenants=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
+        self.add_tenants = add_tenants  # None or list of tenant names
+        self.remove_tenants = remove_tenants  # None or list of tenant names
 
     async def run(self):
         if self.clean_artifacts is not None:
@@ -202,6 +205,10 @@ class Application:
             extravars["user_connector"] = self.settings.ansible.user_connector
         if self.settings.ansible.group_connector:
             extravars["group_connector"] = self.settings.ansible.group_connector
+        if self.add_tenants is not None:
+            extravars["connector_add_tenant_names"] = ",".join(t.upper() for t in self.add_tenants)
+        if self.remove_tenants is not None:
+            extravars["connector_remove_tenant_names"] = ",".join(t.upper() for t in self.remove_tenants)
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,

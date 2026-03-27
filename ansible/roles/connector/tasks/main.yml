@@ -1,5 +1,8 @@
 ---
 
+- name: Parse tenant lists from CLI strings if needed
+  ansible.builtin.include_tasks: ./parse-tenants.yml
+
 - name: Set up configuration files for added tenants
   ansible.builtin.include_tasks: ./conf-setup-add.yml
   when: connector_add_tenants | length > 0

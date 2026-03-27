@@ -1,0 +1,14 @@
+---
+
+- name: Resolve connector_add_tenants from connector_add_tenant_names
+  ansible.builtin.set_fact:
+    connector_add_tenants: >-
+      {{ connector_tenants
+         | selectattr('tenant_name', 'in', connector_add_tenant_names.split(',') | map('trim') | list)
+         | list }}
+  when: connector_add_tenant_names | length > 0
+
+- name: Resolve connector_remove_tenants from connector_remove_tenant_names
+  ansible.builtin.set_fact:
+    connector_remove_tenants: "{{ connector_remove_tenant_names.split(',') | map('trim') | list }}"
+  when: connector_remove_tenant_names | length > 0
