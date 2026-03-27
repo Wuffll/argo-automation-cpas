@@ -36,6 +36,17 @@ def parse_args():
             "Optionally filter stdout to tasks from specific role(s)."
         ),
     )
+    parser.add_argument(
+        "--clean-artifacts",
+        nargs="*",
+        default=None,
+        metavar="ROLE",
+        help=(
+            "Remove ansible-runner artifact directories and exit. "
+            "Without arguments removes all artifacts. "
+            "With role name(s) removes only runs that contain tasks from those role(s)."
+        ),
+    )
     return parser.parse_args()
 
 
@@ -56,5 +67,6 @@ def main():
         only_ansible=args.only_ansible,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
+        clean_artifacts=args.clean_artifacts,
     )
     asyncio.run(app.run())

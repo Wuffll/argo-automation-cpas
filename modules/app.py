@@ -1,6 +1,8 @@
 import asyncio
 import logging
+import os
 import re
+import shutil
 
 import aiohttp
 import ansible_runner
@@ -12,13 +14,19 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, inventory=None, show_artifacts=None):
+    def __init__(self, settings, only_ansible=None, inventory=None,
+                 show_artifacts=None, clean_artifacts=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
+        self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
 
     async def run(self):
+        if self.clean_artifacts is not None:
+            self._clean_artifacts(self.clean_artifacts)
+            return
+
         if self.only_ansible is not None:
             await self._run_ansible(self.only_ansible)
             return
@@ -41,6 +49,46 @@ class Application:
             await self._probe_webapi(webapi_session)
             token = await self._fetch_iam_token(iam_session)
             await self._run_ansible(self.settings.ansible_playbook)
+
+    def _clean_artifacts(self, roles):
+        artifacts_dir = os.path.join(self.settings.ansible_private_data_dir, "artifacts")
+
+        if not os.path.isdir(artifacts_dir):
+            LOG.info("Artifacts directory does not exist: %s", artifacts_dir)
+            return
+
+        if not roles:
+            shutil.rmtree(artifacts_dir)
+            os.makedirs(artifacts_dir)
+            LOG.info("Removed all artifacts from %s", artifacts_dir)
+            return
+
+        roles_set = set(roles)
+        removed = 0
+
+        for entry in os.scandir(artifacts_dir):
+            if not entry.is_dir():
+                continue
+
+            stdout_path = os.path.join(entry.path, "stdout")
+            try:
+                with open(stdout_path) as fh:
+                    content = fh.read()
+            except OSError:
+                continue
+
+            if any(
+                re.search(r"TASK \[" + re.escape(role) + r" : ", content)
+                for role in roles_set
+            ):
+                shutil.rmtree(entry.path)
+                LOG.info("Removed artifact run %s", entry.name)
+                removed += 1
+
+        LOG.info(
+            "Removed %d artifact run(s) matching role(s): %s",
+            removed, ", ".join(sorted(roles_set)),
+        )
 
     _TASK_RE = re.compile(r"^TASK \[(?P<role>[^\]]+?) : [^\]]+\]")
 
