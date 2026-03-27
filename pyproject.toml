@@ -42,6 +42,7 @@ argo_cpas = "argo_automation_cpas.cli.argo_cpas:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
+pythonpath = ["modules", "cli"]
 
 [tool.ruff]
 line-length = 100
@@ -54,8 +55,8 @@ packages = [
 ]
 
 [tool.setuptools.package-dir]
-argo_automation_cpas = "src/argo_automation_cpas/"
-"argo_automation_cpas.cli" = "src/cli/"
+argo_automation_cpas = "modules/"
+"argo_automation_cpas.cli" = "cli/"
 
 [tool.setuptools.data-files]
 "etc" = ["config/argo-cpas.conf.template"]

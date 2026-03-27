@@ -13,6 +13,9 @@ def settings():
         verify_ssl=True,
         ansible_private_data_dir="ansible",
         ansible_playbook="init.yml",
+        general=SimpleNamespace(
+            ssh_private_key="/home/user/.ssh/sshkey",
+        ),
         webapi=SimpleNamespace(
             host="api.devel.mon.argo.grnet.gr",
             url="https://api.devel.mon.argo.grnet.gr",

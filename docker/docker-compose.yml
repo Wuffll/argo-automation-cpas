@@ -25,7 +25,7 @@ services:
       - ../config/:$VENV/etc
       - ../var/:$VENV/var
       - ../ansible:$VENV/ansible
-      - ../argo-automation-cpas/src/argo_automation_cpas/:$VENV/lib/python3.12/site-packages/argo_automation_cpas
+      - ../modules/:$VENV/lib/python3.12/site-packages/argo_automation_cpas
       - type: bind
         source: ${SSH_AUTH_SOCK}
         target: ${SSH_AUTH_SOCK}
