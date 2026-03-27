@@ -149,11 +149,19 @@ class Application:
             private_key or "none",
         )
 
+        extravars = {}
+        if self.settings.ansible.connector_owner:
+            extravars["connector_owner"] = self.settings.ansible.connector_owner
+        if self.settings.ansible.connector_group:
+            extravars["connector_group"] = self.settings.ansible.connector_group
+
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
             quiet=True,
         )
+        if extravars:
+            kwargs["extravars"] = extravars
         if self.inventory:
             kwargs["inventory"] = self.inventory
         if private_key:
