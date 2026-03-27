@@ -62,7 +62,7 @@ argo_automation_cpas = "modules/"
 [tool.setuptools.data-files]
 "etc" = ["config/argo-cpas.conf.template"]
 "var/log" = ["var/log/.keep"]
-"var/cache/ansible_fact_cache" = ["var/cache/ansible_fact_cache/.keep"]
+"var/cache" = ["var/cache/.keep"]
 "ansible/project" = [
 	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
