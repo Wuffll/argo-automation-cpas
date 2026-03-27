@@ -150,10 +150,10 @@ class Application:
         )
 
         extravars = {}
-        if self.settings.ansible.connector_owner:
-            extravars["connector_owner"] = self.settings.ansible.connector_owner
-        if self.settings.ansible.connector_group:
-            extravars["connector_group"] = self.settings.ansible.connector_group
+        if self.settings.ansible.user_connector:
+            extravars["user_connector"] = self.settings.ansible.user_connector
+        if self.settings.ansible.group_connector:
+            extravars["group_connector"] = self.settings.ansible.group_connector
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,

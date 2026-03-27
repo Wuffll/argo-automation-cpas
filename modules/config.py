@@ -66,8 +66,8 @@ class Settings:
         )
 
         self.ansible = Section(
-            connector_owner=ansible.get("connector_owner", "") if ansible else "",
-            connector_group=ansible.get("connector_group", "") if ansible else "",
+            user_connector=ansible.get("user_connector", "") if ansible else "",
+            group_connector=ansible.get("group_connector", "") if ansible else "",
         )
 
         self.base_url = self.webapi.url

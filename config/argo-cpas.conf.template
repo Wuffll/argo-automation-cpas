@@ -24,7 +24,7 @@ oidc_client_id = client-id
 oidc_client_secret = client-secret
 
 [ansible]
-connector_owner = user
-connector_group = user
+user_connector = user
+group_connector = group
 
 # vim: ft=conf

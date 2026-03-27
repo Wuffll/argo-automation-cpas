@@ -6,7 +6,7 @@
   vars:
     errors_ignore: false
   roles:
-    - { role: connector, connector_owner: "{{ connector_owner }}", connector_group: "{{ connector_group }}" }
+    - { role: connector, connector_owner: "{{ user_connector }}", connector_group: "{{ group_connector }}" }
 
 
 # vim: ft=yaml.ansible
