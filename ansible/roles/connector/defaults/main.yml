@@ -1,6 +1,8 @@
 ---
 # defaults file for connector
 
+connector_virtenv_path: /opt/argo-connectors/
+
 connector_owner: user
 connector_group: group
 
