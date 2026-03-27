@@ -188,7 +188,7 @@ class Application:
             return None
 
     async def _run_ansible(self, playbook):
-        private_key = self.settings.general.ssh_private_key
+        private_key = self.settings.ansible.ssh_private_key
         LOG.info(
             "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s private_key=%s",
             self.settings.ansible_private_data_dir,

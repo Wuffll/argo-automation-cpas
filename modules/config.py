@@ -46,7 +46,6 @@ class Settings:
             ),
             syslog_address=general.get("syslog_address", "/dev/log"),
             syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
-            ssh_private_key=general.get("ssh_private_key", ""),
         )
         self.ams = Section(
             project=ams.get("project", ""),
@@ -68,6 +67,7 @@ class Settings:
         self.ansible = Section(
             user_connector=ansible.get("user_connector", "") if ansible else "",
             group_connector=ansible.get("group_connector", "") if ansible else "",
+            ssh_private_key=ansible.get("ssh_private_key", "") if ansible else "",
         )
 
         self.base_url = self.webapi.url

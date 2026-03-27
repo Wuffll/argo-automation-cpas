@@ -13,8 +13,11 @@ def settings():
         verify_ssl=True,
         ansible_private_data_dir="ansible",
         ansible_playbook="init.yml",
-        general=SimpleNamespace(
+        general=SimpleNamespace(),
+        ansible=SimpleNamespace(
             ssh_private_key="/home/user/.ssh/sshkey",
+            user_connector="user",
+            group_connector="group",
         ),
         webapi=SimpleNamespace(
             host="api.devel.mon.argo.grnet.gr",
