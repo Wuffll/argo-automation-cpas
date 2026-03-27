@@ -28,9 +28,13 @@ def parse_args():
     )
     parser.add_argument(
         "--show-artifacts",
-        action="store_true",
-        default=False,
-        help="Print ansible-runner stdout and stderr after the run finishes",
+        nargs="*",
+        default=None,
+        metavar="ROLE",
+        help=(
+            "Print ansible-runner stdout and stderr after the run finishes. "
+            "Optionally filter stdout to tasks from specific role(s)."
+        ),
     )
     return parser.parse_args()
 

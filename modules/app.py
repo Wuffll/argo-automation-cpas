@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import re
 
 import aiohttp
 import ansible_runner
@@ -11,11 +12,11 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, inventory=None, show_artifacts=False):
+    def __init__(self, settings, only_ansible=None, inventory=None, show_artifacts=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.inventory = inventory  # None or path to inventory file/directory
-        self.show_artifacts = show_artifacts
+        self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
 
     async def run(self):
         if self.only_ansible is not None:
@@ -41,24 +42,70 @@ class Application:
             token = await self._fetch_iam_token(iam_session)
             await self._run_ansible(self.settings.ansible_playbook)
 
+    _TASK_RE = re.compile(r"^TASK \[(?P<role>[^\]]+?) : [^\]]+\]")
+
+    def _role_of(self, line):
+        """Return the role name from a TASK line, or None if not a role task."""
+        m = self._TASK_RE.match(line)
+        return m.group("role").strip() if m else None
+
+    def _filter_stdout(self, content, roles):
+        """Filter stdout lines to tasks belonging to any of *roles*.
+
+        PLAY headers and PLAY RECAP are always kept. When *roles* is empty
+        (no filter requested) the full content is returned unchanged.
+        """
+        if not roles:
+            return content
+
+        width = 72
+        result = []
+        include_block = False
+
+        for line in content.splitlines():
+            if line.startswith("PLAY [") or line.startswith("PLAY RECAP"):
+                include_block = False
+                result.append(line)
+            elif line.startswith("TASK ["):
+                role = self._role_of(line)
+                include_block = role in roles
+                if include_block:
+                    if result and result[-1] != "":
+                        result.append("")
+                    result.append(line)
+            elif include_block:
+                result.append(line)
+
+        return "\n".join(result)
+
     def _print_artifacts(self, runner):
+        roles = self.show_artifacts  # [] = all, ['r1', 'r2'] = filtered
         width = 72
 
-        for label, stream in (("STDOUT", runner.stdout), ("STDERR", runner.stderr)):
-            try:
-                content = stream.read().strip()
-            except Exception:
-                content = ""
+        try:
+            stdout = runner.stdout.read().strip()
+        except Exception:
+            stdout = ""
 
+        try:
+            stderr = runner.stderr.read().strip()
+        except Exception:
+            stderr = ""
+
+        stdout = self._filter_stdout(stdout, roles)
+
+        for label, content in (("STDOUT", stdout), ("STDERR", stderr)):
             print("\n" + "=" * width)
-            print(f"  {label}")
+            if roles and label == "STDOUT":
+                print(f"  {label}  [roles: {', '.join(roles)}]")
+            else:
+                print(f"  {label}")
             print("=" * width)
-
             if content:
                 for line in content.splitlines():
                     print(f"  {line}")
             else:
-                print(f"  (empty)")
+                print("  (empty)")
 
         print("=" * width + "\n")
 
@@ -118,5 +165,5 @@ class Application:
         rc = getattr(runner, "rc", "unknown")
         LOG.info("Ansible runner finished with status=%s rc=%s", status, rc)
 
-        if self.show_artifacts:
+        if self.show_artifacts is not None:
             self._print_artifacts(runner)
