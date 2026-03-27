@@ -36,6 +36,7 @@ class Settings:
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
         iam = self._get_section(parser, "iam")
+        ansible = self._get_optional_section(parser, "ansible")
 
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
@@ -64,6 +65,11 @@ class Settings:
             oidc_client_secret=iam.get("oidc_client_secret", ""),
         )
 
+        self.ansible = Section(
+            connector_owner=ansible.get("connector_owner", "") if ansible else "",
+            connector_group=ansible.get("connector_group", "") if ansible else "",
+        )
+
         self.base_url = self.webapi.url
         self.request_timeout = DEFAULT_REQUEST_TIMEOUT
         self.verify_ssl = DEFAULT_VERIFY_SSL
@@ -73,6 +79,11 @@ class Settings:
     def _get_section(self, parser, section_name):
         if not parser.has_section(section_name):
             raise ValueError("Missing required section [%s] in %s" % (section_name, self.path))
+        return parser[section_name]
+
+    def _get_optional_section(self, parser, section_name):
+        if not parser.has_section(section_name):
+            return None
         return parser[section_name]
 
     def _normalize_url(self, value):

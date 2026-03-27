@@ -23,4 +23,8 @@ host = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-co
 oidc_client_id = client-id
 oidc_client_secret = client-secret
 
+[ansible]
+connector_owner = user
+connector_group = user
+
 # vim: ft=conf
