@@ -31,6 +31,7 @@ connector_tokens:
   egi:
     webapi: EGI_WEBAPI_TOKEN
 
+connector_add_tenants: []
 connector_remove_tenants: []
 
 connector_tenants:

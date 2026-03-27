@@ -1,0 +1,9 @@
+---
+
+- name: Remove argo-connectors tenant - customer.conf
+  ansible.builtin.file:
+    path: "{{ connector_virtenv_path }}/etc/{{ item | lower }}-customer.conf"
+    state: absent
+  loop: "{{ connector_remove_tenants }}"
+  loop_control:
+    label: "{{ item }}"

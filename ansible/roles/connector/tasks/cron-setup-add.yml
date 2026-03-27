@@ -6,7 +6,7 @@
     value: "{{ envvar.value }}"
     user: root
     cron_file: "{{ item.0.tenant_name | lower }}"
-  loop: "{{ connector_tenants | product(connector_cron_envvars) | list }}"
+  loop: "{{ connector_add_tenants | product(connector_cron_envvars) | list }}"
   loop_control:
     label: "{{ item.0.tenant_name }} - {{ item.1.name }}"
   vars:
@@ -23,7 +23,7 @@
     hour: "{{ item.cron_schedules.topology.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_topology_disable | default(false)
@@ -35,7 +35,7 @@
     name: "topology connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_topology_disable | default(false)
@@ -50,7 +50,7 @@
     hour: "{{ item.cron_schedules.topology_combine.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_topo_combine | default(false)
@@ -62,7 +62,7 @@
     name: "topology combiner"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_topology_combine_disable | default(false)
@@ -79,7 +79,7 @@
     hour: "{{ item.cron_schedules.downtimes.hour | default(connector_cron_downtimes_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_downtimes_disable | default(false)
@@ -91,7 +91,7 @@
     name: "downtimes connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_downtimes_disable | default(false)
@@ -107,7 +107,7 @@
     hour: "{{ item.cron_schedules.servicetypes.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_servicetypes_disable | default(false)
@@ -119,7 +119,7 @@
     name: "service types connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_servicetypes_disable | default(false)
@@ -131,7 +131,7 @@
     name: "metric-profile-webapi connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_metricprofiles_disable | default(false)
@@ -147,7 +147,7 @@
     hour: "{{ item.cron_schedules.weights.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_weights_disable | default(false)
@@ -159,7 +159,7 @@
     name: "weights connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+  loop: "{{ connector_add_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_weights_disable | default(false)

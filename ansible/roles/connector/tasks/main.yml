@@ -1,13 +1,17 @@
 ---
 
-- name: Set up configuration files
-  ansible.builtin.import_tasks: ./conf-setup.yml
+- name: Set up configuration files for added tenants
+  ansible.builtin.include_tasks: ./conf-setup-add.yml
+  when: connector_add_tenants | length > 0
 
+- name: Remove configuration files for removed tenants
+  ansible.builtin.include_tasks: ./conf-setup-remove.yml
+  when: connector_remove_tenants | length > 0
 
-- name: Set up cron jobs
-  ansible.builtin.import_tasks: ./cron-setup.yml
+- name: Set up cron jobs for added tenants
+  ansible.builtin.include_tasks: ./cron-setup-add.yml
+  when: connector_add_tenants | length > 0
 
-
-- name: Remove tenants
-  ansible.builtin.import_tasks: ./remove_tenants.yml
-  when: is_installed and connector_remove_tenants
+- name: Remove cron jobs for removed tenants
+  ansible.builtin.include_tasks: ./cron-setup-remove.yml
+  when: connector_remove_tenants | length > 0
