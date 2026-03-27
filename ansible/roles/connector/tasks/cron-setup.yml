@@ -1,63 +1,17 @@
 ---
 
-- name: VENVPY env variable in cron
-  ansible.builtin.cron:
-    name: VENVPY
-    job: "{{ connector_virtenv_path }}/bin/python"
-    env: true
+- name: Set cron env variables
+  community.general.cronvar:
+    name: "{{ envvar.name }}"
+    value: "{{ envvar.value }}"
     user: root
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
+    cron_file: "{{ item.0.tenant_name | lower }}"
+  loop: "{{ connector_tenants | product(connector_cron_envvars) | list }}"
   loop_control:
-    label: "{{ item.tenant_name }}"
-
-
-- name: VENVDIR env variable in cron
-  ansible.builtin.cron:
-    name: VENVDIR
-    job: "{{ connector_virtenv_path }}"
-    env: true
-    user: root
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
-
-
-- name: VIRTUAL_ENV env variable in cron
-  ansible.builtin.cron:
-    name: VIRTUAL_ENV
-    job: "{{ connector_virtenv_path }}"
-    env: true
-    user: root
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
-
-
-- name: VENVBIN env variable in cron
-  ansible.builtin.cron:
-    name: VENVBIN
-    job: "{{ connector_virtenv_path }}/usr/bin"
-    env: true
-    user: root
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
-
-
-- name: VENVETC env variable in cron
-  ansible.builtin.cron:
-    name: VENVETC
-    job: "{{ connector_virtenv_path }}/etc"
-    env: true
-    user: root
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
+    label: "{{ item.0.tenant_name }} - {{ item.1.name }}"
+  vars:
+    envvar: "{{ item.1 }}"
+  notify: Reload cron daemon
 
 
 - name: Add topology connector in cron

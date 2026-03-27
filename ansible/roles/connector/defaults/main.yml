@@ -9,6 +9,19 @@ connector_group: group
 connector_infra: ''
 
 connector_cron_default_user: "user"
+
+connector_cron_envvars:
+  - name: VENVPY
+    value: "{{ connector_virtenv_path }}/bin/python"
+  - name: VENVDIR
+    value: "{{ connector_virtenv_path }}"
+  - name: VIRTUAL_ENV
+    value: "{{ connector_virtenv_path }}"
+  - name: VENVBIN
+    value: "{{ connector_virtenv_path }}/usr/bin"
+  - name: VENVETC
+    value: "{{ connector_virtenv_path }}/etc"
+
 connector_cron_default_minute: "7"
 connector_cron_default_hour: "0"
 connector_cron_downtimes_default_minute: "58"
