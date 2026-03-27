@@ -9,9 +9,10 @@ authors = [
 description = "Automation service for the dynamic configuration of ARGO components: Connectors, POEM, Archiver and Sensu (CPAS)."
 dependencies = [
 	"aiohttp==3.11.0",
-	"ansible-core==2.18.0",
 	"ansible-runner==2.4.0",
-	"argo-ams-library"
+    "ansible-core==2.20.4",
+	"argo-ams-library",
+	"ansible (>=13.5.0,<14.0.0)"
 ]
 requires-python = ">=3.12"
 
@@ -61,6 +62,7 @@ argo_automation_cpas = "modules/"
 [tool.setuptools.data-files]
 "etc" = ["config/argo-cpas.conf.template"]
 "var/log" = ["var/log/.keep"]
+"var/cache/ansible_fact_cache" = ["var/cache/ansible_fact_cache/.keep"]
 "ansible/project" = [
 	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
