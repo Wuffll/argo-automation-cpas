@@ -63,7 +63,7 @@ argo_automation_cpas = "modules/"
 [tool.setuptools.data-files]
 "etc" = [
 	"config/argo-cpas.conf.template",
-	"config/connector-defaults.yml",
+	"config/roles-defaults.yml",
 ]
 "var/log" = ["var/log/.keep"]
 "var/cache" = ["var/cache/.keep"]

@@ -1,7 +1,0 @@
-# Ansible extra vars applied to every connector playbook run.
-# Values here are overridden by CLI arguments (--add-tenants, etc.).
-
-# connector_topo_type: CSV
-# connector_tenant_cron_weights_disable: true
-# connector_tenant_cron_downtimes_disable: true
-# connector_tenant_bdii: false
