@@ -42,33 +42,6 @@
   notify: Reload cron daemon
 
 
-- name: Add topology combiner in cron
-  ansible.builtin.cron:
-    name: "topology combiner"
-    job: "${VENVPY} ${VENVBIN}/topology-combiner.py -c ${VENVETC}/{{ item.tenant_name | lower }}-combine.yml"
-    minute: "{{ item.cron_schedules.topology_combine.minute | default(connector_cron_default_minute) }}"
-    hour: "{{ item.cron_schedules.topology_combine.hour | default(connector_cron_default_hour) }}"
-    user: "{{ connector_cron_default_user }}"
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
-  when: item.tenant_topo_combine | default(false)
-  notify: Reload cron daemon
-
-
-- name: Disable topology combiner in cron
-  ansible.builtin.cron:
-    name: "topology combiner"
-    state: absent
-    cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
-  loop_control:
-    label: "{{ item.tenant_name }}"
-  when: item.tenant_cron_topology_combine_disable | default(false)
-  notify: Reload cron daemon
-
-
 - name: Add downtimes connector in cron
   ansible.builtin.cron:
     name: "downtimes connector"
