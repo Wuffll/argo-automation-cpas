@@ -200,26 +200,36 @@ class Application:
             private_key or "none",
         )
 
-        extravars = dict(self.settings.ansible.defaults)
+        defaults = self.settings.ansible.defaults
+
+        # Keys prefixed with "connector_tenant_" become per-tenant defaults
+        # e.g. connector_tenant_topo_type -> tenant_topo_type
+        _PREFIX = "connector_"
+        tenant_defaults = {
+            k[len(_PREFIX):]: v
+            for k, v in defaults.items()
+            if k.startswith(_PREFIX + "tenant_")
+        }
+
+        extravars = {k: v for k, v in defaults.items() if not k.startswith(_PREFIX + "tenant_")}
         if self.settings.ansible.user_connector:
             extravars["user_connector"] = self.settings.ansible.user_connector
         if self.settings.ansible.group_connector:
             extravars["group_connector"] = self.settings.ansible.group_connector
+
+        if self.add_tenants is not None:
+            extravars["connector_tenants"] = [
+                {"tenant_name": t.upper(), **tenant_defaults}
+                for t in self.add_tenants
+            ]
+        if self.remove_tenants is not None:
+            extravars["connector_remove_tenants"] = [t.upper() for t in self.remove_tenants]
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
             quiet=True,
         )
-
-        extravars['connector_tenants'] = list()
-        extravars['connector_remove_tenants'] = list()
-        for tenant_name in self.add_tenants:
-            extravars['connector_tenants'].append(
-                {
-                    'tenant_name': tenant_name.upper()
-                }
-            )
 
         if extravars:
             kwargs["extravars"] = extravars
