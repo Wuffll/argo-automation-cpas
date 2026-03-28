@@ -205,16 +205,22 @@ class Application:
             extravars["user_connector"] = self.settings.ansible.user_connector
         if self.settings.ansible.group_connector:
             extravars["group_connector"] = self.settings.ansible.group_connector
-        if self.add_tenants is not None:
-            extravars["connector_add_tenant_names"] = ",".join(t.upper() for t in self.add_tenants)
-        if self.remove_tenants is not None:
-            extravars["connector_remove_tenant_names"] = ",".join(t.upper() for t in self.remove_tenants)
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
             quiet=True,
         )
+
+        extravars['connector_tenants'] = list()
+        extravars['connector_remove_tenants'] = list()
+        for tenant_name in self.add_tenants:
+            extravars['connector_tenants'].append(
+                {
+                    'tenant_name': tenant_name.upper()
+                }
+            )
+
         if extravars:
             kwargs["extravars"] = extravars
         if self.inventory:
