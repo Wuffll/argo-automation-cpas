@@ -200,7 +200,7 @@ class Application:
             private_key or "none",
         )
 
-        extravars = {}
+        extravars = dict(self.settings.ansible.defaults)
         if self.settings.ansible.user_connector:
             extravars["user_connector"] = self.settings.ansible.user_connector
         if self.settings.ansible.group_connector:

@@ -12,6 +12,7 @@ dependencies = [
 	"ansible-runner==2.4.0",
     "ansible-core==2.20.4",
 	"argo-ams-library",
+	"pyyaml",
 	"ansible (>=13.5.0,<14.0.0)"
 ]
 requires-python = ">=3.12"
@@ -60,7 +61,10 @@ argo_automation_cpas = "modules/"
 "argo_automation_cpas.cli" = "cli/"
 
 [tool.setuptools.data-files]
-"etc" = ["config/argo-cpas.conf.template"]
+"etc" = [
+	"config/argo-cpas.conf.template",
+	"config/connector-defaults.yml",
+]
 "var/log" = ["var/log/.keep"]
 "var/cache" = ["var/cache/.keep"]
 "ansible/project" = [

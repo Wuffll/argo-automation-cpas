@@ -3,6 +3,9 @@ import logging
 import logging.handlers
 import os
 
+import yaml
+
+LOG = logging.getLogger(__name__)
 
 CONFIG_ENV_VAR = "ARGO_CPAS_CONFIG"
 DEFAULT_VENV = "/opt/argo-automation-cpas"
@@ -64,10 +67,16 @@ class Settings:
             oidc_client_secret=iam.get("oidc_client_secret", ""),
         )
 
+        defaults_file = ansible.get("defaults_file", "") if ansible else ""
+        if defaults_file and not os.path.isabs(defaults_file):
+            defaults_file = os.path.join(self.config_dir, defaults_file)
+
         self.ansible = Section(
             user_connector=ansible.get("user_connector", "") if ansible else "",
             group_connector=ansible.get("group_connector", "") if ansible else "",
             ssh_private_key=ansible.get("ssh_private_key", "") if ansible else "",
+            defaults_file=defaults_file,
+            defaults=self._load_ansible_defaults(defaults_file),
         )
 
         self.base_url = self.webapi.url
@@ -104,6 +113,18 @@ class Settings:
         if not isinstance(level, int):
             raise ValueError("Unknown log_level %r in %s" % (value, self.path))
         return level
+
+    def _load_ansible_defaults(self, path):
+        if not path:
+            return {}
+        if not os.path.exists(path):
+            LOG.warning("ansible defaults_file not found: %s", path)
+            return {}
+        with open(path) as fh:
+            data = yaml.safe_load(fh) or {}
+        if not isinstance(data, dict):
+            raise ValueError("ansible defaults_file must be a YAML mapping: %s" % path)
+        return data
 
     def _parse_syslog_facility(self, value):
         key = value.lower().removeprefix("log_")
