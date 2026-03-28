@@ -26,6 +26,6 @@ oidc_client_secret = client-secret
 user_connector = user
 group_connector = group
 ssh_private_key = /home/user/.ssh/sshkey
-defaults_file = /opt/argo-automation-cpas/etc/connector-defaults.yml
+defaults_file = /opt/argo-automation-cpas/etc/roles-defaults.yml
 
 # vim: ft=conf

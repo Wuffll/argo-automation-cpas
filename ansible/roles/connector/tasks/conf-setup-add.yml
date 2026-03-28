@@ -7,6 +7,6 @@
     owner: "{{ connector_owner }}"
     group: "{{ connector_group }}"
     mode: "0644"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"

@@ -1,19 +1,16 @@
 ---
 
-- name: Parse tenant lists from CLI strings if needed
-  ansible.builtin.include_tasks: ./parse-tenants.yml
-
 - name: Set up configuration files for added tenants
   ansible.builtin.include_tasks: ./conf-setup-add.yml
-  when: connector_add_tenants | length > 0
+  when: connector_tenants | length > 0
+
+- name: Set up cron jobs for added tenants
+  ansible.builtin.include_tasks: ./cron-setup-add.yml
+  when: connector_tenants | length > 0
 
 - name: Remove configuration files for removed tenants
   ansible.builtin.include_tasks: ./conf-setup-remove.yml
   when: connector_remove_tenants | length > 0
-
-- name: Set up cron jobs for added tenants
-  ansible.builtin.include_tasks: ./cron-setup-add.yml
-  when: connector_add_tenants | length > 0
 
 - name: Remove cron jobs for removed tenants
   ansible.builtin.include_tasks: ./cron-setup-remove.yml
