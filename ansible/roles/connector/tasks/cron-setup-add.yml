@@ -6,7 +6,7 @@
     value: "{{ envvar.value }}"
     user: root
     cron_file: "{{ item.0.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants | product(connector_cron_envvars) | list }}"
+  loop: "{{ connector_tenants | product(connector_cron_envvars) | list }}"
   loop_control:
     label: "{{ item.0.tenant_name }} - {{ item.1.name }}"
   vars:
@@ -23,11 +23,13 @@
     hour: "{{ item.cron_schedules.topology.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_topology_disable | default(false)
-  notify: Reload cron daemon
+  notify:
+    - Reload cron daemon
+    - Run topology connector
 
 
 - name: Disable topology connector in cron
@@ -35,7 +37,7 @@
     name: "topology connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_topology_disable | default(false)
@@ -52,11 +54,13 @@
     hour: "{{ item.cron_schedules.downtimes.hour | default(connector_cron_downtimes_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_downtimes_disable | default(false)
-  notify: Reload cron daemon
+  notify:
+    - Reload cron daemon
+    - Run downtimes connector
 
 
 - name: Disable downtimes connector in cron
@@ -64,7 +68,7 @@
     name: "downtimes connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_downtimes_disable | default(false)
@@ -80,11 +84,13 @@
     hour: "{{ item.cron_schedules.servicetypes.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_servicetypes_disable | default(false)
-  notify: Reload cron daemon
+  notify:
+    - Reload cron daemon
+    - Run service-types connector
 
 
 - name: Disable service-types connector in cron
@@ -92,7 +98,7 @@
     name: "service types connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_servicetypes_disable | default(false)
@@ -104,7 +110,7 @@
     name: "metric-profile-webapi connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_metricprofiles_disable | default(false)
@@ -120,11 +126,13 @@
     hour: "{{ item.cron_schedules.weights.hour | default(connector_cron_default_hour) }}"
     user: "{{ connector_cron_default_user }}"
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: not item.tenant_cron_weights_disable | default(false)
-  notify: Reload cron daemon
+  notify:
+    - Reload cron daemon
+    - Run weights connector
 
 
 - name: Disable weights connector in cron
@@ -132,7 +140,7 @@
     name: "weights connector"
     state: absent
     cron_file: "{{ item.tenant_name | lower }}"
-  loop: "{{ connector_add_tenants }}"
+  loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
   when: item.tenant_cron_weights_disable | default(false)
