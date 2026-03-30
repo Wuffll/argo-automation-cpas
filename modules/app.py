@@ -231,6 +231,9 @@ class Application:
             quiet=True,
         )
 
+        if self.settings.ansible.tokens:
+            extravars["connector_tokens"] = self.settings.ansible.tokens
+
         if extravars:
             kwargs["extravars"] = extravars
         if self.inventory:

@@ -27,5 +27,6 @@ user_connector = user
 group_connector = group
 ssh_private_key = /home/user/.ssh/sshkey
 defaults_file = /opt/argo-automation-cpas/etc/roles-defaults.yml
+tokens_file = /opt/argo-automation-cpas/etc/tokens.yml
 
 # vim: ft=conf

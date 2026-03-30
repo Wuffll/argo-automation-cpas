@@ -71,12 +71,18 @@ class Settings:
         if defaults_file and not os.path.isabs(defaults_file):
             defaults_file = os.path.join(self.config_dir, defaults_file)
 
+        tokens_file = ansible.get("tokens_file", "") if ansible else ""
+        if tokens_file and not os.path.isabs(tokens_file):
+            tokens_file = os.path.join(self.config_dir, tokens_file)
+
         self.ansible = Section(
             user_connector=ansible.get("user_connector", "") if ansible else "",
             group_connector=ansible.get("group_connector", "") if ansible else "",
             ssh_private_key=ansible.get("ssh_private_key", "") if ansible else "",
             defaults_file=defaults_file,
             defaults=self._load_ansible_defaults(defaults_file),
+            tokens_file=tokens_file,
+            tokens=self._load_connector_tokens(tokens_file),
         )
 
         self.base_url = self.webapi.url
@@ -114,17 +120,27 @@ class Settings:
             raise ValueError("Unknown log_level %r in %s" % (value, self.path))
         return level
 
-    def _load_ansible_defaults(self, path):
+    def _load_yaml_mapping(self, path, label):
         if not path:
             return {}
         if not os.path.exists(path):
-            LOG.warning("ansible defaults_file not found: %s", path)
+            LOG.warning("%s not found: %s", label, path)
             return {}
         with open(path) as fh:
             data = yaml.safe_load(fh) or {}
         if not isinstance(data, dict):
-            raise ValueError("ansible defaults_file must be a YAML mapping: %s" % path)
+            raise ValueError("%s must be a YAML mapping: %s" % (label, path))
         return data
+
+    def _load_ansible_defaults(self, path):
+        return self._load_yaml_mapping(path, "ansible defaults_file")
+
+    def _load_connector_tokens(self, path):
+        data = self._load_yaml_mapping(path, "ansible tokens_file")
+        tokens = data.get("connector_tokens", {})
+        if not isinstance(tokens, dict):
+            raise ValueError("connector_tokens in %s must be a mapping" % path)
+        return tokens
 
     def _parse_syslog_facility(self, value):
         key = value.lower().removeprefix("log_")
