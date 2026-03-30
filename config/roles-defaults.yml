@@ -9,3 +9,5 @@ connector_tenant_jobs:
   - name: CORE
     dirname: CORE
 connector_tenant_auth_useplainhttpauth: false
+connector_tenant_topo_fetchtype: ServiceGroups
+connector_tenant_topo_uidserviceendpoints: true
