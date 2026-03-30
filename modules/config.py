@@ -60,6 +60,9 @@ class Settings:
         self.webapi = Section(
             host=webapi.get("host", ""),
             url=self._normalize_url(webapi.get("host", "")),
+            poem_component_admin=webapi.get("poem-component-admin", ""),
+            monbox_component_admin=webapi.get("monbox-component-admin", ""),
+            connectors_component_admin=webapi.get("connectors-component-admin", ""),
         )
         self.iam = Section(
             host=iam.get("host", ""),

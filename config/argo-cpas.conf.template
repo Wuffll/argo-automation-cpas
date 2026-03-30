@@ -16,6 +16,9 @@ token = AUTOMATION_TOKEN
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
+poem-component-admin =
+monbox-component-admin =
+connectors-component-admin =
 
 [iam]
 host = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
