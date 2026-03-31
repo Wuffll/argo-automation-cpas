@@ -16,6 +16,7 @@ DEFAULT_CONFIG_LOCATIONS = (
 DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
+DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
 
 _SYSLOG_FACILITIES = {
     name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
@@ -39,6 +40,7 @@ class Settings:
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
         iam = self._get_section(parser, "iam")
+        statusapi = self._get_optional_section(parser, "statusapi")
         ansible = self._get_optional_section(parser, "ansible")
 
         self.general = Section(
@@ -68,6 +70,11 @@ class Settings:
             host=iam.get("host", ""),
             oidc_client_id=iam.get("oidc_client_id", ""),
             oidc_client_secret=iam.get("oidc_client_secret", ""),
+            token_spool=os.path.join(self.venv, "var", "spool", "iam_access.yml"),
+        )
+        self.statusapi = Section(
+            host=statusapi.get("host", "") if statusapi else "",
+            url=self._normalize_url(statusapi.get("host", "") if statusapi else ""),
         )
 
         defaults_file = ansible.get("defaults_file", "") if ansible else ""

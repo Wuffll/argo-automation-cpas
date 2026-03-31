@@ -3,9 +3,11 @@ import logging
 import os
 import re
 import shutil
+import time
 
 import aiohttp
 import ansible_runner
+import yaml
 
 from argo_automation_cpas.messaging import init_ams
 
@@ -169,7 +171,32 @@ class Application:
         except aiohttp.ClientError as exc:
             LOG.warning("Web API probe failed: %s", exc)
 
+    def _load_cached_token(self):
+        path = self.settings.iam.token_spool
+        try:
+            with open(path) as fh:
+                data = yaml.safe_load(fh) or {}
+            token = data.get("access_token", "")
+            expires_at = float(data.get("expires_at", 0))
+            if token and time.time() < expires_at - 30:
+                LOG.info("Using cached IAM token from %s (expires in %.0fs)", path, expires_at - time.time())
+                return token
+        except (OSError, ValueError):
+            pass
+        return None
+
+    def _save_token(self, token, expires_in):
+        path = self.settings.iam.token_spool
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            yaml.dump({"access_token": token, "expires_at": time.time() + expires_in}, fh)
+        LOG.info("IAM token saved to %s", path)
+
     async def _fetch_iam_token(self, session):
+        cached = self._load_cached_token()
+        if cached:
+            return cached
+
         LOG.info("Fetching OIDC token from IAM %s", self.settings.iam.host)
 
         payload = {
@@ -182,10 +209,11 @@ class Application:
             async with session.post(self.settings.iam.host, data=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
-                LOG.info(
-                    "IAM token obtained (expires_in=%s)", data.get("expires_in", "unknown")
-                )
-                return data["access_token"]
+                token = data["access_token"]
+                expires_in = data.get("expires_in", 3600)
+                LOG.info("IAM token obtained (expires_in=%s)", expires_in)
+                self._save_token(token, expires_in)
+                return token
         except aiohttp.ClientError as exc:
             LOG.warning("IAM token request failed: %s", exc)
             return None
