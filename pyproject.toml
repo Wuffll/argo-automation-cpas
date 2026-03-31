@@ -67,6 +67,7 @@ argo_automation_cpas = "modules/"
 ]
 "var/log" = ["var/log/.keep"]
 "var/cache" = ["var/cache/.keep"]
+"var/spool" = ["var/spool/.keep"]
 "ansible/project" = [
 	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
