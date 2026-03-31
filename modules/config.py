@@ -62,11 +62,11 @@ class Settings:
         self.webapi = Section(
             host=webapi.get("host", ""),
             url=self._normalize_url(webapi.get("host", "")),
-            url_api_config=webapi.get("url-api-config", ""),
-            url_api_integrations=webapi.get("url-api-integrations", ""),
-            poem_component_admin=webapi.get("poem-component-admin", ""),
-            monbox_component_admin=webapi.get("monbox-component-admin", ""),
-            connectors_component_admin=webapi.get("connectors-component-admin", ""),
+            url_api_config=webapi.get("url_api_config", ""),
+            url_api_integrations=webapi.get("url_api_integrations", ""),
+            poem_component_admin=webapi.get("poem_component_admin", ""),
+            monbox_component_admin=webapi.get("monbox_component_admin", ""),
+            connectors_component_admin=webapi.get("connectors_component_admin", ""),
         )
         self.iam = Section(
             api=iam.get("api", ""),
@@ -94,6 +94,8 @@ class Settings:
             defaults=self._load_ansible_defaults(defaults_file),
             tokens_file=tokens_file,
             tokens=self._load_connector_tokens(tokens_file),
+            connectors_playbook=ansible.get("connectors_playbook", "connectors.yml") if ansible else "connectors.yml",
+            connectors_inventory=ansible.get("connectors_inventory", "connectors.ini") if ansible else "connectors.ini",
         )
 
         self.base_url = self.webapi.url

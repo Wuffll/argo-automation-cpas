@@ -269,7 +269,6 @@ class Application:
         if private_key:
             kwargs["cmdline"] = "--private-key %s" % private_key
 
-
         runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 
         status = getattr(runner, "status", "unknown")
