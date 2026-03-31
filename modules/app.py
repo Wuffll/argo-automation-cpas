@@ -1,4 +1,5 @@
 import asyncio
+import json
 import logging
 import os
 import re
@@ -9,6 +10,7 @@ import aiohttp
 import ansible_runner
 import yaml
 
+from argo_ams_library.amsexceptions import AmsException
 from argo_automation_cpas.messaging import init_ams
 
 
@@ -38,6 +40,14 @@ class Application:
 
         ams = await asyncio.to_thread(init_ams, self.settings)
 
+        payload = await self._pull_ams_message(ams)
+        if payload is None:
+            return
+
+        tenant_name = payload["tenant_name"]
+        tenant_id = payload["tenant_id"]
+        LOG.info("Processing tenant_name=%s tenant_id=%s", tenant_name, tenant_id)
+
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
 
         async with (
@@ -50,9 +60,14 @@ class Application:
                 timeout=timeout,
                 connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
             ) as iam_session,
+            aiohttp.ClientSession(
+                timeout=timeout,
+                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
+            ) as statusapi_session,
         ):
             await self._probe_webapi(webapi_session)
             token = await self._fetch_iam_token(iam_session)
+            await self._report_status(statusapi_session, tenant_id, "IN_PROGRESS", token)
             await self._run_ansible(self.settings.ansible_playbook)
 
     def _clean_artifacts(self, roles):
@@ -161,6 +176,46 @@ class Application:
                 print("  (empty)")
 
         print("=" * width + "\n")
+
+    async def _pull_ams_message(self, ams):
+        LOG.info(
+            "Pulling message from AMS subscription %s", self.settings.ams.subscription
+        )
+        try:
+            msgs = await asyncio.to_thread(
+                ams.pullack, self.settings.ams.subscription, num=1
+            )
+        except AmsException as exc:
+            LOG.error("Failed to pull from AMS subscription %s: %s",
+                      self.settings.ams.subscription, exc)
+            return None
+
+        if not msgs:
+            LOG.info("No messages in AMS subscription %s", self.settings.ams.subscription)
+            return None
+
+        try:
+            payload = json.loads(msgs[0].get_data())
+        except Exception as exc:
+            LOG.error("Failed to decode AMS message payload: %s", exc)
+            return None
+
+        if "tenant_name" not in payload or "tenant_id" not in payload:
+            LOG.error("AMS message missing required fields tenant_name/tenant_id: %s", payload)
+            return None
+
+        return payload
+
+    async def _report_status(self, session, tenant_id, status, token):
+        url = self.settings.statusapi.api.format(tenant_id=tenant_id)
+        LOG.info("Reporting status=%s for tenant_id=%s to %s", status, tenant_id, url)
+        headers = {"Authorization": "Bearer %s" % token} if token else {}
+        try:
+            async with session.patch(url, json={"status": status}, headers=headers) as response:
+                response.raise_for_status()
+                LOG.info("Status reported: tenant_id=%s status=%s", tenant_id, status)
+        except aiohttp.ClientError as exc:
+            LOG.warning("Failed to report status to statusapi: %s", exc)
 
     async def _probe_webapi(self, session):
         LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
