@@ -24,9 +24,10 @@ def settings():
             url="https://api.devel.mon.argo.grnet.gr",
         ),
         iam=SimpleNamespace(
-            host="https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token",
+            api="https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token",
             oidc_client_id="client-id",
             oidc_client_secret="client-secret",
+            token_spool="/tmp/iam_access_test.yml",
         ),
         ams=SimpleNamespace(
             host="api.devel.msg.argo.grnet.gr",
@@ -89,7 +90,9 @@ async def test_probe_webapi_client_error(settings):
 # _fetch_iam_token
 # ---------------------------------------------------------------------------
 
-async def test_fetch_iam_token_success(settings):
+@patch("argo_automation_cpas.app.Application._load_cached_token", return_value=None)
+@patch("argo_automation_cpas.app.Application._save_token")
+async def test_fetch_iam_token_success(mock_save, mock_cache, settings):
     app = Application(settings)
     session = _mock_session(
         "post",
@@ -100,8 +103,9 @@ async def test_fetch_iam_token_success(settings):
     token = await app._fetch_iam_token(session)
 
     assert token == "my-token"
+    mock_save.assert_called_once_with("my-token", 3600)
     session.post.assert_called_once_with(
-        settings.iam.host,
+        settings.iam.api,
         data={
             "grant_type": "client_credentials",
             "client_id": settings.iam.oidc_client_id,
@@ -110,7 +114,9 @@ async def test_fetch_iam_token_success(settings):
     )
 
 
-async def test_fetch_iam_token_http_error(settings):
+@patch("argo_automation_cpas.app.Application._load_cached_token", return_value=None)
+@patch("argo_automation_cpas.app.Application._save_token")
+async def test_fetch_iam_token_http_error(mock_save, mock_cache, settings):
     app = Application(settings)
 
     error = aiohttp.ClientResponseError(request_info=MagicMock(), history=(), status=401)
@@ -119,9 +125,11 @@ async def test_fetch_iam_token_http_error(settings):
     token = await app._fetch_iam_token(session)
 
     assert token is None
+    mock_save.assert_not_called()
 
 
-async def test_fetch_iam_token_connection_error(settings):
+@patch("argo_automation_cpas.app.Application._load_cached_token", return_value=None)
+async def test_fetch_iam_token_connection_error(mock_cache, settings):
     app = Application(settings)
 
     response_cm = AsyncMock()
@@ -134,6 +142,17 @@ async def test_fetch_iam_token_connection_error(settings):
     token = await app._fetch_iam_token(session)
 
     assert token is None
+
+
+async def test_fetch_iam_token_uses_cache(settings):
+    app = Application(settings)
+
+    with patch.object(app, "_load_cached_token", return_value="cached-token"):
+        session = MagicMock()
+        token = await app._fetch_iam_token(session)
+
+    assert token == "cached-token"
+    session.post.assert_not_called()
 
 
 # ---------------------------------------------------------------------------

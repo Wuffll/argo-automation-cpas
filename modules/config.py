@@ -62,19 +62,20 @@ class Settings:
         self.webapi = Section(
             host=webapi.get("host", ""),
             url=self._normalize_url(webapi.get("host", "")),
+            url_api_config=webapi.get("url-api-config", ""),
+            url_api_integrations=webapi.get("url-api-integrations", ""),
             poem_component_admin=webapi.get("poem-component-admin", ""),
             monbox_component_admin=webapi.get("monbox-component-admin", ""),
             connectors_component_admin=webapi.get("connectors-component-admin", ""),
         )
         self.iam = Section(
-            host=iam.get("host", ""),
+            api=iam.get("api", ""),
             oidc_client_id=iam.get("oidc_client_id", ""),
             oidc_client_secret=iam.get("oidc_client_secret", ""),
             token_spool=os.path.join(self.venv, "var", "spool", "iam_access.yml"),
         )
         self.statusapi = Section(
-            host=statusapi.get("host", "") if statusapi else "",
-            url=self._normalize_url(statusapi.get("host", "") if statusapi else ""),
+            api=statusapi.get("api", "") if statusapi else "",
         )
 
         defaults_file = ansible.get("defaults_file", "") if ansible else ""

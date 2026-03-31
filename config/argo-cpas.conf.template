@@ -16,18 +16,23 @@ token = AUTOMATION_TOKEN
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
-poem-component-admin =
-monbox-component-admin =
-connectors-component-admin =
+url-api-config = /api/v2/feeds/topology
+url-api-integrations = /api/v3/integrations/components/{component}/by-tenant-name/{tenant_name}/refresh
+poem-component-admin = POEM_ADMIN
+monbox-component-admin = MONBOX_ADMIN
+connectors-component-admin = CONNECTORS_ADMIN
+
+[statusapi]
+api = https:/api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
 
 [iam]
-host = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
+api = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
 oidc_client_id = client-id
 oidc_client_secret = client-secret
 
 [ansible]
 user_connector = user
-group_connector = group
+group_connector = user
 ssh_private_key = /home/user/.ssh/sshkey
 defaults_file = /opt/argo-automation-cpas/etc/roles-defaults.yml
 tokens_file = /opt/argo-automation-cpas/etc/tokens.yml

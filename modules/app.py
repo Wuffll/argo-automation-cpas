@@ -197,7 +197,7 @@ class Application:
         if cached:
             return cached
 
-        LOG.info("Fetching OIDC token from IAM %s", self.settings.iam.host)
+        LOG.info("Fetching OIDC token from IAM %s", self.settings.iam.api)
 
         payload = {
             "grant_type": "client_credentials",
@@ -206,7 +206,7 @@ class Application:
         }
 
         try:
-            async with session.post(self.settings.iam.host, data=payload) as response:
+            async with session.post(self.settings.iam.api, data=payload) as response:
                 response.raise_for_status()
                 data = await response.json()
                 token = data["access_token"]
