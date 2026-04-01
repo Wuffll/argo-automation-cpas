@@ -18,11 +18,12 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, inventory=None,
+    def __init__(self, settings, only_ansible=None, only_ams=False, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
+        self.only_ams = only_ams          # True = pull AMS message, print and exit
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -40,6 +41,10 @@ class Application:
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
+
+        if self.only_ams:
+            await self._pull_and_print_ams(ams)
+            return
 
         payload = await self._pull_ams_message(ams)
         if payload is None:
@@ -207,6 +212,30 @@ class Application:
             return None
 
         return payload
+
+    async def _pull_and_print_ams(self, ams):
+        LOG.info(
+            "Pulling message from AMS subscription %s", self.settings.ams.subscription
+        )
+        try:
+            msgs = await asyncio.to_thread(
+                ams.pullack, self.settings.ams.subscription, num=1
+            )
+        except AmsException as exc:
+            LOG.error("Failed to pull from AMS subscription %s: %s",
+                      self.settings.ams.subscription, exc)
+            return
+
+        if not msgs:
+            print("No messages in AMS subscription %s" % self.settings.ams.subscription)
+            return
+
+        raw = msgs[0].get_data()
+        try:
+            payload = json.loads(raw)
+            print(json.dumps(payload, indent=2))
+        except Exception:
+            print(raw)
 
     async def _report_status(self, session, tenant_id, status, token):
         url = self.settings.statusapi.api.format(tenant_id=tenant_id)
