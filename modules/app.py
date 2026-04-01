@@ -219,7 +219,7 @@ class Application:
         )
         try:
             msgs = await asyncio.to_thread(
-                ams.pullack, self.settings.ams.subscription, num=1
+                ams.pull, self.settings.ams.subscription, num=1
             )
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s",
