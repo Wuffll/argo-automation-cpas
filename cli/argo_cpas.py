@@ -54,6 +54,12 @@ def parse_args():
         help="Pull one message from the AMS subscription, print it, and exit.",
     )
     parser.add_argument(
+        "--only-webapi",
+        action="store_true",
+        default=False,
+        help="Probe the Web API and fetch topology config, then exit.",
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -86,6 +92,7 @@ def main():
         settings,
         only_ansible=args.only_ansible,
         only_ams=args.only_ams,
+        only_webapi=args.only_webapi,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,

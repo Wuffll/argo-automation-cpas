@@ -18,12 +18,13 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, only_ams=False, inventory=None,
+    def __init__(self, settings, only_ansible=None, only_ams=False, only_webapi=False, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.only_ams = only_ams          # True = pull AMS message, print and exit
+        self.only_webapi = only_webapi    # True = probe + fetch topology config and exit
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -38,6 +39,10 @@ class Application:
 
         if self.only_ansible is not None:
             await self._run_ansible(self.only_ansible)
+            return
+
+        if self.only_webapi:
+            await self._run_only_webapi()
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
@@ -212,6 +217,18 @@ class Application:
             return None
 
         return payload
+
+    async def _run_only_webapi(self):
+        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
+        async with aiohttp.ClientSession(
+            base_url=self.settings.webapi.url,
+            timeout=timeout,
+            connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
+        ) as session:
+            await self._probe_webapi(session)
+            overrides = await self._fetch_topology_config(session)
+            if overrides:
+                print(json.dumps(overrides, indent=2))
 
     async def _pull_and_print_ams(self, ams):
         LOG.info(
