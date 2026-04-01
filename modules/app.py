@@ -28,6 +28,7 @@ class Application:
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.add_tenants = add_tenants  # None or list of tenant names
         self.remove_tenants = remove_tenants  # None or list of tenant names
+        self._webapi_overrides = {}  # connector_tenant_* overrides from webapi
 
     async def run(self):
         if self.clean_artifacts is not None:
@@ -68,6 +69,7 @@ class Application:
             await self._probe_webapi(webapi_session)
             token = await self._fetch_iam_token(iam_session)
             await self._report_status(statusapi_session, tenant_id, "IN_PROGRESS", token)
+            self._webapi_overrides = await self._fetch_topology_config(webapi_session)
             await self._run_ansible(self.settings.ansible_playbook)
 
     def _clean_artifacts(self, roles):
@@ -217,6 +219,36 @@ class Application:
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to report status to statusapi: %s", exc)
 
+    async def _fetch_topology_config(self, session):
+        url = self.settings.webapi.url_api_config
+        LOG.info("Fetching topology config from webapi %s", url)
+        try:
+            async with session.get(url) as response:
+                response.raise_for_status()
+                body = await response.json()
+        except aiohttp.ClientError as exc:
+            LOG.warning("Failed to fetch topology config from webapi: %s", exc)
+            return {}
+
+        data = body.get("data", [])
+        if not data:
+            LOG.warning("Empty data in topology config response")
+            return {}
+
+        entry = data[0]
+        overrides = {}
+        if "type" in entry:
+            overrides["connector_tenant_topo_type"] = entry["type"]
+        if "feed_url" in entry:
+            overrides["connector_tenant_topo_feed"] = entry["feed_url"]
+
+        LOG.info(
+            "Topology config: topo_type=%s topo_feed=%s",
+            overrides.get("connector_tenant_topo_type", "n/a"),
+            overrides.get("connector_tenant_topo_feed", "n/a"),
+        )
+        return overrides
+
     async def _probe_webapi(self, session):
         LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
 
@@ -293,6 +325,11 @@ class Application:
             for k, v in defaults.items()
             if k.startswith(_PREFIX + "tenant_")
         }
+
+        # webapi overrides take precedence over roles-defaults.yml
+        for k, v in self._webapi_overrides.items():
+            if k.startswith(_PREFIX + "tenant_"):
+                tenant_defaults[k[len(_PREFIX):]] = v
 
         extravars = {k: v for k, v in defaults.items() if not k.startswith(_PREFIX + "tenant_")}
         if self.settings.ansible.user_connector:
