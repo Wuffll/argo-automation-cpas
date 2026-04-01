@@ -64,9 +64,8 @@ class Settings:
             url=self._normalize_url(webapi.get("host", "")),
             url_api_config=webapi.get("url_api_config", ""),
             url_api_integrations=webapi.get("url_api_integrations", ""),
-            poem_component_admin=webapi.get("poem_component_admin", ""),
-            monbox_component_admin=webapi.get("monbox_component_admin", ""),
-            connectors_component_admin=webapi.get("connectors_component_admin", ""),
+            token_component_admin=webapi.get("token_component_admin", ""),
+            components=self._split_csv(webapi.get("components", "")),
         )
         self.iam = Section(
             api=iam.get("api", ""),
@@ -82,7 +81,7 @@ class Settings:
         if defaults_file and not os.path.isabs(defaults_file):
             defaults_file = os.path.join(self.config_dir, defaults_file)
 
-        tokens_file = ansible.get("tokens_file", "") if ansible else ""
+        tokens_file = ansible.get("tokens_manual", "") if ansible else ""
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 

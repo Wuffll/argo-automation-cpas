@@ -18,9 +18,8 @@ token = AUTOMATION_TOKEN
 host = api.devel.mon.argo.grnet.gr
 url_api_config = /api/v2/feeds/topology
 url_api_integrations = /api/v3/integrations/components/{component}/by-tenant-name/{tenant_name}/refresh
-poem_component_admin = POEM_ADMIN
-monbox_component_admin = MONBOX_ADMIN
-connectors_component_admin = CONNECTORS_ADMIN
+token_component_admin = t0k3n
+components = monbox, sensu, poem-admin, poem-viewer
 
 [statusapi]
 api = https:/api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
@@ -35,7 +34,7 @@ user_connector = user
 group_connector = user
 ssh_private_key = /home/user/.ssh/sshkey
 defaults_file = %(VENV)setc/roles-defaults.yml
-tokens_file = %(VENV)setc/tokens.yml
+tokens_manual = %(VENV)setc/tokens.yml
 connectors_playbook = connectors.yml
 connectors_inventory = connectors.ini
 
