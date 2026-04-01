@@ -271,7 +271,7 @@ class Application:
         )
         try:
             msgs = await asyncio.to_thread(
-                ams.pull, self.settings.ams.subscription, num=1
+                ams.pull_sub, self.settings.ams.subscription, num=1
             )
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s",
@@ -282,12 +282,13 @@ class Application:
             print("No messages in AMS subscription %s" % self.settings.ams.subscription)
             return
 
-        raw = msgs[0].get_data()
-        try:
-            payload = json.loads(raw)
-            print(json.dumps(payload, indent=2))
-        except Exception:
-            print(raw)
+        for id, msg in msgs:
+            raw = msg.get_data()
+            try:
+                payload = json.loads(raw)
+                print(json.dumps(payload, indent=2))
+            except Exception:
+                print(raw)
 
     async def _report_status(self, session, tenant_id, status, token):
         url = self.settings.statusapi.api.format(tenant_id=tenant_id)
