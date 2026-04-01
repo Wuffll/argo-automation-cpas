@@ -60,6 +60,12 @@ def parse_args():
         help="Probe the Web API and fetch topology config, then exit.",
     )
     parser.add_argument(
+        "--only-iam",
+        action="store_true",
+        default=False,
+        help="Fetch an IAM OIDC token, print it, and exit.",
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -93,6 +99,7 @@ def main():
         only_ansible=args.only_ansible,
         only_ams=args.only_ams,
         only_webapi=args.only_webapi,
+        only_iam=args.only_iam,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,
