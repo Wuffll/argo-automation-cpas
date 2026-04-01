@@ -66,6 +66,13 @@ def parse_args():
         help="Fetch an IAM OIDC token, print it, and exit.",
     )
     parser.add_argument(
+        "--only-statusapi",
+        nargs=2,
+        default=None,
+        metavar=("TENANT_ID", "STATUS"),
+        help="Report STATUS for TENANT_ID to the status API and exit.",
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -100,6 +107,7 @@ def main():
         only_ams=args.only_ams,
         only_webapi=args.only_webapi,
         only_iam=args.only_iam,
+        only_statusapi=args.only_statusapi,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,

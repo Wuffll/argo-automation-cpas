@@ -18,7 +18,7 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, only_ams=False, only_webapi=False, only_iam=False, inventory=None,
+    def __init__(self, settings, only_ansible=None, only_ams=False, only_webapi=False, only_iam=False, only_statusapi=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
@@ -26,6 +26,7 @@ class Application:
         self.only_ams = only_ams          # True = pull AMS message, print and exit
         self.only_webapi = only_webapi    # True = probe + fetch topology config and exit
         self.only_iam = only_iam          # True = fetch IAM token, print and exit
+        self.only_statusapi = only_statusapi  # None or [tenant_id, status]
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -48,6 +49,10 @@ class Application:
 
         if self.only_iam:
             await self._run_only_iam()
+            return
+
+        if self.only_statusapi is not None:
+            await self._run_only_statusapi(*self.only_statusapi)
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
@@ -222,6 +227,21 @@ class Application:
             return None
 
         return payload
+
+    async def _run_only_statusapi(self, tenant_id, status):
+        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
+        async with (
+            aiohttp.ClientSession(
+                timeout=timeout,
+                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
+            ) as iam_session,
+            aiohttp.ClientSession(
+                timeout=timeout,
+                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
+            ) as statusapi_session,
+        ):
+            token = await self._fetch_iam_token(iam_session)
+            await self._report_status(statusapi_session, tenant_id, status, token)
 
     async def _run_only_iam(self):
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
