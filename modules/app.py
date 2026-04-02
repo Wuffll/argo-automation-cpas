@@ -11,7 +11,7 @@ import ansible_runner
 import yaml
 
 from argo_ams_library.amsexceptions import AmsException
-from argo_automation_cpas.http import client_session
+from argo_automation_cpas.http import client_session, retrying_request
 from argo_automation_cpas.messaging import init_ams
 
 
@@ -227,7 +227,7 @@ class Application:
             LOG.info("Fetching status for tenant_id=%s from %s", tenant_id, url)
             headers = {"Authorization": "Bearer %s" % token} if token else {}
             try:
-                async with statusapi_session.get(url, headers=headers) as response:
+                async with retrying_request(lambda: statusapi_session.get(url, headers=headers)) as response:
                     response.raise_for_status()
                     body = await response.json()
                     print(json.dumps(body, indent=2))
@@ -277,7 +277,9 @@ class Application:
         LOG.info("Reporting status=%s for tenant_id=%s to %s", status, tenant_id, url)
         headers = {"Authorization": "Bearer %s" % token} if token else {}
         try:
-            async with session.patch(url, json={"status": status}, headers=headers) as response:
+            async with retrying_request(
+                lambda: session.patch(url, json={"status": status}, headers=headers)
+            ) as response:
                 response.raise_for_status()
                 LOG.info("Status reported: tenant_id=%s status=%s", tenant_id, status)
         except aiohttp.ClientError as exc:
@@ -287,7 +289,7 @@ class Application:
         url = self.settings.webapi.url_api_config
         LOG.info("Fetching topology config from webapi %s", url)
         try:
-            async with session.get(url) as response:
+            async with retrying_request(lambda: session.get(url)) as response:
                 response.raise_for_status()
                 body = await response.json()
         except aiohttp.ClientError as exc:
@@ -317,7 +319,7 @@ class Application:
         LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
 
         try:
-            async with session.get("/") as response:
+            async with retrying_request(lambda: session.get("/")) as response:
                 LOG.info("Received probe status %s", response.status)
         except aiohttp.ClientError as exc:
             LOG.warning("Web API probe failed: %s", exc)
@@ -357,7 +359,7 @@ class Application:
         }
 
         try:
-            async with session.post(self.settings.iam.api, data=payload) as response:
+            async with retrying_request(lambda: session.post(self.settings.iam.api, data=payload)) as response:
                 response.raise_for_status()
                 data = await response.json()
                 token = data["access_token"]
