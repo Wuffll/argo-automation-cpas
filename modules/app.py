@@ -242,19 +242,18 @@ class Application:
 
     async def _run_only_webapi(self):
         async with client_session(self.settings, base_url=self.settings.webapi.url) as session:
-            await self._probe_webapi(session)
-            overrides = await self._fetch_topology_config(session)
-            if overrides:
-                print(json.dumps(overrides, indent=2))
             tokens = await self._refresh_webapi_tokens(session)
-            if tokens:
+            if any(tokens.values()):
                 self._save_webapi_tokens(tokens)
 
     async def _refresh_webapi_tokens(self, session):
         components = self.settings.webapi.components
         tenants = self.settings.automation.tenants
         url_template = self.settings.webapi.url_api_integrations
-        headers = {"x-api-key": self.settings.webapi.token_component_admin}
+        headers = {
+            "x-api-key": self.settings.webapi.token_component_admin,
+            "Accept": "application/json",
+        }
 
         tokens = {}
         for tenant_name in tenants:
