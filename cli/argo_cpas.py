@@ -67,10 +67,9 @@ def parse_args():
     )
     parser.add_argument(
         "--only-statusapi",
-        nargs=2,
         default=None,
-        metavar=("TENANT_ID", "STATUS"),
-        help="Report STATUS for TENANT_ID to the status API and exit.",
+        metavar="TENANT_ID",
+        help="Fetch status for TENANT_ID from the status API and exit.",
     )
     parser.add_argument(
         "--add-tenants",

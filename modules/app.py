@@ -52,7 +52,7 @@ class Application:
             return
 
         if self.only_statusapi is not None:
-            await self._run_only_statusapi(*self.only_statusapi)
+            await self._run_only_statusapi(self.only_statusapi)
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
@@ -228,7 +228,7 @@ class Application:
 
         return payload
 
-    async def _run_only_statusapi(self, tenant_id, status):
+    async def _run_only_statusapi(self, tenant_id):
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
         async with (
             aiohttp.ClientSession(
@@ -241,7 +241,16 @@ class Application:
             ) as statusapi_session,
         ):
             token = await self._fetch_iam_token(iam_session)
-            await self._report_status(statusapi_session, tenant_id, status, token)
+            url = self.settings.statusapi.api.format(tenant_id=tenant_id)
+            LOG.info("Fetching status for tenant_id=%s from %s", tenant_id, url)
+            headers = {"Authorization": "Bearer %s" % token} if token else {}
+            try:
+                async with statusapi_session.get(url, headers=headers) as response:
+                    response.raise_for_status()
+                    body = await response.json()
+                    print(json.dumps(body, indent=2))
+            except aiohttp.ClientError as exc:
+                LOG.error("Failed to fetch status from statusapi: %s", exc)
 
     async def _run_only_iam(self):
         timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
