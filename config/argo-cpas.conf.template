@@ -8,6 +8,9 @@ log_file = %(VENV)svar/log/argo-cpas.log
 syslog_address = /dev/log
 syslog_facility = user
 
+[automation]
+tenants = AUTOMATION-TENANT
+
 [ams]
 project = ARGO-MON-AUTOMATION
 host = api.devel.msg.argo.grnet.gr

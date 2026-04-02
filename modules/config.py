@@ -37,12 +37,16 @@ class Settings:
         self.venv = parser.defaults().get("venv", DEFAULT_VENV).rstrip("/")
 
         general = self._get_section(parser, "general")
+        automation = self._get_section(parser, "automation")
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
         iam = self._get_section(parser, "iam")
         statusapi = self._get_optional_section(parser, "statusapi")
         ansible = self._get_optional_section(parser, "ansible")
 
+        self.automation = Section(
+            tenants=self._split_csv(automation.get("tenants", "")),
+        )
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
             log_level=self._parse_log_level(general.get("log_level", "INFO")),
