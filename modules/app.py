@@ -11,6 +11,7 @@ import ansible_runner
 import yaml
 
 from argo_ams_library.amsexceptions import AmsException
+from argo_automation_cpas.http import client_session
 from argo_automation_cpas.messaging import init_ams
 
 
@@ -69,22 +70,10 @@ class Application:
         tenant_id = payload["tenant_id"]
         LOG.info("Processing tenant_name=%s tenant_id=%s", tenant_name, tenant_id)
 
-        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
-
         async with (
-            aiohttp.ClientSession(
-                base_url=self.settings.webapi.url,
-                timeout=timeout,
-                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-            ) as webapi_session,
-            aiohttp.ClientSession(
-                timeout=timeout,
-                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-            ) as iam_session,
-            aiohttp.ClientSession(
-                timeout=timeout,
-                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-            ) as statusapi_session,
+            client_session(self.settings, base_url=self.settings.webapi.url) as webapi_session,
+            client_session(self.settings) as iam_session,
+            client_session(self.settings) as statusapi_session,
         ):
             await self._probe_webapi(webapi_session)
             token = await self._fetch_iam_token(iam_session)
@@ -229,16 +218,9 @@ class Application:
         return payload
 
     async def _run_only_statusapi(self, tenant_id):
-        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
         async with (
-            aiohttp.ClientSession(
-                timeout=timeout,
-                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-            ) as iam_session,
-            aiohttp.ClientSession(
-                timeout=timeout,
-                connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-            ) as statusapi_session,
+            client_session(self.settings) as iam_session,
+            client_session(self.settings) as statusapi_session,
         ):
             token = await self._fetch_iam_token(iam_session)
             url = self.settings.statusapi.api.format(tenant_id=tenant_id)
@@ -253,22 +235,13 @@ class Application:
                 LOG.error("Failed to fetch status from statusapi: %s", exc)
 
     async def _run_only_iam(self):
-        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
-        async with aiohttp.ClientSession(
-            timeout=timeout,
-            connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-        ) as session:
+        async with client_session(self.settings) as session:
             token = await self._fetch_iam_token(session)
             if token:
                 print(token)
 
     async def _run_only_webapi(self):
-        timeout = aiohttp.ClientTimeout(total=self.settings.request_timeout)
-        async with aiohttp.ClientSession(
-            base_url=self.settings.webapi.url,
-            timeout=timeout,
-            connector=aiohttp.TCPConnector(ssl=self.settings.verify_ssl),
-        ) as session:
+        async with client_session(self.settings, base_url=self.settings.webapi.url) as session:
             await self._probe_webapi(session)
             overrides = await self._fetch_topology_config(session)
             if overrides:
