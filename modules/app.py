@@ -246,6 +246,13 @@ class Application:
             if any(tokens.values()):
                 self._save_webapi_tokens(tokens)
 
+            connector_token = next(
+                (t[component] for t in tokens.values() for component in t if "connector" in component),
+                None,
+            )
+            if connector_token:
+                await self._fetch_topology_config(session, token=connector_token)
+
     async def _refresh_webapi_tokens(self, session):
         components = self.settings.webapi.components
         tenants = self.settings.automation.tenants
@@ -318,11 +325,14 @@ class Application:
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to report status to statusapi: %s", exc)
 
-    async def _fetch_topology_config(self, session):
+    async def _fetch_topology_config(self, session, token=None):
         url = self.settings.webapi.url_api_config
         LOG.info("Fetching topology config from webapi %s", url)
+        headers = {"Accept": "application/json"}
+        if token:
+            headers["x-api-key"] = token
         try:
-            async with retrying_request(lambda: session.get(url)) as response:
+            async with retrying_request(lambda: session.get(url, headers=headers)) as response:
                 response.raise_for_status()
                 body = await response.json()
         except aiohttp.ClientError as exc:
