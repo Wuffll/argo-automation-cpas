@@ -17,6 +17,7 @@ DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
+DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
 
 _SYSLOG_FACILITIES = {
     name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
@@ -70,6 +71,7 @@ class Settings:
             url_api_integrations=webapi.get("url_api_integrations", ""),
             token_component_admin=webapi.get("token_component_admin", ""),
             components=self._split_csv(webapi.get("components", "")),
+            tokens_spool=os.path.join(self.venv, "var", "spool", "webapi_tokens.json"),
         )
         self.iam = Section(
             api=iam.get("api", ""),

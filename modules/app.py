@@ -246,6 +246,40 @@ class Application:
             overrides = await self._fetch_topology_config(session)
             if overrides:
                 print(json.dumps(overrides, indent=2))
+            tokens = await self._refresh_webapi_tokens(session)
+            if tokens:
+                self._save_webapi_tokens(tokens)
+
+    async def _refresh_webapi_tokens(self, session):
+        components = self.settings.webapi.components
+        tenants = self.settings.automation.tenants
+        url_template = self.settings.webapi.url_api_integrations
+        headers = {"x-api-key": self.settings.webapi.token_component_admin}
+
+        tokens = {}
+        for tenant_name in tenants:
+            tokens[tenant_name] = {}
+            for component in components:
+                url = url_template.format(component=component, tenant_name=tenant_name)
+                LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
+                try:
+                    async with retrying_request(lambda u=url, h=headers: session.post(u, headers=h)) as response:
+                        response.raise_for_status()
+                        data = await response.json()
+                        token = data.get("access_token", "")
+                        tokens[tenant_name][component] = token
+                        LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
+                except aiohttp.ClientError as exc:
+                    LOG.warning("Failed to refresh token for component=%s tenant=%s: %s",
+                                component, tenant_name, exc)
+        return tokens
+
+    def _save_webapi_tokens(self, tokens):
+        path = self.settings.webapi.tokens_spool
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "w") as fh:
+            json.dump(tokens, fh, indent=2)
+        LOG.info("Webapi tokens saved to %s", path)
 
     async def _pull_and_print_ams(self, ams):
         LOG.info(
