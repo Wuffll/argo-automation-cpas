@@ -1,16 +1,13 @@
 import asyncio
-import json
 import logging
 import os
-import time
 
-import aiohttp
 import ansible_runner
-import yaml
 
-from argo_ams_library.amsexceptions import AmsException
+from argo_automation_cpas import ams as ams_mod
+from argo_automation_cpas import iam, statusapi, webapi
 from argo_automation_cpas.artifacts import clean_artifacts, print_artifacts
-from argo_automation_cpas.http import client_session, retrying_request
+from argo_automation_cpas.http import client_session
 from argo_automation_cpas.messaging import init_ams
 
 
@@ -24,9 +21,9 @@ class Application:
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.only_ams = only_ams          # True = pull AMS message, print and exit
-        self.only_webapi = only_webapi    # True = probe + fetch topology config and exit
+        self.only_webapi = only_webapi    # True = refresh webapi tokens and exit
         self.only_iam = only_iam          # True = fetch IAM token, print and exit
-        self.only_statusapi = only_statusapi  # None or [tenant_id, status]
+        self.only_statusapi = only_statusapi  # None or tenant_id string
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -49,20 +46,28 @@ class Application:
             return
 
         if self.only_iam:
-            await self._run_only_iam()
+            async with client_session(self.settings) as session:
+                token = await iam.fetch_token(session, self.settings)
+                if token:
+                    print(token)
             return
 
         if self.only_statusapi is not None:
-            await self._run_only_statusapi(self.only_statusapi)
+            async with (
+                client_session(self.settings) as iam_session,
+                client_session(self.settings) as statusapi_session,
+            ):
+                token = await iam.fetch_token(iam_session, self.settings)
+                await statusapi.fetch_status(statusapi_session, self.settings, self.only_statusapi, token)
             return
 
         ams = await asyncio.to_thread(init_ams, self.settings)
 
         if self.only_ams:
-            await self._pull_and_print_ams(ams)
+            await ams_mod.pull_and_print(ams, self.settings)
             return
 
-        payload = await self._pull_ams_message(ams)
+        payload = await ams_mod.pull_message(ams, self.settings)
         if payload is None:
             return
 
@@ -75,237 +80,25 @@ class Application:
             client_session(self.settings) as iam_session,
             client_session(self.settings) as statusapi_session,
         ):
-            await self._probe_webapi(webapi_session)
-            token = await self._fetch_iam_token(iam_session)
-            await self._report_status(statusapi_session, tenant_id, "IN_PROGRESS", token)
-            self._webapi_overrides = await self._fetch_topology_config(webapi_session)
-            await self._run_ansible(self.settings.ansible_playbook)
-
-    async def _pull_ams_message(self, ams):
-        LOG.info(
-            "Pulling message from AMS subscription %s", self.settings.ams.subscription
-        )
-        try:
-            msgs = await asyncio.to_thread(
-                ams.pullack, self.settings.ams.subscription, num=1
+            await webapi.probe(webapi_session, self.settings.webapi.url)
+            token = await iam.fetch_token(iam_session, self.settings)
+            await statusapi.report_status(statusapi_session, self.settings, tenant_id, "IN_PROGRESS", token)
+            self._webapi_overrides = await webapi.fetch_topology_config(
+                webapi_session, self.settings.webapi.url_api_config
             )
-        except AmsException as exc:
-            LOG.error("Failed to pull from AMS subscription %s: %s",
-                      self.settings.ams.subscription, exc)
-            return None
-
-        if not msgs:
-            LOG.info("No messages in AMS subscription %s", self.settings.ams.subscription)
-            return None
-
-        try:
-            payload = json.loads(msgs[0].get_data())
-        except Exception as exc:
-            LOG.error("Failed to decode AMS message payload: %s", exc)
-            return None
-
-        if "tenant_name" not in payload or "tenant_id" not in payload:
-            LOG.error("AMS message missing required fields tenant_name/tenant_id: %s", payload)
-            return None
-
-        return payload
-
-    async def _run_only_statusapi(self, tenant_id):
-        async with (
-            client_session(self.settings) as iam_session,
-            client_session(self.settings) as statusapi_session,
-        ):
-            token = await self._fetch_iam_token(iam_session)
-            url = self.settings.statusapi.api.format(tenant_id=tenant_id)
-            LOG.info("Fetching status for tenant_id=%s from %s", tenant_id, url)
-            headers = {"Authorization": "Bearer %s" % token} if token else {}
-            try:
-                async with retrying_request(lambda: statusapi_session.get(url, headers=headers)) as response:
-                    response.raise_for_status()
-                    body = await response.json()
-                    print(json.dumps(body, indent=2))
-            except aiohttp.ClientError as exc:
-                LOG.error("Failed to fetch status from statusapi: %s", exc)
-
-    async def _run_only_iam(self):
-        async with client_session(self.settings) as session:
-            token = await self._fetch_iam_token(session)
-            if token:
-                print(token)
+            await self._run_ansible(self.settings.ansible_playbook)
 
     async def _run_only_webapi(self):
         async with client_session(self.settings, base_url=self.settings.webapi.url) as session:
-            tokens = await self._refresh_webapi_tokens(session)
+            tokens = await webapi.refresh_tokens(session, self.settings)
             if any(tokens.values()):
-                self._save_webapi_tokens(tokens)
+                webapi.save_tokens(tokens, self.settings.webapi.tokens_spool)
 
-            connector_token = next(
-                (t[component] for t in tokens.values() for component in t if "connector" in component),
-                None,
-            )
+            connector_token = webapi.find_connector_token(tokens)
             if connector_token:
-                await self._fetch_topology_config(session, token=connector_token)
-
-    async def _refresh_webapi_tokens(self, session):
-        components = self.settings.webapi.components
-        tenants = self.settings.automation.tenants
-        url_template = self.settings.webapi.url_api_integrations
-        headers = {
-            "x-api-key": self.settings.webapi.token_component_admin,
-            "Accept": "application/json",
-        }
-
-        tokens = {}
-        for tenant_name in tenants:
-            tokens[tenant_name] = {}
-            for component in components:
-                url = url_template.format(component=component, tenant_name=tenant_name)
-                LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
-                try:
-                    async with retrying_request(lambda u=url, h=headers: session.post(u, headers=h)) as response:
-                        response.raise_for_status()
-                        data = await response.json()
-                        token = data.get("access_token", "")
-                        tokens[tenant_name][component] = token
-                        LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
-                except aiohttp.ClientError as exc:
-                    LOG.warning("Failed to refresh token for component=%s tenant=%s: %s",
-                                component, tenant_name, exc)
-        return tokens
-
-    def _save_webapi_tokens(self, tokens):
-        path = self.settings.webapi.tokens_spool
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            json.dump(tokens, fh, indent=2)
-        LOG.info("Webapi tokens saved to %s", path)
-
-    async def _pull_and_print_ams(self, ams):
-        LOG.info(
-            "Pulling message from AMS subscription %s", self.settings.ams.subscription
-        )
-        try:
-            msgs = await asyncio.to_thread(
-                ams.pull_sub, self.settings.ams.subscription, num=1
-            )
-        except AmsException as exc:
-            LOG.error("Failed to pull from AMS subscription %s: %s",
-                      self.settings.ams.subscription, exc)
-            return
-
-        if not msgs:
-            print("No messages in AMS subscription %s" % self.settings.ams.subscription)
-            return
-
-        for id, msg in msgs:
-            raw = msg.get_data()
-            try:
-                payload = json.loads(raw)
-                print(json.dumps(payload, indent=2))
-            except Exception:
-                print(raw)
-
-    async def _report_status(self, session, tenant_id, status, token):
-        url = self.settings.statusapi.api.format(tenant_id=tenant_id)
-        LOG.info("Reporting status=%s for tenant_id=%s to %s", status, tenant_id, url)
-        headers = {"Authorization": "Bearer %s" % token} if token else {}
-        try:
-            async with retrying_request(
-                lambda: session.patch(url, json={"status": status}, headers=headers)
-            ) as response:
-                response.raise_for_status()
-                LOG.info("Status reported: tenant_id=%s status=%s", tenant_id, status)
-        except aiohttp.ClientError as exc:
-            LOG.warning("Failed to report status to statusapi: %s", exc)
-
-    async def _fetch_topology_config(self, session, token=None):
-        url = self.settings.webapi.url_api_config
-        LOG.info("Fetching topology config from webapi %s", url)
-        headers = {"Accept": "application/json"}
-        if token:
-            headers["x-api-key"] = token
-        try:
-            async with retrying_request(lambda: session.get(url, headers=headers)) as response:
-                response.raise_for_status()
-                body = await response.json()
-        except aiohttp.ClientError as exc:
-            LOG.warning("Failed to fetch topology config from webapi: %s", exc)
-            return {}
-
-        data = body.get("data", [])
-        if not data:
-            LOG.warning("Empty data in topology config response")
-            return {}
-
-        entry = data[0]
-        overrides = {}
-        if "type" in entry:
-            overrides["connector_tenant_topo_type"] = entry["type"]
-        if "feed_url" in entry:
-            overrides["connector_tenant_topo_feed"] = entry["feed_url"]
-
-        LOG.info(
-            "Topology config: topo_type=%s topo_feed=%s",
-            overrides.get("connector_tenant_topo_type", "n/a"),
-            overrides.get("connector_tenant_topo_feed", "n/a"),
-        )
-        return overrides
-
-    async def _probe_webapi(self, session):
-        LOG.info("Probing Web API endpoint %s", self.settings.webapi.url)
-
-        try:
-            async with retrying_request(lambda: session.get("/")) as response:
-                LOG.info("Received probe status %s", response.status)
-        except aiohttp.ClientError as exc:
-            LOG.warning("Web API probe failed: %s", exc)
-
-    def _load_cached_token(self):
-        path = self.settings.iam.token_spool
-        try:
-            with open(path) as fh:
-                data = yaml.safe_load(fh) or {}
-            token = data.get("access_token", "")
-            expires_at = float(data.get("expires_at", 0))
-            if token and time.time() < expires_at - 30:
-                LOG.info("Using cached IAM token from %s (expires in %.0fs)", path, expires_at - time.time())
-                return token
-        except (OSError, ValueError):
-            pass
-        return None
-
-    def _save_token(self, token, expires_in):
-        path = self.settings.iam.token_spool
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            yaml.dump({"access_token": token, "expires_at": time.time() + expires_in}, fh)
-        LOG.info("IAM token saved to %s", path)
-
-    async def _fetch_iam_token(self, session):
-        cached = self._load_cached_token()
-        if cached:
-            return cached
-
-        LOG.info("Fetching OIDC token from IAM %s", self.settings.iam.api)
-
-        payload = {
-            "grant_type": "client_credentials",
-            "client_id": self.settings.iam.oidc_client_id,
-            "client_secret": self.settings.iam.oidc_client_secret,
-        }
-
-        try:
-            async with retrying_request(lambda: session.post(self.settings.iam.api, data=payload)) as response:
-                response.raise_for_status()
-                data = await response.json()
-                token = data["access_token"]
-                expires_in = data.get("expires_in", 3600)
-                LOG.info("IAM token obtained (expires_in=%s)", expires_in)
-                self._save_token(token, expires_in)
-                return token
-        except aiohttp.ClientError as exc:
-            LOG.warning("IAM token request failed: %s", exc)
-            return None
+                await webapi.fetch_topology_config(
+                    session, self.settings.webapi.url_api_config, token=connector_token
+                )
 
     async def _run_ansible(self, playbook):
         private_key = self.settings.ansible.ssh_private_key
