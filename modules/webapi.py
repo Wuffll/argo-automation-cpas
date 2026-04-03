@@ -4,7 +4,7 @@ import os
 
 import aiohttp
 
-from argo_automation_cpas.http import retrying_request
+from argo_automation_cpas.http import client_session, retrying_request
 
 LOG = logging.getLogger(__name__)
 
@@ -89,3 +89,14 @@ def find_connector_token(tokens):
         (t[component] for t in tokens.values() for component in t if "connector" in component),
         None,
     )
+
+
+async def run(settings):
+    async with client_session(settings, base_url=settings.webapi.url) as session:
+        tokens = await refresh_tokens(session, settings)
+        if any(tokens.values()):
+            save_tokens(tokens, settings.webapi.tokens_spool)
+
+        connector_token = find_connector_token(tokens)
+        if connector_token:
+            await fetch_topology_config(session, settings.webapi.url_api_config, token=connector_token)
