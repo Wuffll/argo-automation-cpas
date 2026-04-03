@@ -2,8 +2,6 @@ import asyncio
 import json
 import logging
 import os
-import re
-import shutil
 import time
 
 import aiohttp
@@ -11,6 +9,7 @@ import ansible_runner
 import yaml
 
 from argo_ams_library.amsexceptions import AmsException
+from argo_automation_cpas.artifacts import clean_artifacts, print_artifacts
 from argo_automation_cpas.http import client_session, retrying_request
 from argo_automation_cpas.messaging import init_ams
 
@@ -37,7 +36,8 @@ class Application:
 
     async def run(self):
         if self.clean_artifacts is not None:
-            self._clean_artifacts(self.clean_artifacts)
+            artifacts_dir = os.path.join(self.settings.ansible_private_data_dir, "artifacts")
+            clean_artifacts(artifacts_dir, self.clean_artifacts)
             return
 
         if self.only_ansible is not None:
@@ -80,113 +80,6 @@ class Application:
             await self._report_status(statusapi_session, tenant_id, "IN_PROGRESS", token)
             self._webapi_overrides = await self._fetch_topology_config(webapi_session)
             await self._run_ansible(self.settings.ansible_playbook)
-
-    def _clean_artifacts(self, roles):
-        artifacts_dir = os.path.join(self.settings.ansible_private_data_dir, "artifacts")
-
-        if not os.path.isdir(artifacts_dir):
-            LOG.info("Artifacts directory does not exist: %s", artifacts_dir)
-            return
-
-        if not roles:
-            shutil.rmtree(artifacts_dir)
-            os.makedirs(artifacts_dir)
-            LOG.info("Removed all artifacts from %s", artifacts_dir)
-            return
-
-        roles_set = set(roles)
-        removed = 0
-
-        for entry in os.scandir(artifacts_dir):
-            if not entry.is_dir():
-                continue
-
-            stdout_path = os.path.join(entry.path, "stdout")
-            try:
-                with open(stdout_path) as fh:
-                    content = fh.read()
-            except OSError:
-                continue
-
-            if any(
-                re.search(r"TASK \[" + re.escape(role) + r" : ", content)
-                for role in roles_set
-            ):
-                shutil.rmtree(entry.path)
-                LOG.info("Removed artifact run %s", entry.name)
-                removed += 1
-
-        LOG.info(
-            "Removed %d artifact run(s) matching role(s): %s",
-            removed, ", ".join(sorted(roles_set)),
-        )
-
-    _TASK_RE = re.compile(r"^TASK \[(?P<role>[^\]]+?) : [^\]]+\]")
-
-    def _role_of(self, line):
-        """Return the role name from a TASK line, or None if not a role task."""
-        m = self._TASK_RE.match(line)
-        return m.group("role").strip() if m else None
-
-    def _filter_stdout(self, content, roles):
-        """Filter stdout lines to tasks belonging to any of *roles*.
-
-        PLAY headers and PLAY RECAP are always kept. When *roles* is empty
-        (no filter requested) the full content is returned unchanged.
-        """
-        if not roles:
-            return content
-
-        width = 72
-        result = []
-        include_block = False
-
-        for line in content.splitlines():
-            if line.startswith("PLAY [") or line.startswith("PLAY RECAP"):
-                include_block = False
-                result.append(line)
-            elif line.startswith("TASK ["):
-                role = self._role_of(line)
-                include_block = role in roles
-                if include_block:
-                    if result and result[-1] != "":
-                        result.append("")
-                    result.append(line)
-            elif include_block:
-                result.append(line)
-
-        return "\n".join(result)
-
-    def _print_artifacts(self, runner):
-        roles = self.show_artifacts  # [] = all, ['r1', 'r2'] = filtered
-        width = 72
-
-        try:
-            stdout = runner.stdout.read().strip()
-        except Exception:
-            stdout = ""
-
-        try:
-            stderr = runner.stderr.read().strip()
-        except Exception:
-            stderr = ""
-
-        stdout = self._filter_stdout(stdout, roles)
-
-        for label, content in (("STDOUT", stdout), ("STDERR", stderr)):
-            print("\n" + "=" * width)
-            if roles and label == "STDOUT":
-                print(f"  {label}  [roles: {', '.join(roles)}]")
-            else:
-                print(f"  {label}")
-            print("=" * width)
-            if content:
-                for line in content.splitlines():
-                    print(f"  {line}")
-            else:
-                print("  (empty)")
-
-        print("=" * width + "\n")
 
     async def _pull_ams_message(self, ams):
         LOG.info(
@@ -477,4 +370,4 @@ class Application:
         LOG.info("Ansible runner finished with status=%s rc=%s", status, rc)
 
         if self.show_artifacts is not None:
-            self._print_artifacts(runner)
+            print_artifacts(runner, self.show_artifacts)
