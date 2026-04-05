@@ -35,8 +35,13 @@ class Application:
             return
 
         if self.only_ansible is not None:
-            await ansible.run(self.settings, self.only_ansible, inventory=self.inventory,
-                              show_artifacts=self.show_artifacts)
+            await ansible.run(
+                self.settings, self.only_ansible,
+                inventory=self.inventory,
+                add_tenants=self.add_tenants,
+                remove_tenants=self.remove_tenants,
+                show_artifacts=self.show_artifacts,
+            )
             return
 
         if self.only_webapi:
