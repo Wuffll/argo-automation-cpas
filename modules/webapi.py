@@ -68,7 +68,8 @@ async def refresh_tokens(session, settings):
                 async with retrying_request(lambda u=url, h=headers: session.post(u, headers=h)) as response:
                     response.raise_for_status()
                     data = await response.json()
-                    token = data.get("access_token", "")
+                    data = data.get("data", "")
+                    token = data.get("api_key", "")
                     tokens[tenant_name][component] = token
                     LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
             except aiohttp.ClientError as exc:
