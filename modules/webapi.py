@@ -51,6 +51,19 @@ async def fetch_topology_config(session, url, token=None):
     return overrides
 
 
+def load_tokens(path):
+    if not os.path.exists(path):
+        return {}
+    try:
+        with open(path) as fh:
+            data = json.load(fh)
+        if isinstance(data, dict):
+            return data
+    except (OSError, json.JSONDecodeError) as exc:
+        LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
+    return {}
+
+
 async def refresh_tokens(session, settings):
     url_template = settings.webapi.url_api_integrations
     headers = {
@@ -58,10 +71,15 @@ async def refresh_tokens(session, settings):
         "Accept": "application/json",
     }
 
-    tokens = {}
+    tokens = load_tokens(settings.webapi.tokens_spool)
     for tenant_name in settings.automation.tenants:
-        tokens[tenant_name] = {}
+        tokens.setdefault(tenant_name, {})
         for component in settings.webapi.components:
+            existing = tokens[tenant_name].get(component)
+            if existing:
+                LOG.info("Token already present: component=%s tenant=%s — skipping refresh",
+                         component, tenant_name)
+                continue
             url = url_template.format(component=component, tenant_name=tenant_name)
             LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
             try:
