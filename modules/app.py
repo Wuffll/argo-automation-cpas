@@ -86,13 +86,18 @@ class Application:
             await webapi.probe(webapi_session, self.settings.webapi.url)
             token = await iam.fetch_token(iam_session, self.settings)
             await statusapi.report_status(statusapi_session, self.settings, tenant_id, "IN_PROGRESS", token)
+            component_tokens = await webapi.refresh_tokens(webapi_session, self.settings)
+            if any(component_tokens.values()):
+                webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
+            connector_token = webapi.find_connector_token(component_tokens)
             webapi_overrides = await webapi.fetch_topology_config(
-                webapi_session, self.settings.webapi.url_api_config
+                webapi_session, self.settings.webapi.url_api_config, token=connector_token
             )
             await ansible.run(
                 self.settings, self.settings.ansible_playbook,
                 inventory=self.inventory,
                 webapi_overrides=webapi_overrides,
+                component_tokens=component_tokens,
                 add_tenants=self.add_tenants,
                 remove_tenants=self.remove_tenants,
                 show_artifacts=self.show_artifacts,

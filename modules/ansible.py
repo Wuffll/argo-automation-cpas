@@ -8,8 +8,8 @@ from argo_automation_cpas.artifacts import print_artifacts
 LOG = logging.getLogger(__name__)
 
 
-async def run(settings, playbook, inventory=None, webapi_overrides=None, add_tenants=None,
-              remove_tenants=None, show_artifacts=None):
+async def run(settings, playbook, inventory=None, webapi_overrides=None, component_tokens=None,
+              add_tenants=None, remove_tenants=None, show_artifacts=None):
     private_key = settings.ansible.ssh_private_key
     LOG.info(
         "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s private_key=%s",
@@ -49,8 +49,15 @@ async def run(settings, playbook, inventory=None, webapi_overrides=None, add_ten
     if remove_tenants is not None:
         extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
 
-    if settings.ansible.tokens:
-        extravars["connector_tokens"] = settings.ansible.tokens
+    connector_tokens = dict(settings.ansible.tokens) if settings.ansible.tokens else {}
+    if component_tokens:
+        for tenant_name, components in component_tokens.items():
+            for component, token in components.items():
+                if "connector" in component and token:
+                    connector_tokens.setdefault(tenant_name, {})
+                    connector_tokens[tenant_name]["webapi"] = token
+    if connector_tokens:
+        extravars["connector_tokens"] = connector_tokens
 
     kwargs = dict(
         private_data_dir=settings.ansible_private_data_dir,
