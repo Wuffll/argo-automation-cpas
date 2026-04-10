@@ -170,9 +170,8 @@ async def test_run_only_statusapi(mock_iam, mock_statusapi, mock_cs, settings):
 # ---------------------------------------------------------------------------
 
 @patch("argo_automation_cpas.app.ams_mod")
-@patch("argo_automation_cpas.app.init_ams")
 @patch("argo_automation_cpas.app.asyncio")
-async def test_run_only_ams(mock_asyncio, mock_init_ams, mock_ams_mod, settings):
+async def test_run_only_ams(mock_asyncio, mock_ams_mod, settings):
     mock_ams_instance = MagicMock()
     mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
     mock_ams_mod.pull_and_print = AsyncMock()
@@ -193,10 +192,9 @@ async def test_run_only_ams(mock_asyncio, mock_init_ams, mock_ams_mod, settings)
 @patch("argo_automation_cpas.app.iam")
 @patch("argo_automation_cpas.app.ams_mod")
 @patch("argo_automation_cpas.app.client_session")
-@patch("argo_automation_cpas.app.init_ams")
 @patch("argo_automation_cpas.app.asyncio")
 async def test_run_full_flow(
-    mock_asyncio, mock_init_ams, mock_cs,
+    mock_asyncio, mock_cs,
     mock_ams_mod, mock_iam, mock_statusapi, mock_webapi, mock_ansible,
     settings,
 ):
@@ -241,9 +239,8 @@ async def test_run_full_flow(
 
 
 @patch("argo_automation_cpas.app.ams_mod")
-@patch("argo_automation_cpas.app.init_ams")
 @patch("argo_automation_cpas.app.asyncio")
-async def test_run_full_flow_no_ams_message(mock_asyncio, mock_init_ams, mock_ams_mod, settings):
+async def test_run_full_flow_no_ams_message(mock_asyncio, mock_ams_mod, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock())
     mock_ams_mod.pull_message = AsyncMock(return_value=None)
 

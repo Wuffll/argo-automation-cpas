@@ -95,8 +95,7 @@ modules/
   app.py                    # Application class orchestrating the full pipeline
   config.py                 # INI config parser and Settings dataclass
   log.py                    # Logging setup (stdout, file, syslog)
-  messaging.py              # AMS client initialisation
-  ams.py                    # AMS message pull and decode
+  ams.py                    # AMS client initialisation, message pull and decode
   webapi.py                 # Web API probing, topology config, token refresh
   iam.py                    # OIDC token fetch and cache
   statusapi.py              # Status API reporting and querying

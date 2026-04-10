@@ -4,7 +4,7 @@ import pytest
 from types import SimpleNamespace
 from unittest.mock import AsyncMock, MagicMock, patch
 
-from argo_ams_library.amsexceptions import AmsException
+from argo_ams_library.amsexceptions import AmsException, AmsServiceException
 
 from argo_automation_cpas import ams
 
@@ -12,8 +12,61 @@ from argo_automation_cpas import ams
 @pytest.fixture
 def settings():
     return SimpleNamespace(
-        ams=SimpleNamespace(subscription="events-sub-1"),
+        ams=SimpleNamespace(
+            host="api.devel.msg.argo.grnet.gr",
+            token="test-token",
+            project="TEST-PROJECT",
+            subscription="events-sub-1",
+            pullmsgs=1,
+        ),
     )
+
+
+# ---------------------------------------------------------------------------
+# init_ams
+# ---------------------------------------------------------------------------
+
+@patch("argo_automation_cpas.ams.ArgoMessagingService")
+def test_init_ams_returns_instance(mock_ams_cls, settings):
+    mock_ams = MagicMock()
+    mock_ams.has_sub.return_value = True
+    mock_ams_cls.return_value = mock_ams
+
+    result = ams.init_ams(settings)
+
+    mock_ams_cls.assert_called_once_with(
+        endpoint=settings.ams.host,
+        token=settings.ams.token,
+        project=settings.ams.project,
+    )
+    mock_ams.has_sub.assert_called_once_with(settings.ams.subscription)
+    assert result is mock_ams
+
+
+@patch("argo_automation_cpas.ams.ArgoMessagingService")
+def test_init_ams_service_exception_exits(mock_ams_cls, settings):
+    mock_ams = MagicMock()
+    mock_ams.has_sub.side_effect = AmsServiceException(
+        json={"error": "Unauthorized", "status_code": 401, "status": "UNAUTHORIZED"}
+    )
+    mock_ams_cls.return_value = mock_ams
+
+    with pytest.raises(SystemExit) as exc_info:
+        ams.init_ams(settings)
+
+    assert exc_info.value.code == 1
+
+
+@patch("argo_automation_cpas.ams.ArgoMessagingService")
+def test_init_ams_missing_subscription_exits(mock_ams_cls, settings):
+    mock_ams = MagicMock()
+    mock_ams.has_sub.return_value = False
+    mock_ams_cls.return_value = mock_ams
+
+    with pytest.raises(SystemExit) as exc_info:
+        ams.init_ams(settings)
+
+    assert exc_info.value.code == 1
 
 
 # ---------------------------------------------------------------------------

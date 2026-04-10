@@ -6,7 +6,6 @@ from argo_automation_cpas import ams as ams_mod
 from argo_automation_cpas import ansible, iam, statusapi, webapi
 from argo_automation_cpas.artifacts import clean_artifacts
 from argo_automation_cpas.http import client_session
-from argo_automation_cpas.messaging import init_ams
 
 
 LOG = logging.getLogger(__name__)
@@ -64,7 +63,7 @@ class Application:
                 await statusapi.fetch_status(statusapi_session, self.settings, self.only_statusapi, token)
             return
 
-        ams = await asyncio.to_thread(init_ams, self.settings)
+        ams = await asyncio.to_thread(ams_mod.init_ams, self.settings)
 
         if self.only_ams:
             await ams_mod.pull_and_print(ams, self.settings)
