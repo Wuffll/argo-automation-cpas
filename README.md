@@ -169,6 +169,7 @@ Configuration for the ARGO Messaging Service connection.
 | `subscription` | AMS subscription name to pull events from.                                                             | `events-sub-2`                |
 | `token`        | AMS authentication token.                                                                              | _(secret)_                    |
 | `pullmsgs`     | Maximum number of messages to pull per request (used as `num` for `pullack`/`pull_sub`). Default: `1`. | `10`                          |
+| `events`       | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.          | `INIT_TOPOLOGY_CONNECTOR`     |
 
 The service constructs the full AMS URL as `https://<host>` automatically.
 

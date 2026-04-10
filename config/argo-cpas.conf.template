@@ -17,6 +17,7 @@ host = api.devel.msg.argo.grnet.gr
 subscription = events-sub-2
 token = AUTOMATION_TOKEN
 pullmsgs = 10
+events = INIT_TOPOLOGY_CONNECTOR
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
