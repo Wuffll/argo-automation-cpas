@@ -63,6 +63,7 @@ class Settings:
             subscription=ams.get("subscription", ""),
             token=ams.get("token", ""),
             pullmsgs=int(ams.get("pullmsgs", "1")),
+            ack=ams.getboolean("ack", False),
             events=self._split_csv(ams.get("events", "INIT_TOPOLOGY_CONNECTOR")),
             url=self._normalize_url(ams.get("host", "")),
         )

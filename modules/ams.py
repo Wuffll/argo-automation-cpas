@@ -60,9 +60,10 @@ def init_ams(settings):
 
 async def pull_message(ams, settings):
     subscription = settings.ams.subscription
-    LOG.info("Pulling message from AMS subscription %s", subscription)
+    method = ams.pullack if settings.ams.ack else ams.pull_sub
+    LOG.info("Pulling message from AMS subscription %s (ack=%s)", subscription, settings.ams.ack)
     try:
-        msgs = await asyncio.to_thread(ams.pullack, subscription, num=settings.ams.pullmsgs)
+        msgs = await asyncio.to_thread(method, subscription, num=settings.ams.pullmsgs)
     except AmsException as exc:
         LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
         return None
@@ -71,8 +72,13 @@ async def pull_message(ams, settings):
         LOG.info("No messages in AMS subscription %s", subscription)
         return None
 
+    # pullack returns [msg, ...]; pull_sub returns [(ack_id, msg), ...]
+    first = msgs[0]
+    if isinstance(first, tuple):
+        first = first[1]
+
     try:
-        payload = json.loads(msgs[0].get_data())
+        payload = json.loads(first.get_data())
     except Exception as exc:
         LOG.error("Failed to decode AMS message payload: %s", exc)
         return None
