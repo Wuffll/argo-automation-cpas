@@ -92,9 +92,10 @@ async def pull_message(ams, settings):
 
 async def pull_and_print(ams, settings):
     subscription = settings.ams.subscription
-    LOG.info("Pulling message from AMS subscription %s", subscription)
+    method = ams.pullack if settings.ams.ack else ams.pull_sub
+    LOG.info("Pulling message from AMS subscription %s (ack=%s)", subscription, settings.ams.ack)
     try:
-        msgs = await asyncio.to_thread(ams.pull_sub, subscription, num=settings.ams.pullmsgs)
+        msgs = await asyncio.to_thread(method, subscription, num=settings.ams.pullmsgs)
     except AmsException as exc:
         LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
         return
@@ -103,7 +104,9 @@ async def pull_and_print(ams, settings):
         print("No messages in AMS subscription %s" % subscription)
         return
 
-    for _, msg in msgs:
+    for item in msgs:
+        # pullack returns [msg, ...]; pull_sub returns [(ack_id, msg), ...]
+        msg = item[1] if isinstance(item, tuple) else item
         raw = msg.get_data()
         try:
             payload = json.loads(raw)
