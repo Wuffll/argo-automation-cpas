@@ -16,6 +16,7 @@ project = ARGO-MON-AUTOMATION
 host = api.devel.msg.argo.grnet.gr
 subscription = events-sub-2
 token = AUTOMATION_TOKEN
+pullmsgs = 10
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr

@@ -11,7 +11,7 @@ async def pull_message(ams, settings):
     subscription = settings.ams.subscription
     LOG.info("Pulling message from AMS subscription %s", subscription)
     try:
-        msgs = await asyncio.to_thread(ams.pullack, subscription, num=1)
+        msgs = await asyncio.to_thread(ams.pullack, subscription, num=settings.ams.pullmsgs)
     except AmsException as exc:
         LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
         return None
@@ -37,7 +37,7 @@ async def pull_and_print(ams, settings):
     subscription = settings.ams.subscription
     LOG.info("Pulling message from AMS subscription %s", subscription)
     try:
-        msgs = await asyncio.to_thread(ams.pull_sub, subscription, num=1)
+        msgs = await asyncio.to_thread(ams.pull_sub, subscription, num=settings.ams.pullmsgs)
     except AmsException as exc:
         LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
         return

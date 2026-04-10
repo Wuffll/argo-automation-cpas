@@ -163,13 +163,13 @@ A template is provided in `config/argo-cpas.conf.template`.
 
 Configuration for the ARGO Messaging Service connection.
 
-| Option         | Description                                   | Example                       |
-|----------------|-----------------------------------------------|-------------------------------|
-| `project`      | AMS project name.                             | `ARGO-MON-AUTOMATION`         |
-| `host`         | AMS API hostname (without `https://` prefix). | `api.devel.msg.argo.grnet.gr` |
-| `subscription` | AMS subscription name to pull events from.    | `events-sub-2`                |
-| `token`        | AMS authentication token.                     | _(secret)_                    |
-
+| Option         | Description                                                                                            | Example                       |
+|----------------|--------------------------------------------------------------------------------------------------------|-------------------------------|
+| `project`      | AMS project name.                                                                                      | `ARGO-MON-AUTOMATION`         |
+| `host`         | AMS API hostname (without `https://` prefix).                                                          | `api.devel.msg.argo.grnet.gr` |
+| `subscription` | AMS subscription name to pull events from.                                                             | `events-sub-2`                |
+| `token`        | AMS authentication token.                                                                              | _(secret)_                    |
+| `pullmsgs`     | Maximum number of messages to pull per request (used as `num` for `pullack`/`pull_sub`). Default: `1`. | `10`                          |
 
 The service constructs the full AMS URL as `https://<host>` automatically.
 

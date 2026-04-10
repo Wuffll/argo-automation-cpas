@@ -62,6 +62,7 @@ class Settings:
             host=ams.get("host", ""),
             subscription=ams.get("subscription", ""),
             token=ams.get("token", ""),
+            pullmsgs=int(ams.get("pullmsgs", "1")),
             url=self._normalize_url(ams.get("host", "")),
         )
         self.webapi = Section(
