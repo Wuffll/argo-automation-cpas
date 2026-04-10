@@ -54,6 +54,15 @@ def parse_args():
         help="Pull one message from the AMS subscription, print it, and exit.",
     )
     parser.add_argument(
+        "--filter-events",
+        action="store_true",
+        default=False,
+        help=(
+            "When used with --only-ams, print only messages matching the configured "
+            "automation.tenants and ams.events filter."
+        ),
+    )
+    parser.add_argument(
         "--only-webapi",
         action="store_true",
         default=False,
@@ -104,6 +113,7 @@ def main():
         settings,
         only_ansible=args.only_ansible,
         only_ams=args.only_ams,
+        filter_events=args.filter_events,
         only_webapi=args.only_webapi,
         only_iam=args.only_iam,
         only_statusapi=args.only_statusapi,

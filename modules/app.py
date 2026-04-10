@@ -12,12 +12,14 @@ LOG = logging.getLogger(__name__)
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, only_ams=False, only_webapi=False, only_iam=False, only_statusapi=None, inventory=None,
+    def __init__(self, settings, only_ansible=None, only_ams=False, filter_events=False,
+                 only_webapi=False, only_iam=False, only_statusapi=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
         self.only_ansible = only_ansible  # None or playbook filename string
         self.only_ams = only_ams          # True = pull AMS message, print and exit
+        self.filter_events = filter_events  # True = filter --only-ams output by tenant/event
         self.only_webapi = only_webapi    # True = refresh webapi tokens and exit
         self.only_iam = only_iam          # True = fetch IAM token, print and exit
         self.only_statusapi = only_statusapi  # None or tenant_id string
@@ -66,16 +68,12 @@ class Application:
         ams = await asyncio.to_thread(ams_mod.init_ams, self.settings)
 
         if self.only_ams:
-            await ams_mod.pull_and_print(ams, self.settings)
+            await ams_mod.pull_and_print(ams, self.settings, filter_events=self.filter_events)
             return
 
-        payload = await ams_mod.pull_message(ams, self.settings)
-        if payload is None:
+        payloads = await ams_mod.pull_messages(ams, self.settings)
+        if not payloads:
             return
-
-        tenant_name = payload["tenant_name"]
-        tenant_id = payload["tenant_id"]
-        LOG.info("Processing tenant_name=%s tenant_id=%s", tenant_name, tenant_id)
 
         async with (
             client_session(self.settings, base_url=self.settings.webapi.url) as webapi_session,
@@ -84,7 +82,6 @@ class Application:
         ):
             await webapi.probe(webapi_session, self.settings.webapi.url)
             token = await iam.fetch_token(iam_session, self.settings)
-            await statusapi.report_status(statusapi_session, self.settings, tenant_id, "IN_PROGRESS", token)
             component_tokens = await webapi.refresh_tokens(webapi_session, self.settings)
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
@@ -92,12 +89,22 @@ class Application:
             webapi_overrides = await webapi.fetch_topology_config(
                 webapi_session, self.settings.webapi.url_api_config, token=connector_token
             )
-            await ansible.run(
-                self.settings, self.settings.ansible_playbook,
-                inventory=self.inventory,
-                webapi_overrides=webapi_overrides,
-                component_tokens=component_tokens,
-                add_tenants=self.add_tenants,
-                remove_tenants=self.remove_tenants,
-                show_artifacts=self.show_artifacts,
-            )
+
+            for payload in payloads:
+                props = payload.get("properties", {})
+                tenant_name = props["tenant_name"]
+                tenant_id = props["tenant_id"]
+                LOG.info("Processing tenant_name=%s tenant_id=%s name=%s",
+                         tenant_name, tenant_id, payload.get("name"))
+                await statusapi.report_status(
+                    statusapi_session, self.settings, tenant_id, "IN_PROGRESS", token
+                )
+                await ansible.run(
+                    self.settings, self.settings.ansible_playbook,
+                    inventory=self.inventory,
+                    webapi_overrides=webapi_overrides,
+                    component_tokens=component_tokens,
+                    add_tenants=self.add_tenants,
+                    remove_tenants=self.remove_tenants,
+                    show_artifacts=self.show_artifacts,
+                )

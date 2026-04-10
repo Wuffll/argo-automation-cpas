@@ -82,6 +82,7 @@ poetry run argo_cpas --clean-artifacts connector
 | `--show-artifacts [ROLE ...]`   | Print ansible-runner stdout/stderr after a run. Optionally filter output to tasks from specific role(s).                          |
 | `--clean-artifacts [ROLE ...]`  | Remove ansible-runner artifact directories and exit. Without arguments removes all; with role name(s) removes only matching runs. |
 | `--only-ams`                    | Pull one message from the AMS subscription, print it, and exit.                                                                   |
+| `--filter-events`               | Used with `--only-ams`. Print only messages matching `automation.tenants` and `ams.events` from the config.                       |
 | `--only-webapi`                 | Probe the Web API and fetch/refresh component tokens, then exit.                                                                  |
 | `--only-iam`                    | Fetch an IAM OIDC token, print it, and exit.                                                                                      |
 | `--only-statusapi TENANT_ID`    | Fetch automation status for the given tenant ID from the Status API and exit.                                                     |
