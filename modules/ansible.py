@@ -4,6 +4,7 @@ import logging
 import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
+from argo_automation_cpas.webapi import load_tokens as load_webapi_tokens
 
 LOG = logging.getLogger(__name__)
 
@@ -41,23 +42,37 @@ async def run(settings, playbook, inventory=None, webapi_overrides=None, compone
     if settings.ansible.group_connector:
         extravars["group_connector"] = settings.ansible.group_connector
 
-    if add_tenants is not None:
-        extravars["connector_tenants"] = [
-            {"tenant_name": t.upper(), **tenant_defaults}
-            for t in add_tenants
-        ]
-    if remove_tenants is not None:
-        extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
+    # Fall back to the webapi tokens spool when not provided explicitly
+    # (e.g. manual --only-ansible runs skip the webapi refresh step).
+    if component_tokens is None:
+        component_tokens = load_webapi_tokens(settings.webapi.tokens_spool)
+        if component_tokens:
+            LOG.info("Loaded connector tokens from spool %s for tenants: %s",
+                     settings.webapi.tokens_spool,
+                     ", ".join(sorted(component_tokens.keys())))
 
-    connector_tokens = dict(settings.ansible.tokens) if settings.ansible.tokens else {}
+    # Build a case-insensitive lookup {TENANT_UPPER: webapi_token} from the
+    # "connector" component entries in component_tokens.
+    webapi_token_by_tenant = {}
     if component_tokens:
         for tenant_name, components in component_tokens.items():
-            for component, token in components.items():
+            for component, token in (components or {}).items():
                 if "connector" in component and token:
-                    connector_tokens.setdefault(tenant_name, {})
-                    connector_tokens[tenant_name]["webapi"] = token
-    if connector_tokens:
-        extravars["connector_tokens"] = connector_tokens
+                    webapi_token_by_tenant[tenant_name.upper()] = token
+                    break
+
+    if add_tenants is not None:
+        entries = []
+        for t in add_tenants:
+            key = t.upper()
+            entry = {"tenant_name": key, **tenant_defaults}
+            if key in webapi_token_by_tenant:
+                entry["tenant_webapi_token"] = webapi_token_by_tenant[key]
+                LOG.info("Set tenant_webapi_token for tenant=%s from component_tokens", key)
+            entries.append(entry)
+        extravars["connector_tenants"] = entries
+    if remove_tenants is not None:
+        extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
 
     kwargs = dict(
         private_data_dir=settings.ansible_private_data_dir,
