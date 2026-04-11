@@ -51,7 +51,11 @@ def print_artifacts(runner, roles):
 
     stdout = _filter_stdout(stdout, roles)
 
-    for label, content in (("STDOUT", stdout), ("STDERR", stderr)):
+    sections = [("STDOUT", stdout)]
+    if stderr:
+        sections.append(("STDERR", stderr))
+
+    for label, content in sections:
         print("\n" + "=" * _WIDTH)
         if roles and label == "STDOUT":
             print(f"  {label}  [roles: {', '.join(roles)}]")
