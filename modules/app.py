@@ -133,7 +133,7 @@ class Application:
                     inventory=self.inventory or event_inventory,
                     webapi_overrides=webapi_overrides,
                     component_tokens=component_tokens,
-                    add_tenants=self.add_tenants,
+                    add_tenants=self.add_tenants or [tenant_name],
                     remove_tenants=self.remove_tenants,
                     show_artifacts=self.show_artifacts,
                 )
