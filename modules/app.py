@@ -95,10 +95,23 @@ class Application:
                 props = payload.get("properties", {})
                 tenant_name = props["tenant_name"]
                 tenant_id = props["tenant_id"]
+                event = payload.get("name")
                 LOG.info("Processing tenant_name=%s tenant_id=%s name=%s",
-                         tenant_name, tenant_id, payload.get("name"))
-                await statusapi.report_status(
-                    statusapi_session, self.settings, tenant_id, "IN_PROGRESS", token
+                         tenant_name, tenant_id, event)
+
+                current_status = await statusapi.get_job_status(
+                    statusapi_session, self.settings, tenant_id, event, token
+                )
+                if current_status != "INITIALISED":
+                    LOG.info(
+                        "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
+                        tenant_name, event, current_status,
+                    )
+                    continue
+
+                await statusapi.update_job_status(
+                    statusapi_session, self.settings, tenant_id,
+                    event, "IN_PROGRESS", token,
                 )
                 await ansible.run(
                     self.settings, self.settings.ansible_playbook,

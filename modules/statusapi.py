@@ -56,6 +56,30 @@ async def update_job_status(session, settings, tenant_id, event, status, token,
         LOG.warning("Failed to update job status: %s", exc)
 
 
+async def get_job_status(session, settings, tenant_id, event, token):
+    """Return the status string of a named job/event for a tenant, or None.
+
+    Queries the Status API and scans the ``jobs`` list for an entry whose
+    ``name`` matches ``event``. Returns that job's ``status`` or None if the
+    request fails or no matching job is found.
+    """
+    url = settings.statusapi.api.format(tenant_id=tenant_id)
+    headers = {"Authorization": "Bearer %s" % token} if token else {}
+    headers.update({"Accept": "application/json"})
+    try:
+        async with retrying_request(lambda: session.get(url, headers=headers)) as response:
+            response.raise_for_status()
+            body = await response.json()
+    except aiohttp.ClientError as exc:
+        LOG.warning("Failed to fetch status for tenant_id=%s: %s", tenant_id, exc)
+        return None
+
+    for job in body.get("jobs", []) or []:
+        if job.get("name") == event:
+            return job.get("status")
+    return None
+
+
 async def fetch_status(session, settings, tenant_id, token):
     url = settings.statusapi.api.format(tenant_id=tenant_id)
 
