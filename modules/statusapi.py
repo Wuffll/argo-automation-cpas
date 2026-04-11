@@ -74,7 +74,8 @@ async def get_job_status(session, settings, tenant_id, event, token):
         LOG.warning("Failed to fetch status for tenant_id=%s: %s", tenant_id, exc)
         return None
 
-    for job in body.get("jobs", []) or []:
+    jobs = (body.get("status") or {}).get("jobs") or []
+    for job in jobs:
         if job.get("name") == event:
             return job.get("status")
     return None
