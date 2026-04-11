@@ -8,6 +8,7 @@ DEFAULT_SYSLOG_ADDRESS = "/dev/log"
 DEFAULT_SYSLOG_FACILITY = logging.handlers.SysLogHandler.LOG_USER
 
 LOG_FORMAT = "%(asctime)s %(name)s %(levelname)s %(message)s"
+STDOUT_FORMAT = "%(name)s %(levelname)s %(message)s"
 SYSLOG_FORMAT = "argo-cpas: %(name)s %(levelname)s %(message)s"
 
 _KNOWN_LOGGERS = ("stdout", "file", "syslog")
@@ -64,10 +65,11 @@ def setup_logging(settings):
     syslog_facility = getattr(general, "syslog_facility", DEFAULT_SYSLOG_FACILITY)
 
     formatter = logging.Formatter(LOG_FORMAT)
+    stdout_formatter = logging.Formatter(STDOUT_FORMAT)
     handlers = []
 
     if "stdout" in loggers:
-        handlers.append(_make_stdout_handler(level, formatter))
+        handlers.append(_make_stdout_handler(level, stdout_formatter))
 
     if "file" in loggers:
         handlers.append(_make_file_handler(log_file, level, formatter))
