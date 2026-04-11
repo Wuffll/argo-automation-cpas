@@ -3,7 +3,7 @@ import logging
 import os
 
 from argo_automation_cpas import ams as ams_mod
-from argo_automation_cpas import ansible, iam, statusapi, webapi
+from argo_automation_cpas import ansible, iam, only, statusapi, webapi
 from argo_automation_cpas.artifacts import clean_artifacts
 from argo_automation_cpas.http import client_session
 
@@ -40,7 +40,7 @@ class Application:
             return
 
         if self.only_ansible is not None:
-            await ansible.run(
+            await only.run_ansible(
                 self.settings, self.only_ansible,
                 inventory=self.inventory,
                 add_tenants=self.add_tenants,
@@ -50,44 +50,27 @@ class Application:
             return
 
         if self.only_webapi:
-            await webapi.run(self.settings)
+            await only.run_webapi(self.settings)
             return
 
         if self.only_iam:
-            async with client_session(self.settings) as session:
-                token = await iam.fetch_token(session, self.settings)
-                if token:
-                    print(token)
+            await only.run_iam(self.settings)
             return
 
         if self.only_statusapi is not None:
-            async with (
-                client_session(self.settings) as iam_session,
-                client_session(self.settings) as statusapi_session,
-            ):
-                token = await iam.fetch_token(iam_session, self.settings)
-                if self.update_status is not None:
-                    if not self.event:
-                        LOG.error("--update-status requires --event")
-                        raise SystemExit(2)
-                    kwargs = {}
-                    if self.message is not None:
-                        kwargs["message"] = self.message
-                    await statusapi.update_job_status(
-                        statusapi_session, self.settings, self.only_statusapi,
-                        self.event, self.update_status, token, **kwargs,
-                    )
-                else:
-                    await statusapi.fetch_status(
-                        statusapi_session, self.settings, self.only_statusapi, token
-                    )
+            await only.run_statusapi(
+                self.settings, self.only_statusapi,
+                update_status=self.update_status,
+                event=self.event,
+                message=self.message,
+            )
+            return
+
+        if self.only_ams:
+            await only.run_ams(self.settings, filter_events=self.filter_events)
             return
 
         ams = await asyncio.to_thread(ams_mod.init_ams, self.settings)
-
-        if self.only_ams:
-            await ams_mod.pull_and_print(ams, self.settings, filter_events=self.filter_events)
-            return
 
         payloads = await ams_mod.pull_messages(ams, self.settings)
         if not payloads:
