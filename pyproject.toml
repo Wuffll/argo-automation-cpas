@@ -84,19 +84,13 @@ argo_automation_cpas = "modules/"
 ]
 "ansible/roles/connector/tasks" = [
 	"ansible/roles/connector/tasks/main.yml",
-	"ansible/roles/connector/tasks/parse-tenants.yml",
 	"ansible/roles/connector/tasks/conf-setup-add.yml",
 	"ansible/roles/connector/tasks/conf-setup-remove.yml",
 	"ansible/roles/connector/tasks/cron-setup-add.yml",
 	"ansible/roles/connector/tasks/cron-setup-remove.yml",
 ]
 "ansible/roles/connector/templates" = [
-	"ansible/roles/connector/templates/combine.yml.j2",
 	"ansible/roles/connector/templates/customer.conf.j2",
-	"ansible/roles/connector/templates/global.conf.j2",
-]
-"ansible/roles/connector/vars" = [
-	"ansible/roles/connector/vars/main.yml",
 ]
 
 [tool.setuptools.dynamic]
