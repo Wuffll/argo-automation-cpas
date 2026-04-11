@@ -28,13 +28,13 @@ async def report_status(session, settings, tenant_id, status, token):
 async def update_job_status(session, settings, tenant_id, event, status, token,
                             message=JOB_PICKED_UP_MESSAGE):
     url = settings.statusapi.api.format(tenant_id=tenant_id)
-    now = datetime.now(timezone.utc).isoformat()
+    now = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
     body = {
         "jobs": [
             {
                 "name": event,
                 "status": status,
-                "start": now,
                 "end": now,
                 "message": message,
             }
@@ -43,6 +43,8 @@ async def update_job_status(session, settings, tenant_id, event, status, token,
     LOG.info("Updating job status tenant_id=%s event=%s status=%s at %s",
              tenant_id, event, status, url)
     headers = {"Authorization": "Bearer %s" % token} if token else {}
+    headers.update({"Content-Type": "application/json"})
+
     try:
         async with retrying_request(
             lambda: session.patch(url, json=body, headers=headers)
