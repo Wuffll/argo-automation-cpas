@@ -13,7 +13,8 @@ LOG = logging.getLogger(__name__)
 
 class Application:
     def __init__(self, settings, only_ansible=None, only_ams=False, filter_events=False,
-                 only_webapi=False, only_iam=False, only_statusapi=None, inventory=None,
+                 only_webapi=False, only_iam=False, only_statusapi=None,
+                 update_status=None, event=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
@@ -23,6 +24,8 @@ class Application:
         self.only_webapi = only_webapi    # True = refresh webapi tokens and exit
         self.only_iam = only_iam          # True = fetch IAM token, print and exit
         self.only_statusapi = only_statusapi  # None or tenant_id string
+        self.update_status = update_status  # None or status string (e.g. IN_PROGRESS)
+        self.event = event                # None or event name (e.g. INIT_TOPOLOGY_CONNECTOR)
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -62,7 +65,18 @@ class Application:
                 client_session(self.settings) as statusapi_session,
             ):
                 token = await iam.fetch_token(iam_session, self.settings)
-                await statusapi.fetch_status(statusapi_session, self.settings, self.only_statusapi, token)
+                if self.update_status is not None:
+                    if not self.event:
+                        LOG.error("--update-status requires --event")
+                        raise SystemExit(2)
+                    await statusapi.update_job_status(
+                        statusapi_session, self.settings, self.only_statusapi,
+                        self.event, self.update_status, token,
+                    )
+                else:
+                    await statusapi.fetch_status(
+                        statusapi_session, self.settings, self.only_statusapi, token
+                    )
             return
 
         ams = await asyncio.to_thread(ams_mod.init_ams, self.settings)

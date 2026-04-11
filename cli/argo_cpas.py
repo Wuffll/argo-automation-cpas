@@ -81,6 +81,21 @@ def parse_args():
         help="Fetch status for TENANT_ID from the status API and exit.",
     )
     parser.add_argument(
+        "--update-status",
+        default=None,
+        metavar="STATUS",
+        help=(
+            "Used with --only-statusapi and --event. PATCH a job status update "
+            "(e.g. IN_PROGRESS, DONE, ERROR) for the given tenant and event."
+        ),
+    )
+    parser.add_argument(
+        "--event",
+        default=None,
+        metavar="EVENT",
+        help="Event name used with --update-status (e.g. INIT_TOPOLOGY_CONNECTOR).",
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -117,6 +132,8 @@ def main():
         only_webapi=args.only_webapi,
         only_iam=args.only_iam,
         only_statusapi=args.only_statusapi,
+        update_status=args.update_status,
+        event=args.event,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,

@@ -86,6 +86,8 @@ poetry run argo_cpas --clean-artifacts connector
 | `--only-webapi`                 | Probe the Web API and fetch/refresh component tokens, then exit.                                                                  |
 | `--only-iam`                    | Fetch an IAM OIDC token, print it, and exit.                                                                                      |
 | `--only-statusapi TENANT_ID`    | Fetch automation status for the given tenant ID from the Status API and exit.                                                     |
+| `--update-status STATUS`        | Used with `--only-statusapi` and `--event`. PATCH a job status (e.g. `IN_PROGRESS`, `DONE`, `ERROR`) for the given tenant/event.  |
+| `--event EVENT`                 | Event name used with `--update-status` (e.g. `INIT_TOPOLOGY_CONNECTOR`).                                                          |
 
 ## Project layout
 

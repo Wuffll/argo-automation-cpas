@@ -28,7 +28,7 @@ token_component_admin = t0k3n
 components = monbox, connector, poem-admin, poem-viewer
 
 [statusapi]
-api = https:/api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
+api = https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
 
 [iam]
 api = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
