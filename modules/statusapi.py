@@ -56,8 +56,10 @@ async def update_job_status(session, settings, tenant_id, event, status, token,
 
 async def fetch_status(session, settings, tenant_id, token):
     url = settings.statusapi.api.format(tenant_id=tenant_id)
+
     LOG.info("Fetching status for tenant_id=%s from %s", tenant_id, url)
     headers = {"Authorization": "Bearer %s" % token} if token else {}
+    headers.update({"Accept": "application/json"})
     try:
         async with retrying_request(lambda: session.get(url, headers=headers)) as response:
             response.raise_for_status()

@@ -44,6 +44,7 @@ async def fetch_token(session, settings):
         "grant_type": "client_credentials",
         "client_id": settings.iam.oidc_client_id,
         "client_secret": settings.iam.oidc_client_secret,
+        "scope": "openid entitlements",
     }
 
     try:
