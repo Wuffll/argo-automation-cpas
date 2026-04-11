@@ -80,3 +80,5 @@ async def run(settings, playbook, inventory=None, webapi_overrides=None, compone
 
     if show_artifacts is not None:
         print_artifacts(runner, show_artifacts)
+
+    return status == "successful" and rc == 0

@@ -11,6 +11,13 @@ from argo_automation_cpas.http import client_session
 LOG = logging.getLogger(__name__)
 
 
+def _event_playbook(settings, event):
+    """Return (playbook, inventory) for an AMS event name, or (None, None)."""
+    if event == "INIT_TOPOLOGY_CONNECTOR":
+        return settings.ansible.connectors_playbook, settings.ansible.connectors_inventory
+    return None, None
+
+
 class Application:
     def __init__(self, settings, only_ansible=None, only_ams=False, filter_events=False,
                  only_webapi=False, only_iam=False, only_statusapi=None,
@@ -99,6 +106,14 @@ class Application:
                 LOG.info("Processing tenant_name=%s tenant_id=%s name=%s",
                          tenant_name, tenant_id, event)
 
+                playbook, event_inventory = _event_playbook(self.settings, event)
+                if not playbook:
+                    LOG.info(
+                        "Skipping tenant_name=%s event=%s: no playbook mapping",
+                        tenant_name, event,
+                    )
+                    continue
+
                 current_status = await statusapi.get_job_status(
                     statusapi_session, self.settings, tenant_id, event, token
                 )
@@ -113,12 +128,27 @@ class Application:
                     statusapi_session, self.settings, tenant_id,
                     event, "IN_PROGRESS", token,
                 )
-                await ansible.run(
-                    self.settings, self.settings.ansible_playbook,
-                    inventory=self.inventory,
+                ok = await ansible.run(
+                    self.settings, playbook,
+                    inventory=self.inventory or event_inventory,
                     webapi_overrides=webapi_overrides,
                     component_tokens=component_tokens,
                     add_tenants=self.add_tenants,
                     remove_tenants=self.remove_tenants,
                     show_artifacts=self.show_artifacts,
                 )
+                if ok:
+                    await statusapi.update_job_status(
+                        statusapi_session, self.settings, tenant_id,
+                        event, "COMPLETED", token,
+                        message=(
+                            "Connector successfully configured for tenant %s "
+                            "by argo-automation-cpas" % tenant_name
+                        ),
+                    )
+                else:
+                    LOG.warning(
+                        "Ansible run failed for tenant_name=%s event=%s; "
+                        "leaving status as IN_PROGRESS",
+                        tenant_name, event,
+                    )
