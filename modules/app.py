@@ -14,7 +14,7 @@ LOG = logging.getLogger(__name__)
 class Application:
     def __init__(self, settings, only_ansible=None, only_ams=False, filter_events=False,
                  only_webapi=False, only_iam=False, only_statusapi=None,
-                 update_status=None, event=None, inventory=None,
+                 update_status=None, event=None, message=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
         self.settings = settings
@@ -26,6 +26,7 @@ class Application:
         self.only_statusapi = only_statusapi  # None or tenant_id string
         self.update_status = update_status  # None or status string (e.g. IN_PROGRESS)
         self.event = event                # None or event name (e.g. INIT_TOPOLOGY_CONNECTOR)
+        self.message = message            # None or override job message
         self.inventory = inventory  # None or path to inventory file/directory
         self.show_artifacts = show_artifacts  # None=off, []=all, ['role1',...]=filtered
         self.clean_artifacts = clean_artifacts  # None=off, []=all, ['role1',...]=filtered
@@ -69,9 +70,12 @@ class Application:
                     if not self.event:
                         LOG.error("--update-status requires --event")
                         raise SystemExit(2)
+                    kwargs = {}
+                    if self.message is not None:
+                        kwargs["message"] = self.message
                     await statusapi.update_job_status(
                         statusapi_session, self.settings, self.only_statusapi,
-                        self.event, self.update_status, token,
+                        self.event, self.update_status, token, **kwargs,
                     )
                 else:
                     await statusapi.fetch_status(

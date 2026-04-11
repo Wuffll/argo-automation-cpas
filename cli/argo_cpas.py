@@ -96,6 +96,15 @@ def parse_args():
         help="Event name used with --update-status (e.g. INIT_TOPOLOGY_CONNECTOR).",
     )
     parser.add_argument(
+        "--message",
+        default=None,
+        metavar="MESSAGE",
+        help=(
+            "Used with --update-status. Override the default job message "
+            "(default: \"Event picked up by argo-automation-cpas\")."
+        ),
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -134,6 +143,7 @@ def main():
         only_statusapi=args.only_statusapi,
         update_status=args.update_status,
         event=args.event,
+        message=args.message,
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,

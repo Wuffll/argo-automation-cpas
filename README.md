@@ -88,6 +88,7 @@ poetry run argo_cpas --clean-artifacts connector
 | `--only-statusapi TENANT_ID`    | Fetch automation status for the given tenant ID from the Status API and exit.                                                     |
 | `--update-status STATUS`        | Used with `--only-statusapi` and `--event`. PATCH a job status (e.g. `IN_PROGRESS`, `DONE`, `ERROR`) for the given tenant/event.  |
 | `--event EVENT`                 | Event name used with `--update-status` (e.g. `INIT_TOPOLOGY_CONNECTOR`).                                                          |
+| `--message MESSAGE`             | Used with `--update-status`. Override the default job message (`Event picked up by argo-automation-cpas`).                        |
 
 ## Project layout
 
