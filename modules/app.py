@@ -148,7 +148,14 @@ class Application:
                     )
                 else:
                     LOG.warning(
-                        "Ansible run failed for tenant_name=%s event=%s; "
-                        "leaving status as IN_PROGRESS",
+                        "Ansible run failed for tenant_name=%s event=%s",
                         tenant_name, event,
+                    )
+                    await statusapi.update_job_status(
+                        statusapi_session, self.settings, tenant_id,
+                        event, "FAILED", token,
+                        message=(
+                            "Connector configuration failed for tenant %s "
+                            "by argo-automation-cpas" % tenant_name
+                        ),
                     )
