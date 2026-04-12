@@ -5,12 +5,18 @@ import time
 import aiohttp
 import yaml
 
+from argo_automation_cpas.http import SessionWithRetry
+
 LOG = logging.getLogger(__name__)
 
 
 class IAM:
     def __init__(self, settings):
         self.settings = settings
+        self.session = SessionWithRetry(settings)
+
+    async def close(self):
+        await self.session.close()
 
     def load_cached_token(self):
         path = self.settings.iam.token_spool
@@ -33,7 +39,7 @@ class IAM:
             yaml.dump({"access_token": token, "expires_at": time.time() + expires_in}, fh)
         LOG.info("IAM token saved to %s", path)
 
-    async def fetch_token(self, session):
+    async def fetch_token(self):
         cached = self.load_cached_token()
         if cached:
             return cached
@@ -48,7 +54,7 @@ class IAM:
         }
 
         try:
-            data = await session.http_post(self.settings.iam.api, data=payload)
+            data = await self.session.http_post(self.settings.iam.api, data=payload)
             token = data["access_token"]
             expires_in = data.get("expires_in", 3600)
             LOG.info("IAM token obtained (expires_in=%s)", expires_in)

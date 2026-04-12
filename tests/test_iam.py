@@ -13,6 +13,8 @@ from argo_automation_cpas.iam import IAM
 @pytest.fixture
 def settings(tmp_path):
     return SimpleNamespace(
+        request_timeout=30.0,
+        verify_ssl=True,
         iam=SimpleNamespace(
             api="https://iam.example.com/token",
             oidc_client_id="client-id",
@@ -22,49 +24,54 @@ def settings(tmp_path):
     )
 
 
-def _mock_session(return_value=None, side_effect=None):
-    session = MagicMock()
-    session.http_post = AsyncMock(return_value=return_value, side_effect=side_effect)
-    return session
+@pytest.fixture
+def svc(settings):
+    with patch("argo_automation_cpas.iam.SessionWithRetry"):
+        s = IAM(settings)
+    s.session = MagicMock(
+        http_post=AsyncMock(),
+        close=AsyncMock(),
+    )
+    return s
 
 
 # ---------------------------------------------------------------------------
 # load_cached_token
 # ---------------------------------------------------------------------------
 
-def test_load_cached_token_valid(settings):
-    with open(settings.iam.token_spool, "w") as fh:
+def test_load_cached_token_valid(svc):
+    with open(svc.settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "cached-tok", "expires_at": time.time() + 600}, fh)
 
-    assert IAM(settings).load_cached_token() == "cached-tok"
+    assert svc.load_cached_token() == "cached-tok"
 
 
-def test_load_cached_token_expired(settings):
-    with open(settings.iam.token_spool, "w") as fh:
+def test_load_cached_token_expired(svc):
+    with open(svc.settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "old-tok", "expires_at": time.time() - 10}, fh)
 
-    assert IAM(settings).load_cached_token() is None
+    assert svc.load_cached_token() is None
 
 
-def test_load_cached_token_within_buffer(settings):
-    with open(settings.iam.token_spool, "w") as fh:
+def test_load_cached_token_within_buffer(svc):
+    with open(svc.settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "almost-tok", "expires_at": time.time() + 20}, fh)
 
-    assert IAM(settings).load_cached_token() is None
+    assert svc.load_cached_token() is None
 
 
-def test_load_cached_token_missing_file(settings):
-    assert IAM(settings).load_cached_token() is None
+def test_load_cached_token_missing_file(svc):
+    assert svc.load_cached_token() is None
 
 
 # ---------------------------------------------------------------------------
 # save_token
 # ---------------------------------------------------------------------------
 
-def test_save_token(settings):
-    IAM(settings).save_token("new-tok", 3600)
+def test_save_token(svc):
+    svc.save_token("new-tok", 3600)
 
-    with open(settings.iam.token_spool) as fh:
+    with open(svc.settings.iam.token_spool) as fh:
         data = yaml.safe_load(fh)
 
     assert data["access_token"] == "new-tok"
@@ -75,14 +82,14 @@ def test_save_token(settings):
 # fetch_token
 # ---------------------------------------------------------------------------
 
-async def test_fetch_token_success(settings):
-    session = _mock_session(return_value={"access_token": "fresh-tok", "expires_in": 1800})
+async def test_fetch_token_success(svc):
+    svc.session.http_post.return_value = {"access_token": "fresh-tok", "expires_in": 1800}
 
-    token = await IAM(settings).fetch_token(session)
+    token = await svc.fetch_token()
 
     assert token == "fresh-tok"
-    session.http_post.assert_called_once_with(
-        settings.iam.api,
+    svc.session.http_post.assert_called_once_with(
+        svc.settings.iam.api,
         data={
             "grant_type": "client_credentials",
             "client_id": "client-id",
@@ -90,36 +97,34 @@ async def test_fetch_token_success(settings):
             "scope": "openid entitlements",
         },
     )
-    with open(settings.iam.token_spool) as fh:
+    with open(svc.settings.iam.token_spool) as fh:
         data = yaml.safe_load(fh)
     assert data["access_token"] == "fresh-tok"
 
 
-async def test_fetch_token_uses_cache(settings):
-    with open(settings.iam.token_spool, "w") as fh:
+async def test_fetch_token_uses_cache(svc):
+    with open(svc.settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "cached-tok", "expires_at": time.time() + 600}, fh)
 
-    session = MagicMock()
-    token = await IAM(settings).fetch_token(session)
+    token = await svc.fetch_token()
 
     assert token == "cached-tok"
+    svc.session.http_post.assert_not_called()
 
 
-async def test_fetch_token_http_error(settings):
-    session = _mock_session(
-        side_effect=aiohttp.ClientResponseError(
-            request_info=MagicMock(), history=(), status=401
-        )
+async def test_fetch_token_http_error(svc):
+    svc.session.http_post.side_effect = aiohttp.ClientResponseError(
+        request_info=MagicMock(), history=(), status=401
     )
 
-    token = await IAM(settings).fetch_token(session)
+    token = await svc.fetch_token()
 
     assert token is None
 
 
-async def test_fetch_token_connection_error(settings):
-    session = _mock_session(side_effect=aiohttp.ClientConnectionError("unreachable"))
+async def test_fetch_token_connection_error(svc):
+    svc.session.http_post.side_effect = aiohttp.ClientConnectionError("unreachable")
 
-    token = await IAM(settings).fetch_token(session)
+    token = await svc.fetch_token()
 
     assert token is None

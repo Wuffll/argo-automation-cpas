@@ -5,7 +5,6 @@ import os
 from argo_automation_cpas.ams import AMS
 from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
-from argo_automation_cpas.http import SessionWithRetry
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
@@ -67,20 +66,19 @@ class Application:
 
         if self.only_iam:
             iam = IAM(self.settings)
-            async with SessionWithRetry(self.settings) as session:
-                token = await iam.fetch_token(session)
+            try:
+                token = await iam.fetch_token()
                 if token:
                     print(token)
+            finally:
+                await iam.close()
             return
 
         if self.only_statusapi is not None:
             iam = IAM(self.settings)
             status_api = StatusAPI(self.settings)
-            async with (
-                SessionWithRetry(self.settings) as iam_session,
-                SessionWithRetry(self.settings) as statusapi_session,
-            ):
-                token = await iam.fetch_token(iam_session)
+            try:
+                token = await iam.fetch_token()
                 if self.update_status is not None:
                     if not self.event:
                         LOG.error("--update-status requires --event")
@@ -89,13 +87,14 @@ class Application:
                     if self.message is not None:
                         kwargs["message"] = self.message
                     await status_api.update_job_status(
-                        statusapi_session, self.only_statusapi,
+                        self.only_statusapi,
                         self.event, self.update_status, token, **kwargs,
                     )
                 else:
-                    await status_api.fetch_status(
-                        statusapi_session, self.only_statusapi, token
-                    )
+                    await status_api.fetch_status(self.only_statusapi, token)
+            finally:
+                await iam.close()
+                await status_api.close()
             return
 
         if self.only_ams:
@@ -114,18 +113,14 @@ class Application:
         status_api = StatusAPI(self.settings)
         ansible = Ansible(self.settings)
 
-        async with (
-            SessionWithRetry(self.settings, base_url=self.settings.webapi.url) as webapi_session,
-            SessionWithRetry(self.settings) as iam_session,
-            SessionWithRetry(self.settings) as statusapi_session,
-        ):
-            token = await iam.fetch_token(iam_session)
-            component_tokens = await webapi.refresh_tokens(webapi_session)
+        try:
+            token = await iam.fetch_token()
+            component_tokens = await webapi.refresh_tokens()
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
             connector_token = webapi.find_connector_token(component_tokens)
             webapi_overrides = await webapi.fetch_topology_config(
-                webapi_session, self.settings.webapi.url_api_config, token=connector_token
+                self.settings.webapi.url_api_config, token=connector_token
             )
 
             for payload in payloads:
@@ -145,7 +140,7 @@ class Application:
                     continue
 
                 current_status = await status_api.get_job_status(
-                    statusapi_session, tenant_id, event, token
+                    tenant_id, event, token
                 )
                 if current_status != "INITIALISED":
                     LOG.info(
@@ -155,8 +150,7 @@ class Application:
                     continue
 
                 await status_api.update_job_status(
-                    statusapi_session, tenant_id,
-                    event, "IN_PROGRESS", token,
+                    tenant_id, event, "IN_PROGRESS", token,
                 )
                 ok = await ansible.run(
                     playbook,
@@ -169,8 +163,7 @@ class Application:
                 )
                 if ok:
                     await status_api.update_job_status(
-                        statusapi_session, tenant_id,
-                        event, "COMPLETED", token,
+                        tenant_id, event, "COMPLETED", token,
                         message=(
                             "Connector successfully configured for tenant %s "
                             "by argo-automation-cpas" % tenant_name
@@ -182,10 +175,13 @@ class Application:
                         tenant_name, event,
                     )
                     await status_api.update_job_status(
-                        statusapi_session, tenant_id,
-                        event, "FAILED", token,
+                        tenant_id, event, "FAILED", token,
                         message=(
                             "Connector configuration failed for tenant %s "
                             "by argo-automation-cpas" % tenant_name
                         ),
                     )
+        finally:
+            await webapi.close()
+            await iam.close()
+            await status_api.close()

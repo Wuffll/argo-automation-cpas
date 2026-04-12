@@ -12,14 +12,18 @@ LOG = logging.getLogger(__name__)
 class WebAPI:
     def __init__(self, settings):
         self.settings = settings
+        self.session = SessionWithRetry(settings, base_url=settings.webapi.url)
 
-    async def fetch_topology_config(self, session, url, token=None):
+    async def close(self):
+        await self.session.close()
+
+    async def fetch_topology_config(self, url, token=None):
         LOG.info("Fetching topology config from webapi %s", url)
         headers = {"Accept": "application/json"}
         if token:
             headers["x-api-key"] = token
         try:
-            body = await session.http_get(url, headers=headers)
+            body = await self.session.http_get(url, headers=headers)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to fetch topology config from webapi: %s", exc)
             return {}
@@ -56,7 +60,7 @@ class WebAPI:
             LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
         return {}
 
-    async def refresh_tokens(self, session):
+    async def refresh_tokens(self):
         url_template = self.settings.webapi.url_api_integrations
         headers = {
             "x-api-key": self.settings.webapi.token_component_admin,
@@ -75,7 +79,7 @@ class WebAPI:
                 url = url_template.format(component=component, tenant_name=tenant_name)
                 LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
                 try:
-                    data = await session.http_post(url, headers=headers)
+                    data = await self.session.http_post(url, headers=headers)
                     data = data.get("data", "")
                     token = data.get("api_key", "")
                     tokens[tenant_name][component] = token
@@ -100,11 +104,13 @@ class WebAPI:
         )
 
     async def run(self):
-        async with SessionWithRetry(self.settings, base_url=self.settings.webapi.url) as session:
-            tokens = await self.refresh_tokens(session)
+        try:
+            tokens = await self.refresh_tokens()
             if any(tokens.values()):
                 self.save_tokens(tokens, self.settings.webapi.tokens_spool)
 
             connector_token = self.find_connector_token(tokens)
             if connector_token:
-                await self.fetch_topology_config(session, self.settings.webapi.url_api_config, token=connector_token)
+                await self.fetch_topology_config(self.settings.webapi.url_api_config, token=connector_token)
+        finally:
+            await self.close()

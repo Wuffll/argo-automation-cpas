@@ -27,26 +27,27 @@ def settings():
     )
 
 
-def _mock_session():
-    return MagicMock(
+@pytest.fixture
+def svc(settings):
+    s = WebAPI(settings)
+    s.session = MagicMock(
         http_get=AsyncMock(),
         http_post=AsyncMock(),
-        http_patch=AsyncMock(),
+        close=AsyncMock(),
     )
+    return s
 
 
 # ---------------------------------------------------------------------------
 # fetch_topology_config
 # ---------------------------------------------------------------------------
 
-async def test_fetch_topology_config_success(settings):
-    session = _mock_session()
-    session.http_get.return_value = {
+async def test_fetch_topology_config_success(svc):
+    svc.session.http_get.return_value = {
         "data": [{"type": "GOCDB", "feed_url": "https://gocdb.example.com/feeds"}]
     }
 
-    svc = WebAPI(settings)
-    result = await svc.fetch_topology_config(session, "/api/v2/feeds/topology")
+    result = await svc.fetch_topology_config("/api/v2/feeds/topology")
 
     assert result == {
         "connector_tenant_topo_type": "GOCDB",
@@ -54,35 +55,29 @@ async def test_fetch_topology_config_success(settings):
     }
 
 
-async def test_fetch_topology_config_with_token(settings):
-    session = _mock_session()
-    session.http_get.return_value = {"data": [{"type": "CSV"}]}
+async def test_fetch_topology_config_with_token(svc):
+    svc.session.http_get.return_value = {"data": [{"type": "CSV"}]}
 
-    svc = WebAPI(settings)
-    result = await svc.fetch_topology_config(session, "/api/v2/feeds/topology", token="comp-tok")
+    result = await svc.fetch_topology_config("/api/v2/feeds/topology", token="comp-tok")
 
     assert result == {"connector_tenant_topo_type": "CSV"}
-    call_kwargs = session.http_get.call_args
+    call_kwargs = svc.session.http_get.call_args
     assert call_kwargs.kwargs["headers"]["x-api-key"] == "comp-tok"
     assert call_kwargs.kwargs["headers"]["Accept"] == "application/json"
 
 
-async def test_fetch_topology_config_empty_data(settings):
-    session = _mock_session()
-    session.http_get.return_value = {"data": []}
+async def test_fetch_topology_config_empty_data(svc):
+    svc.session.http_get.return_value = {"data": []}
 
-    svc = WebAPI(settings)
-    result = await svc.fetch_topology_config(session, "/api/v2/feeds/topology")
+    result = await svc.fetch_topology_config("/api/v2/feeds/topology")
 
     assert result == {}
 
 
-async def test_fetch_topology_config_connection_error(settings):
-    session = _mock_session()
-    session.http_get.side_effect = aiohttp.ClientConnectionError("fail")
+async def test_fetch_topology_config_connection_error(svc):
+    svc.session.http_get.side_effect = aiohttp.ClientConnectionError("fail")
 
-    svc = WebAPI(settings)
-    result = await svc.fetch_topology_config(session, "/api/v2/feeds/topology")
+    result = await svc.fetch_topology_config("/api/v2/feeds/topology")
 
     assert result == {}
 
@@ -91,19 +86,17 @@ async def test_fetch_topology_config_connection_error(settings):
 # refresh_tokens
 # ---------------------------------------------------------------------------
 
-async def test_refresh_tokens_success(settings):
-    session = _mock_session()
-    session.http_post.return_value = {"data": {"api_key": "tok-abc"}}
+async def test_refresh_tokens_success(svc):
+    svc.session.http_post.return_value = {"data": {"api_key": "tok-abc"}}
 
-    svc = WebAPI(settings)
-    tokens = await svc.refresh_tokens(session)
+    tokens = await svc.refresh_tokens()
 
     assert tokens["TENANT-A"]["connectors"] == "tok-abc"
     assert tokens["TENANT-A"]["sensu"] == "tok-abc"
-    assert session.http_post.call_count == 2
+    assert svc.session.http_post.call_count == 2
 
 
-async def test_refresh_tokens_partial_failure(settings):
+async def test_refresh_tokens_partial_failure(svc):
     call_count = 0
 
     async def mock_post(url, headers=None):
@@ -113,11 +106,9 @@ async def test_refresh_tokens_partial_failure(settings):
             raise aiohttp.ClientConnectionError("fail")
         return {"data": {"api_key": "tok-sensu"}}
 
-    session = _mock_session()
-    session.http_post = mock_post
+    svc.session.http_post = mock_post
 
-    svc = WebAPI(settings)
-    tokens = await svc.refresh_tokens(session)
+    tokens = await svc.refresh_tokens()
 
     assert "connectors" not in tokens["TENANT-A"]
     assert tokens["TENANT-A"]["sensu"] == "tok-sensu"
@@ -162,39 +153,29 @@ def test_find_connector_token_empty():
 @patch.object(WebAPI, "fetch_topology_config", new_callable=AsyncMock)
 @patch.object(WebAPI, "save_tokens")
 @patch.object(WebAPI, "refresh_tokens", new_callable=AsyncMock)
-@patch("argo_automation_cpas.webapi.SessionWithRetry")
-async def test_run_refreshes_and_fetches_config(mock_cs, mock_refresh, mock_save, mock_fetch, settings):
+async def test_run_refreshes_and_fetches_config(mock_refresh, mock_save, mock_fetch, svc):
     mock_refresh.return_value = {"TENANT-A": {"connectors": "conn-tok", "sensu": "sensu-tok"}}
     mock_fetch.return_value = {"connector_tenant_topo_type": "GOCDB"}
 
-    session = MagicMock()
-    mock_cs.return_value.__aenter__ = AsyncMock(return_value=session)
-    mock_cs.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    svc = WebAPI(settings)
     await svc.run()
 
-    mock_refresh.assert_called_once_with(session)
+    mock_refresh.assert_called_once()
     mock_save.assert_called_once_with(
         {"TENANT-A": {"connectors": "conn-tok", "sensu": "sensu-tok"}},
-        settings.webapi.tokens_spool,
+        svc.settings.webapi.tokens_spool,
     )
-    mock_fetch.assert_called_once_with(session, settings.webapi.url_api_config, token="conn-tok")
+    mock_fetch.assert_called_once_with(svc.settings.webapi.url_api_config, token="conn-tok")
+    svc.session.close.assert_called_once()
 
 
 @patch.object(WebAPI, "fetch_topology_config", new_callable=AsyncMock)
 @patch.object(WebAPI, "save_tokens")
 @patch.object(WebAPI, "refresh_tokens", new_callable=AsyncMock)
-@patch("argo_automation_cpas.webapi.SessionWithRetry")
-async def test_run_no_tokens_skips_save_and_config(mock_cs, mock_refresh, mock_save, mock_fetch, settings):
+async def test_run_no_tokens_skips_save_and_config(mock_refresh, mock_save, mock_fetch, svc):
     mock_refresh.return_value = {"TENANT-A": {}}
 
-    session = MagicMock()
-    mock_cs.return_value.__aenter__ = AsyncMock(return_value=session)
-    mock_cs.return_value.__aexit__ = AsyncMock(return_value=False)
-
-    svc = WebAPI(settings)
     await svc.run()
 
     mock_save.assert_not_called()
     mock_fetch.assert_not_called()
+    svc.session.close.assert_called_once()
