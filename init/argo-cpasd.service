@@ -1,0 +1,13 @@
+[Unit]
+Description=ARGO Automation CPAS Daemon
+After=network.target
+
+[Service]
+Type=simple
+Environment=VIRTUAL_ENV=/opt/argo-automation-cpas/
+ExecStart=/opt/argo-automation-cpas/bin/python /opt/argo-automation-cpas/bin/argo-cpasd
+KillMode=process
+SyslogIdentifier=argo-cpasd
+
+[Install]
+WantedBy=multi-user.target
