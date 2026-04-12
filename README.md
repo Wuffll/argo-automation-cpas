@@ -35,40 +35,40 @@ poetry install --with devel
 
 ```bash
 # full pipeline: pull AMS event -> fetch config -> run ansible
-poetry run argo_cpas
+poetry run argo-cpas
 
 # run only a specific ansible playbook
-poetry run argo_cpas --only-ansible connectors.yml
+poetry run argo-cpas --only-ansible connectors.yml
 
 # run ansible with a custom inventory
-poetry run argo_cpas --only-ansible connectors.yml --inventory /path/to/inventory
+poetry run argo-cpas --only-ansible connectors.yml --inventory /path/to/inventory
 
 # add tenants
-poetry run argo_cpas --only-ansible connectors.yml --add-tenants TENANT-A TENANT-B
+poetry run argo-cpas --only-ansible connectors.yml --add-tenants TENANT-A TENANT-B
 
 # remove tenants
-poetry run argo_cpas --only-ansible connectors.yml --remove-tenants TENANT-C
+poetry run argo-cpas --only-ansible connectors.yml --remove-tenants TENANT-C
 
 # pull and print one AMS message (no ack)
-poetry run argo_cpas --only-ams
+poetry run argo-cpas --only-ams
 
 # probe Web API and refresh component tokens
-poetry run argo_cpas --only-webapi
+poetry run argo-cpas --only-webapi
 
 # fetch and print an OIDC token from IAM
-poetry run argo_cpas --only-iam
+poetry run argo-cpas --only-iam
 
 # fetch automation status for a tenant
-poetry run argo_cpas --only-statusapi <TENANT_ID>
+poetry run argo-cpas --only-statusapi <TENANT_ID>
 
 # show ansible-runner artifacts (optionally filter by role)
-poetry run argo_cpas --only-ansible --show-artifacts connector
+poetry run argo-cpas --only-ansible --show-artifacts connector
 
 # clean all ansible-runner artifacts
-poetry run argo_cpas --clean-artifacts
+poetry run argo-cpas --clean-artifacts
 
 # clean artifacts only for specific roles
-poetry run argo_cpas --clean-artifacts connector
+poetry run argo-cpas --clean-artifacts connector
 ```
 
 ### CLI flags
