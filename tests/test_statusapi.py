@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 
-from argo_automation_cpas import statusapi
+from argo_automation_cpas.statusapi import StatusAPI
 
 
 @pytest.fixture
@@ -44,7 +44,8 @@ def _mock_session(method, status=200, json_data=None, raise_error=None):
 async def test_report_status_success(settings):
     session = _mock_session("patch")
 
-    await statusapi.report_status(session, settings, "tid-1", "IN_PROGRESS", "bearer-tok")
+    svc = StatusAPI(settings)
+    await svc.report_status(session, "tid-1", "IN_PROGRESS", "bearer-tok")
 
     session.patch.assert_called_once()
     args, kwargs = session.patch.call_args
@@ -56,7 +57,8 @@ async def test_report_status_success(settings):
 async def test_report_status_no_token(settings):
     session = _mock_session("patch")
 
-    await statusapi.report_status(session, settings, "tid-1", "DONE", None)
+    svc = StatusAPI(settings)
+    await svc.report_status(session, "tid-1", "DONE", None)
 
     _, kwargs = session.patch.call_args
     assert "Authorization" not in kwargs["headers"]
@@ -66,8 +68,8 @@ async def test_report_status_http_error(settings):
     error = aiohttp.ClientResponseError(request_info=MagicMock(), history=(), status=500)
     session = _mock_session("patch", raise_error=error)
 
-    # should not raise
-    await statusapi.report_status(session, settings, "tid-1", "DONE", "tok")
+    svc = StatusAPI(settings)
+    await svc.report_status(session, "tid-1", "DONE", "tok")
 
 
 async def test_report_status_connection_error(settings):
@@ -77,7 +79,8 @@ async def test_report_status_connection_error(settings):
     session = MagicMock()
     session.patch.return_value = cm
 
-    await statusapi.report_status(session, settings, "tid-1", "DONE", "tok")
+    svc = StatusAPI(settings)
+    await svc.report_status(session, "tid-1", "DONE", "tok")
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +90,8 @@ async def test_report_status_connection_error(settings):
 async def test_fetch_status_success(settings, capsys):
     session = _mock_session("get", json_data={"status": "IN_PROGRESS", "tenant_id": "tid-1"})
 
-    await statusapi.fetch_status(session, settings, "tid-1", "bearer-tok")
+    svc = StatusAPI(settings)
+    await svc.fetch_status(session, "tid-1", "bearer-tok")
 
     out = json.loads(capsys.readouterr().out)
     assert out["status"] == "IN_PROGRESS"
@@ -96,7 +100,8 @@ async def test_fetch_status_success(settings, capsys):
 async def test_fetch_status_with_bearer(settings, capsys):
     session = _mock_session("get", json_data={"status": "DONE"})
 
-    await statusapi.fetch_status(session, settings, "tid-1", "my-token")
+    svc = StatusAPI(settings)
+    await svc.fetch_status(session, "tid-1", "my-token")
 
     _, kwargs = session.get.call_args
     assert kwargs["headers"]["Authorization"] == "Bearer my-token"
@@ -105,7 +110,8 @@ async def test_fetch_status_with_bearer(settings, capsys):
 async def test_fetch_status_no_token(settings, capsys):
     session = _mock_session("get", json_data={"status": "DONE"})
 
-    await statusapi.fetch_status(session, settings, "tid-1", None)
+    svc = StatusAPI(settings)
+    await svc.fetch_status(session, "tid-1", None)
 
     _, kwargs = session.get.call_args
     assert "Authorization" not in kwargs["headers"]
@@ -115,6 +121,7 @@ async def test_fetch_status_http_error(settings, capsys):
     error = aiohttp.ClientResponseError(request_info=MagicMock(), history=(), status=404)
     session = _mock_session("get", raise_error=error)
 
-    await statusapi.fetch_status(session, settings, "tid-1", "tok")
+    svc = StatusAPI(settings)
+    await svc.fetch_status(session, "tid-1", "tok")
 
     assert capsys.readouterr().out == ""

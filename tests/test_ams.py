@@ -6,7 +6,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from argo_ams_library.amsexceptions import AmsException, AmsServiceException
 
-from argo_automation_cpas import ams
+from argo_automation_cpas.ams import AMS
 
 
 @pytest.fixture
@@ -18,21 +18,26 @@ def settings():
             project="TEST-PROJECT",
             subscription="events-sub-1",
             pullmsgs=1,
+            ack=False,
+            events=["INIT_TOPOLOGY_CONNECTOR"],
+        ),
+        automation=SimpleNamespace(
+            tenants=[],
         ),
     )
 
 
 # ---------------------------------------------------------------------------
-# init_ams
+# init
 # ---------------------------------------------------------------------------
 
 @patch("argo_automation_cpas.ams.ArgoMessagingService")
-def test_init_ams_returns_instance(mock_ams_cls, settings):
+def test_init_returns_instance(mock_ams_cls, settings):
     mock_ams = MagicMock()
     mock_ams.has_sub.return_value = True
     mock_ams_cls.return_value = mock_ams
 
-    result = ams.init_ams(settings)
+    svc = AMS(settings).init()
 
     mock_ams_cls.assert_called_once_with(
         endpoint=settings.ams.host,
@@ -40,88 +45,80 @@ def test_init_ams_returns_instance(mock_ams_cls, settings):
         project=settings.ams.project,
     )
     mock_ams.has_sub.assert_called_once_with(settings.ams.subscription)
-    assert result is mock_ams
+    assert svc._ams is mock_ams
 
 
 @patch("argo_automation_cpas.ams.ArgoMessagingService")
-def test_init_ams_service_exception_exits(mock_ams_cls, settings):
+def test_init_service_exception_exits(mock_ams_cls, settings):
     mock_ams = MagicMock()
     mock_ams.has_sub.side_effect = AmsServiceException(
-        json={"error": "Unauthorized", "status_code": 401, "status": "UNAUTHORIZED"}
+        json={"error": {"message": "Unauthorized", "code": 401}, "status": "UNAUTHORIZED"},
+        request="has_sub",
     )
     mock_ams_cls.return_value = mock_ams
 
     with pytest.raises(SystemExit) as exc_info:
-        ams.init_ams(settings)
+        AMS(settings).init()
 
     assert exc_info.value.code == 1
 
 
 @patch("argo_automation_cpas.ams.ArgoMessagingService")
-def test_init_ams_missing_subscription_exits(mock_ams_cls, settings):
+def test_init_missing_subscription_exits(mock_ams_cls, settings):
     mock_ams = MagicMock()
     mock_ams.has_sub.return_value = False
     mock_ams_cls.return_value = mock_ams
 
     with pytest.raises(SystemExit) as exc_info:
-        ams.init_ams(settings)
+        AMS(settings).init()
 
     assert exc_info.value.code == 1
 
 
 # ---------------------------------------------------------------------------
-# pull_message
+# pull_messages
 # ---------------------------------------------------------------------------
 
 @patch("argo_automation_cpas.ams.asyncio")
-async def test_pull_message_success(mock_asyncio, settings):
+async def test_pull_messages_success(mock_asyncio, settings):
     msg = MagicMock()
-    msg.get_data.return_value = json.dumps({"tenant_name": "EGI", "tenant_id": "tid-1"})
+    msg.get_data.return_value = json.dumps({
+        "name": "INIT_TOPOLOGY_CONNECTOR",
+        "properties": {"tenant_name": "EGI", "tenant_id": "tid-1"},
+    })
     mock_asyncio.to_thread = AsyncMock(return_value=[msg])
 
-    payload = await ams.pull_message(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
 
-    assert payload == {"tenant_name": "EGI", "tenant_id": "tid-1"}
+    payloads = await svc.pull_messages()
+
+    assert len(payloads) == 1
+    assert payloads[0]["properties"]["tenant_name"] == "EGI"
 
 
 @patch("argo_automation_cpas.ams.asyncio")
-async def test_pull_message_no_messages(mock_asyncio, settings):
+async def test_pull_messages_no_messages(mock_asyncio, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=[])
 
-    payload = await ams.pull_message(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
 
-    assert payload is None
+    payloads = await svc.pull_messages()
+
+    assert payloads == []
 
 
 @patch("argo_automation_cpas.ams.asyncio")
-async def test_pull_message_ams_exception(mock_asyncio, settings):
+async def test_pull_messages_ams_exception(mock_asyncio, settings):
     mock_asyncio.to_thread = AsyncMock(side_effect=AmsException("error"))
 
-    payload = await ams.pull_message(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
 
-    assert payload is None
+    payloads = await svc.pull_messages()
 
-
-@patch("argo_automation_cpas.ams.asyncio")
-async def test_pull_message_invalid_json(mock_asyncio, settings):
-    msg = MagicMock()
-    msg.get_data.return_value = "not-json"
-    mock_asyncio.to_thread = AsyncMock(return_value=[msg])
-
-    payload = await ams.pull_message(MagicMock(), settings)
-
-    assert payload is None
-
-
-@patch("argo_automation_cpas.ams.asyncio")
-async def test_pull_message_missing_fields(mock_asyncio, settings):
-    msg = MagicMock()
-    msg.get_data.return_value = json.dumps({"tenant_name": "EGI"})
-    mock_asyncio.to_thread = AsyncMock(return_value=[msg])
-
-    payload = await ams.pull_message(MagicMock(), settings)
-
-    assert payload is None
+    assert payloads == []
 
 
 # ---------------------------------------------------------------------------
@@ -134,7 +131,10 @@ async def test_pull_and_print_success(mock_asyncio, settings, capsys):
     msg.get_data.return_value = json.dumps({"tenant_name": "EGI"})
     mock_asyncio.to_thread = AsyncMock(return_value=[("ack-1", msg)])
 
-    await ams.pull_and_print(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
+
+    await svc.pull_and_print()
 
     out = capsys.readouterr().out
     assert '"tenant_name": "EGI"' in out
@@ -144,7 +144,10 @@ async def test_pull_and_print_success(mock_asyncio, settings, capsys):
 async def test_pull_and_print_no_messages(mock_asyncio, settings, capsys):
     mock_asyncio.to_thread = AsyncMock(return_value=[])
 
-    await ams.pull_and_print(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
+
+    await svc.pull_and_print()
 
     assert "No messages" in capsys.readouterr().out
 
@@ -155,6 +158,9 @@ async def test_pull_and_print_raw_fallback(mock_asyncio, settings, capsys):
     msg.get_data.return_value = "raw-data"
     mock_asyncio.to_thread = AsyncMock(return_value=[("ack-1", msg)])
 
-    await ams.pull_and_print(MagicMock(), settings)
+    svc = AMS(settings)
+    svc._ams = MagicMock()
+
+    await svc.pull_and_print()
 
     assert "raw-data" in capsys.readouterr().out

@@ -44,7 +44,7 @@ argo_cpas = "argo_automation_cpas.cli.argo_cpas:main"
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 asyncio_mode = "auto"
-pythonpath = ["modules", "cli"]
+pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

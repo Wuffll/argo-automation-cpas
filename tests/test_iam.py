@@ -7,7 +7,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 
-from argo_automation_cpas import iam
+from argo_automation_cpas.iam import IAM
 
 
 @pytest.fixture
@@ -45,25 +45,25 @@ def test_load_cached_token_valid(settings):
     with open(settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "cached-tok", "expires_at": time.time() + 600}, fh)
 
-    assert iam.load_cached_token(settings) == "cached-tok"
+    assert IAM(settings).load_cached_token() == "cached-tok"
 
 
 def test_load_cached_token_expired(settings):
     with open(settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "old-tok", "expires_at": time.time() - 10}, fh)
 
-    assert iam.load_cached_token(settings) is None
+    assert IAM(settings).load_cached_token() is None
 
 
 def test_load_cached_token_within_buffer(settings):
     with open(settings.iam.token_spool, "w") as fh:
         yaml.dump({"access_token": "almost-tok", "expires_at": time.time() + 20}, fh)
 
-    assert iam.load_cached_token(settings) is None
+    assert IAM(settings).load_cached_token() is None
 
 
 def test_load_cached_token_missing_file(settings):
-    assert iam.load_cached_token(settings) is None
+    assert IAM(settings).load_cached_token() is None
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ def test_load_cached_token_missing_file(settings):
 # ---------------------------------------------------------------------------
 
 def test_save_token(settings):
-    iam.save_token(settings, "new-tok", 3600)
+    IAM(settings).save_token("new-tok", 3600)
 
     with open(settings.iam.token_spool) as fh:
         data = yaml.safe_load(fh)
@@ -87,7 +87,7 @@ def test_save_token(settings):
 async def test_fetch_token_success(settings):
     session = _mock_session(json_data={"access_token": "fresh-tok", "expires_in": 1800})
 
-    token = await iam.fetch_token(session, settings)
+    token = await IAM(settings).fetch_token(session)
 
     assert token == "fresh-tok"
     session.post.assert_called_once_with(
@@ -96,9 +96,9 @@ async def test_fetch_token_success(settings):
             "grant_type": "client_credentials",
             "client_id": "client-id",
             "client_secret": "client-secret",
+            "scope": "openid entitlements",
         },
     )
-    # token should have been cached
     with open(settings.iam.token_spool) as fh:
         data = yaml.safe_load(fh)
     assert data["access_token"] == "fresh-tok"
@@ -109,7 +109,7 @@ async def test_fetch_token_uses_cache(settings):
         yaml.dump({"access_token": "cached-tok", "expires_at": time.time() + 600}, fh)
 
     session = MagicMock()
-    token = await iam.fetch_token(session, settings)
+    token = await IAM(settings).fetch_token(session)
 
     assert token == "cached-tok"
     session.post.assert_not_called()
@@ -128,7 +128,7 @@ async def test_fetch_token_http_error(settings):
     session = MagicMock()
     session.post.return_value = cm
 
-    token = await iam.fetch_token(session, settings)
+    token = await IAM(settings).fetch_token(session)
 
     assert token is None
 
@@ -141,6 +141,6 @@ async def test_fetch_token_connection_error(settings):
     session = MagicMock()
     session.post.return_value = cm
 
-    token = await iam.fetch_token(session, settings)
+    token = await IAM(settings).fetch_token(session)
 
     assert token is None

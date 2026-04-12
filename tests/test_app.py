@@ -50,6 +50,9 @@ def settings():
             token="test-token",
             project="TEST-PROJECT",
             subscription="events-sub-1",
+            pullmsgs=1,
+            ack=False,
+            events=["INIT_TOPOLOGY_CONNECTOR"],
         ),
         statusapi=SimpleNamespace(
             api="https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status",
@@ -79,14 +82,19 @@ async def test_run_clean_artifacts_with_roles(mock_clean, settings):
 # run: --only-ansible
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.ansible")
-async def test_run_only_ansible(mock_ansible, settings):
+@patch("argo_automation_cpas.app.Ansible")
+async def test_run_only_ansible(mock_ansible_cls, settings):
+    mock_ansible = MagicMock()
     mock_ansible.run = AsyncMock()
+    mock_ansible_cls.return_value = mock_ansible
+
     app = Application(settings, only_ansible="connectors.yml", inventory="hosts.ini",
                       add_tenants=["egi"], remove_tenants=["eudat"], show_artifacts=[])
     await app.run()
+
+    mock_ansible_cls.assert_called_once_with(settings)
     mock_ansible.run.assert_called_once_with(
-        settings, "connectors.yml",
+        "connectors.yml",
         inventory="hosts.ini",
         add_tenants=["egi"],
         remove_tenants=["eudat"],
@@ -98,12 +106,17 @@ async def test_run_only_ansible(mock_ansible, settings):
 # run: --only-webapi
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.webapi")
-async def test_run_only_webapi(mock_webapi, settings):
+@patch("argo_automation_cpas.app.WebAPI")
+async def test_run_only_webapi(mock_webapi_cls, settings):
+    mock_webapi = MagicMock()
     mock_webapi.run = AsyncMock()
+    mock_webapi_cls.return_value = mock_webapi
+
     app = Application(settings, only_webapi=True)
     await app.run()
-    mock_webapi.run.assert_called_once_with(settings)
+
+    mock_webapi_cls.assert_called_once_with(settings)
+    mock_webapi.run.assert_called_once()
 
 
 # ---------------------------------------------------------------------------
@@ -111,9 +124,12 @@ async def test_run_only_webapi(mock_webapi, settings):
 # ---------------------------------------------------------------------------
 
 @patch("argo_automation_cpas.app.client_session")
-@patch("argo_automation_cpas.app.iam")
-async def test_run_only_iam(mock_iam, mock_cs, settings, capsys):
+@patch("argo_automation_cpas.app.IAM")
+async def test_run_only_iam(mock_iam_cls, mock_cs, settings, capsys):
+    mock_iam = MagicMock()
     mock_iam.fetch_token = AsyncMock(return_value="iam-token-123")
+    mock_iam_cls.return_value = mock_iam
+
     session = AsyncMock()
     mock_cs.return_value.__aenter__ = AsyncMock(return_value=session)
     mock_cs.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -121,14 +137,17 @@ async def test_run_only_iam(mock_iam, mock_cs, settings, capsys):
     app = Application(settings, only_iam=True)
     await app.run()
 
-    mock_iam.fetch_token.assert_called_once_with(session, settings)
+    mock_iam.fetch_token.assert_called_once_with(session)
     assert "iam-token-123" in capsys.readouterr().out
 
 
 @patch("argo_automation_cpas.app.client_session")
-@patch("argo_automation_cpas.app.iam")
-async def test_run_only_iam_no_token(mock_iam, mock_cs, settings, capsys):
+@patch("argo_automation_cpas.app.IAM")
+async def test_run_only_iam_no_token(mock_iam_cls, mock_cs, settings, capsys):
+    mock_iam = MagicMock()
     mock_iam.fetch_token = AsyncMock(return_value=None)
+    mock_iam_cls.return_value = mock_iam
+
     session = AsyncMock()
     mock_cs.return_value.__aenter__ = AsyncMock(return_value=session)
     mock_cs.return_value.__aexit__ = AsyncMock(return_value=False)
@@ -144,11 +163,16 @@ async def test_run_only_iam_no_token(mock_iam, mock_cs, settings, capsys):
 # ---------------------------------------------------------------------------
 
 @patch("argo_automation_cpas.app.client_session")
-@patch("argo_automation_cpas.app.statusapi")
-@patch("argo_automation_cpas.app.iam")
-async def test_run_only_statusapi(mock_iam, mock_statusapi, mock_cs, settings):
+@patch("argo_automation_cpas.app.StatusAPI")
+@patch("argo_automation_cpas.app.IAM")
+async def test_run_only_statusapi(mock_iam_cls, mock_statusapi_cls, mock_cs, settings):
+    mock_iam = MagicMock()
     mock_iam.fetch_token = AsyncMock(return_value="iam-tok")
+    mock_iam_cls.return_value = mock_iam
+
+    mock_statusapi = MagicMock()
     mock_statusapi.fetch_status = AsyncMock()
+    mock_statusapi_cls.return_value = mock_statusapi
 
     iam_session = AsyncMock()
     statusapi_session = AsyncMock()
@@ -161,49 +185,57 @@ async def test_run_only_statusapi(mock_iam, mock_statusapi, mock_cs, settings):
     app = Application(settings, only_statusapi="tenant-abc")
     await app.run()
 
-    mock_iam.fetch_token.assert_called_once_with(iam_session, settings)
-    mock_statusapi.fetch_status.assert_called_once_with(statusapi_session, settings, "tenant-abc", "iam-tok")
+    mock_iam.fetch_token.assert_called_once_with(iam_session)
+    mock_statusapi.fetch_status.assert_called_once_with(statusapi_session, "tenant-abc", "iam-tok")
 
 
 # ---------------------------------------------------------------------------
 # run: --only-ams
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.ams_mod")
+@patch("argo_automation_cpas.app.AMS")
 @patch("argo_automation_cpas.app.asyncio")
-async def test_run_only_ams(mock_asyncio, mock_ams_mod, settings):
+async def test_run_only_ams(mock_asyncio, mock_ams_cls, settings):
     mock_ams_instance = MagicMock()
+    mock_ams_instance.pull_and_print = AsyncMock()
+
+    mock_ams = MagicMock()
+    mock_ams.init.return_value = mock_ams_instance
+    mock_ams_cls.return_value = mock_ams
+
     mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
-    mock_ams_mod.pull_and_print = AsyncMock()
 
     app = Application(settings, only_ams=True)
     await app.run()
 
-    mock_ams_mod.pull_and_print.assert_called_once_with(mock_ams_instance, settings)
+    mock_ams_instance.pull_and_print.assert_called_once_with(filter_events=False)
 
 
 # ---------------------------------------------------------------------------
 # run: full flow
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.ansible")
-@patch("argo_automation_cpas.app.webapi")
-@patch("argo_automation_cpas.app.statusapi")
-@patch("argo_automation_cpas.app.iam")
-@patch("argo_automation_cpas.app.ams_mod")
+@patch("argo_automation_cpas.app.Ansible")
+@patch("argo_automation_cpas.app.WebAPI")
+@patch("argo_automation_cpas.app.StatusAPI")
+@patch("argo_automation_cpas.app.IAM")
+@patch("argo_automation_cpas.app.AMS")
 @patch("argo_automation_cpas.app.client_session")
 @patch("argo_automation_cpas.app.asyncio")
 async def test_run_full_flow(
     mock_asyncio, mock_cs,
-    mock_ams_mod, mock_iam, mock_statusapi, mock_webapi, mock_ansible,
+    mock_ams_cls, mock_iam_cls, mock_statusapi_cls, mock_webapi_cls, mock_ansible_cls,
     settings,
 ):
     mock_ams_instance = MagicMock()
+    mock_ams_instance.pull_messages = AsyncMock(return_value=[{
+        "name": "INIT_TOPOLOGY_CONNECTOR",
+        "properties": {"tenant_name": "EGI", "tenant_id": "tid-1"},
+    }])
+    mock_ams = MagicMock()
+    mock_ams.init.return_value = mock_ams_instance
+    mock_ams_cls.return_value = mock_ams
     mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
-
-    mock_ams_mod.pull_message = AsyncMock(return_value={
-        "tenant_name": "EGI", "tenant_id": "tid-1"
-    })
 
     webapi_session = AsyncMock()
     iam_session = AsyncMock()
@@ -215,36 +247,48 @@ async def test_run_full_flow(
     ])
     mock_cs.side_effect = lambda *a, **kw: next(sessions)
 
+    mock_iam = MagicMock()
     mock_iam.fetch_token = AsyncMock(return_value="iam-tok")
-    mock_webapi.probe = AsyncMock()
+    mock_iam_cls.return_value = mock_iam
+
+    mock_webapi = MagicMock()
+    mock_webapi.refresh_tokens = AsyncMock(return_value={"EGI": {"connectors": "conn-tok"}})
+    mock_webapi.find_connector_token.return_value = "conn-tok"
     mock_webapi.fetch_topology_config = AsyncMock(return_value={"connector_tenant_topo_type": "GOCDB"})
-    mock_statusapi.report_status = AsyncMock()
-    mock_ansible.run = AsyncMock()
+    mock_webapi_cls.return_value = mock_webapi
+
+    mock_statusapi = MagicMock()
+    mock_statusapi.get_job_status = AsyncMock(return_value="INITIALISED")
+    mock_statusapi.update_job_status = AsyncMock()
+    mock_statusapi_cls.return_value = mock_statusapi
+
+    mock_ansible = MagicMock()
+    mock_ansible.run = AsyncMock(return_value=True)
+    mock_ansible_cls.return_value = mock_ansible
 
     app = Application(settings)
     await app.run()
 
-    mock_ams_mod.pull_message.assert_called_once_with(mock_ams_instance, settings)
-    mock_webapi.probe.assert_called_once_with(webapi_session, settings.webapi.url)
-    mock_iam.fetch_token.assert_called_once_with(iam_session, settings)
-    mock_statusapi.report_status.assert_called_once_with(
-        statusapi_session, settings, "tid-1", "IN_PROGRESS", "iam-tok"
+    mock_iam.fetch_token.assert_called_once_with(iam_session)
+    mock_webapi.refresh_tokens.assert_called_once_with(webapi_session)
+    mock_statusapi.get_job_status.assert_called_once_with(
+        statusapi_session, "tid-1", "INIT_TOPOLOGY_CONNECTOR", "iam-tok"
     )
-    mock_webapi.fetch_topology_config.assert_called_once_with(
-        webapi_session, settings.webapi.url_api_config
-    )
+    assert mock_statusapi.update_job_status.call_count == 2
     mock_ansible.run.assert_called_once()
-    call_kwargs = mock_ansible.run.call_args
-    assert call_kwargs.kwargs["webapi_overrides"] == {"connector_tenant_topo_type": "GOCDB"}
 
 
-@patch("argo_automation_cpas.app.ams_mod")
+@patch("argo_automation_cpas.app.AMS")
 @patch("argo_automation_cpas.app.asyncio")
-async def test_run_full_flow_no_ams_message(mock_asyncio, mock_ams_mod, settings):
-    mock_asyncio.to_thread = AsyncMock(return_value=MagicMock())
-    mock_ams_mod.pull_message = AsyncMock(return_value=None)
+async def test_run_full_flow_no_ams_message(mock_asyncio, mock_ams_cls, settings):
+    mock_ams_instance = MagicMock()
+    mock_ams_instance.pull_messages = AsyncMock(return_value=[])
+    mock_ams = MagicMock()
+    mock_ams.init.return_value = mock_ams_instance
+    mock_ams_cls.return_value = mock_ams
+    mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
 
     app = Application(settings)
     await app.run()
 
-    mock_ams_mod.pull_message.assert_called_once()
+    mock_ams_instance.pull_messages.assert_called_once()
