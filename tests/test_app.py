@@ -123,7 +123,7 @@ async def test_run_only_webapi(mock_webapi_cls, settings):
 # run: --only-iam
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.client_session")
+@patch("argo_automation_cpas.app.SessionWithRetry")
 @patch("argo_automation_cpas.app.IAM")
 async def test_run_only_iam(mock_iam_cls, mock_cs, settings, capsys):
     mock_iam = MagicMock()
@@ -141,7 +141,7 @@ async def test_run_only_iam(mock_iam_cls, mock_cs, settings, capsys):
     assert "iam-token-123" in capsys.readouterr().out
 
 
-@patch("argo_automation_cpas.app.client_session")
+@patch("argo_automation_cpas.app.SessionWithRetry")
 @patch("argo_automation_cpas.app.IAM")
 async def test_run_only_iam_no_token(mock_iam_cls, mock_cs, settings, capsys):
     mock_iam = MagicMock()
@@ -162,7 +162,7 @@ async def test_run_only_iam_no_token(mock_iam_cls, mock_cs, settings, capsys):
 # run: --only-statusapi
 # ---------------------------------------------------------------------------
 
-@patch("argo_automation_cpas.app.client_session")
+@patch("argo_automation_cpas.app.SessionWithRetry")
 @patch("argo_automation_cpas.app.StatusAPI")
 @patch("argo_automation_cpas.app.IAM")
 async def test_run_only_statusapi(mock_iam_cls, mock_statusapi_cls, mock_cs, settings):
@@ -220,7 +220,7 @@ async def test_run_only_ams(mock_asyncio, mock_ams_cls, settings):
 @patch("argo_automation_cpas.app.StatusAPI")
 @patch("argo_automation_cpas.app.IAM")
 @patch("argo_automation_cpas.app.AMS")
-@patch("argo_automation_cpas.app.client_session")
+@patch("argo_automation_cpas.app.SessionWithRetry")
 @patch("argo_automation_cpas.app.asyncio")
 async def test_run_full_flow(
     mock_asyncio, mock_cs,

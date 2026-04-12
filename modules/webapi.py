@@ -4,7 +4,7 @@ import os
 
 import aiohttp
 
-from argo_automation_cpas.http import client_session, retrying_request
+from argo_automation_cpas.http import SessionWithRetry
 
 LOG = logging.getLogger(__name__)
 
@@ -19,9 +19,7 @@ class WebAPI:
         if token:
             headers["x-api-key"] = token
         try:
-            async with retrying_request(lambda: session.get(url, headers=headers)) as response:
-                response.raise_for_status()
-                body = await response.json()
+            body = await session.http_get(url, headers=headers)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to fetch topology config from webapi: %s", exc)
             return {}
@@ -77,13 +75,11 @@ class WebAPI:
                 url = url_template.format(component=component, tenant_name=tenant_name)
                 LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
                 try:
-                    async with retrying_request(lambda u=url, h=headers: session.post(u, headers=h)) as response:
-                        response.raise_for_status()
-                        data = await response.json()
-                        data = data.get("data", "")
-                        token = data.get("api_key", "")
-                        tokens[tenant_name][component] = token
-                        LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
+                    data = await session.http_post(url, headers=headers)
+                    data = data.get("data", "")
+                    token = data.get("api_key", "")
+                    tokens[tenant_name][component] = token
+                    LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
                 except aiohttp.ClientError as exc:
                     LOG.warning("Failed to refresh token for component=%s tenant=%s: %s",
                                 component, tenant_name, exc)
@@ -104,7 +100,7 @@ class WebAPI:
         )
 
     async def run(self):
-        async with client_session(self.settings, base_url=self.settings.webapi.url) as session:
+        async with SessionWithRetry(self.settings, base_url=self.settings.webapi.url) as session:
             tokens = await self.refresh_tokens(session)
             if any(tokens.values()):
                 self.save_tokens(tokens, self.settings.webapi.tokens_spool)

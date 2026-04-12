@@ -18,23 +18,12 @@ def settings():
     )
 
 
-def _mock_session(method, status=200, json_data=None, raise_error=None):
-    response = MagicMock()
-    response.status = status
-    response.json = AsyncMock(return_value=json_data or {})
-
-    if raise_error:
-        response.raise_for_status = MagicMock(side_effect=raise_error)
-    else:
-        response.raise_for_status = MagicMock()
-
-    cm = AsyncMock()
-    cm.__aenter__ = AsyncMock(return_value=response)
-    cm.__aexit__ = AsyncMock(return_value=False)
-
-    session = MagicMock()
-    getattr(session, method).return_value = cm
-    return session
+def _mock_session(return_value=None, side_effect=None):
+    return MagicMock(
+        http_get=AsyncMock(return_value=return_value, side_effect=side_effect),
+        http_post=AsyncMock(return_value=return_value, side_effect=side_effect),
+        http_patch=AsyncMock(return_value=return_value, side_effect=side_effect),
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -42,42 +31,38 @@ def _mock_session(method, status=200, json_data=None, raise_error=None):
 # ---------------------------------------------------------------------------
 
 async def test_report_status_success(settings):
-    session = _mock_session("patch")
+    session = _mock_session()
 
     svc = StatusAPI(settings)
     await svc.report_status(session, "tid-1", "IN_PROGRESS", "bearer-tok")
 
-    session.patch.assert_called_once()
-    args, kwargs = session.patch.call_args
-    assert "tid-1" in args[0]
-    assert kwargs["json"] == {"status": "IN_PROGRESS"}
-    assert kwargs["headers"]["Authorization"] == "Bearer bearer-tok"
+    session.http_patch.assert_called_once()
+    call_kwargs = session.http_patch.call_args
+    assert "tid-1" in call_kwargs.args[0]
+    assert call_kwargs.kwargs["json"] == {"status": "IN_PROGRESS"}
+    assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer bearer-tok"
 
 
 async def test_report_status_no_token(settings):
-    session = _mock_session("patch")
+    session = _mock_session()
 
     svc = StatusAPI(settings)
     await svc.report_status(session, "tid-1", "DONE", None)
 
-    _, kwargs = session.patch.call_args
-    assert "Authorization" not in kwargs["headers"]
+    call_kwargs = session.http_patch.call_args
+    assert "Authorization" not in call_kwargs.kwargs["headers"]
 
 
 async def test_report_status_http_error(settings):
     error = aiohttp.ClientResponseError(request_info=MagicMock(), history=(), status=500)
-    session = _mock_session("patch", raise_error=error)
+    session = _mock_session(side_effect=error)
 
     svc = StatusAPI(settings)
     await svc.report_status(session, "tid-1", "DONE", "tok")
 
 
 async def test_report_status_connection_error(settings):
-    cm = AsyncMock()
-    cm.__aenter__ = AsyncMock(side_effect=aiohttp.ClientConnectionError("unreachable"))
-    cm.__aexit__ = AsyncMock(return_value=False)
-    session = MagicMock()
-    session.patch.return_value = cm
+    session = _mock_session(side_effect=aiohttp.ClientConnectionError("unreachable"))
 
     svc = StatusAPI(settings)
     await svc.report_status(session, "tid-1", "DONE", "tok")
@@ -88,7 +73,7 @@ async def test_report_status_connection_error(settings):
 # ---------------------------------------------------------------------------
 
 async def test_fetch_status_success(settings, capsys):
-    session = _mock_session("get", json_data={"status": "IN_PROGRESS", "tenant_id": "tid-1"})
+    session = _mock_session(return_value={"status": "IN_PROGRESS", "tenant_id": "tid-1"})
 
     svc = StatusAPI(settings)
     await svc.fetch_status(session, "tid-1", "bearer-tok")
@@ -98,28 +83,28 @@ async def test_fetch_status_success(settings, capsys):
 
 
 async def test_fetch_status_with_bearer(settings, capsys):
-    session = _mock_session("get", json_data={"status": "DONE"})
+    session = _mock_session(return_value={"status": "DONE"})
 
     svc = StatusAPI(settings)
     await svc.fetch_status(session, "tid-1", "my-token")
 
-    _, kwargs = session.get.call_args
-    assert kwargs["headers"]["Authorization"] == "Bearer my-token"
+    call_kwargs = session.http_get.call_args
+    assert call_kwargs.kwargs["headers"]["Authorization"] == "Bearer my-token"
 
 
 async def test_fetch_status_no_token(settings, capsys):
-    session = _mock_session("get", json_data={"status": "DONE"})
+    session = _mock_session(return_value={"status": "DONE"})
 
     svc = StatusAPI(settings)
     await svc.fetch_status(session, "tid-1", None)
 
-    _, kwargs = session.get.call_args
-    assert "Authorization" not in kwargs["headers"]
+    call_kwargs = session.http_get.call_args
+    assert "Authorization" not in call_kwargs.kwargs["headers"]
 
 
 async def test_fetch_status_http_error(settings, capsys):
     error = aiohttp.ClientResponseError(request_info=MagicMock(), history=(), status=404)
-    session = _mock_session("get", raise_error=error)
+    session = _mock_session(side_effect=error)
 
     svc = StatusAPI(settings)
     await svc.fetch_status(session, "tid-1", "tok")

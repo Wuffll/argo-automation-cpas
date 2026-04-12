@@ -5,7 +5,7 @@ import os
 from argo_automation_cpas.ams import AMS
 from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
-from argo_automation_cpas.http import client_session
+from argo_automation_cpas.http import SessionWithRetry
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
@@ -67,7 +67,7 @@ class Application:
 
         if self.only_iam:
             iam = IAM(self.settings)
-            async with client_session(self.settings) as session:
+            async with SessionWithRetry(self.settings) as session:
                 token = await iam.fetch_token(session)
                 if token:
                     print(token)
@@ -77,8 +77,8 @@ class Application:
             iam = IAM(self.settings)
             status_api = StatusAPI(self.settings)
             async with (
-                client_session(self.settings) as iam_session,
-                client_session(self.settings) as statusapi_session,
+                SessionWithRetry(self.settings) as iam_session,
+                SessionWithRetry(self.settings) as statusapi_session,
             ):
                 token = await iam.fetch_token(iam_session)
                 if self.update_status is not None:
@@ -115,9 +115,9 @@ class Application:
         ansible = Ansible(self.settings)
 
         async with (
-            client_session(self.settings, base_url=self.settings.webapi.url) as webapi_session,
-            client_session(self.settings) as iam_session,
-            client_session(self.settings) as statusapi_session,
+            SessionWithRetry(self.settings, base_url=self.settings.webapi.url) as webapi_session,
+            SessionWithRetry(self.settings) as iam_session,
+            SessionWithRetry(self.settings) as statusapi_session,
         ):
             token = await iam.fetch_token(iam_session)
             component_tokens = await webapi.refresh_tokens(webapi_session)

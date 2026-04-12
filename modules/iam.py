@@ -5,8 +5,6 @@ import time
 import aiohttp
 import yaml
 
-from argo_automation_cpas.http import retrying_request
-
 LOG = logging.getLogger(__name__)
 
 
@@ -50,14 +48,12 @@ class IAM:
         }
 
         try:
-            async with retrying_request(lambda: session.post(self.settings.iam.api, data=payload)) as response:
-                response.raise_for_status()
-                data = await response.json()
-                token = data["access_token"]
-                expires_in = data.get("expires_in", 3600)
-                LOG.info("IAM token obtained (expires_in=%s)", expires_in)
-                self.save_token(token, expires_in)
-                return token
+            data = await session.http_post(self.settings.iam.api, data=payload)
+            token = data["access_token"]
+            expires_in = data.get("expires_in", 3600)
+            LOG.info("IAM token obtained (expires_in=%s)", expires_in)
+            self.save_token(token, expires_in)
+            return token
         except aiohttp.ClientError as exc:
             LOG.warning("IAM token request failed: %s", exc)
             return None

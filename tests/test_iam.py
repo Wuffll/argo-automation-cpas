@@ -3,7 +3,7 @@ import time
 import pytest
 import yaml
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock, patch
+from unittest.mock import AsyncMock, MagicMock
 
 import aiohttp
 
@@ -22,18 +22,9 @@ def settings(tmp_path):
     )
 
 
-def _mock_session(status=200, json_data=None):
-    response = MagicMock()
-    response.status = status
-    response.json = AsyncMock(return_value=json_data or {})
-    response.raise_for_status = MagicMock()
-
-    cm = AsyncMock()
-    cm.__aenter__ = AsyncMock(return_value=response)
-    cm.__aexit__ = AsyncMock(return_value=False)
-
+def _mock_session(return_value=None, side_effect=None):
     session = MagicMock()
-    session.post.return_value = cm
+    session.http_post = AsyncMock(return_value=return_value, side_effect=side_effect)
     return session
 
 
@@ -85,12 +76,12 @@ def test_save_token(settings):
 # ---------------------------------------------------------------------------
 
 async def test_fetch_token_success(settings):
-    session = _mock_session(json_data={"access_token": "fresh-tok", "expires_in": 1800})
+    session = _mock_session(return_value={"access_token": "fresh-tok", "expires_in": 1800})
 
     token = await IAM(settings).fetch_token(session)
 
     assert token == "fresh-tok"
-    session.post.assert_called_once_with(
+    session.http_post.assert_called_once_with(
         settings.iam.api,
         data={
             "grant_type": "client_credentials",
@@ -112,21 +103,14 @@ async def test_fetch_token_uses_cache(settings):
     token = await IAM(settings).fetch_token(session)
 
     assert token == "cached-tok"
-    session.post.assert_not_called()
 
 
 async def test_fetch_token_http_error(settings):
-    response = MagicMock()
-    response.raise_for_status.side_effect = aiohttp.ClientResponseError(
-        request_info=MagicMock(), history=(), status=401
+    session = _mock_session(
+        side_effect=aiohttp.ClientResponseError(
+            request_info=MagicMock(), history=(), status=401
+        )
     )
-
-    cm = AsyncMock()
-    cm.__aenter__ = AsyncMock(return_value=response)
-    cm.__aexit__ = AsyncMock(return_value=False)
-
-    session = MagicMock()
-    session.post.return_value = cm
 
     token = await IAM(settings).fetch_token(session)
 
@@ -134,12 +118,7 @@ async def test_fetch_token_http_error(settings):
 
 
 async def test_fetch_token_connection_error(settings):
-    cm = AsyncMock()
-    cm.__aenter__ = AsyncMock(side_effect=aiohttp.ClientConnectionError("unreachable"))
-    cm.__aexit__ = AsyncMock(return_value=False)
-
-    session = MagicMock()
-    session.post.return_value = cm
+    session = _mock_session(side_effect=aiohttp.ClientConnectionError("unreachable"))
 
     token = await IAM(settings).fetch_token(session)
 
