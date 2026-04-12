@@ -29,7 +29,8 @@ def settings():
 
 @pytest.fixture
 def svc(settings):
-    s = WebAPI(settings)
+    with patch("argo_automation_cpas.webapi.SessionWithRetry"):
+        s = WebAPI(settings)
     s.session = MagicMock(
         http_get=AsyncMock(),
         http_post=AsyncMock(),

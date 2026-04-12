@@ -2,7 +2,7 @@ import json
 
 import pytest
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 
@@ -22,7 +22,8 @@ def settings():
 
 @pytest.fixture
 def svc(settings):
-    s = StatusAPI(settings)
+    with patch("argo_automation_cpas.statusapi.SessionWithRetry"):
+        s = StatusAPI(settings)
     s.session = MagicMock(
         http_get=AsyncMock(),
         http_patch=AsyncMock(),

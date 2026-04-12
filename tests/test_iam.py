@@ -3,7 +3,7 @@ import time
 import pytest
 import yaml
 from types import SimpleNamespace
-from unittest.mock import AsyncMock, MagicMock
+from unittest.mock import AsyncMock, MagicMock, patch
 
 import aiohttp
 
