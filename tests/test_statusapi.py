@@ -8,22 +8,24 @@ import aiohttp
 
 from argo_automation_cpas.statusapi import StatusAPI
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         request_timeout=30.0,
         verify_ssl=True,
         statusapi=SimpleNamespace(
             api="https://api-status.example.com/v1/automation/tenants/{tenant_id}/status",
         ),
-    )
+    ))
 
 
 @pytest.fixture
 def svc(settings):
     with patch("argo_automation_cpas.statusapi.SessionWithRetry"):
-        s = StatusAPI(settings)
+        s = StatusAPI()
     s.session = MagicMock(
         http_get=AsyncMock(),
         http_patch=AsyncMock(),

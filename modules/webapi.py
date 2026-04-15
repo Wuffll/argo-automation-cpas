@@ -4,15 +4,16 @@ import os
 
 import aiohttp
 
+from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.http import SessionWithRetry
 
 LOG = logging.getLogger(__name__)
 
 
 class WebAPI:
-    def __init__(self, settings):
-        self.settings = settings
-        self.session = SessionWithRetry(settings, base_url=settings.webapi.url)
+    def __init__(self):
+        self.settings = get_settings()
+        self.session = SessionWithRetry(base_url=self.settings.webapi.url)
 
     async def close(self):
         await self.session.close()

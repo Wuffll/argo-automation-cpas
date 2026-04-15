@@ -125,16 +125,15 @@ def main():
     args = parse_args()
 
     try:
-        settings = get_settings()
+        get_settings()
     except FileNotFoundError as exc:
         logging.basicConfig()
         logging.error("%s", exc)
         raise SystemExit(1)
 
-    setup_logging(settings)
+    setup_logging()
 
     app = Application(
-        settings,
         only_ansible=args.only_ansible,
         only_ams=args.only_ams,
         filter_events=args.filter_events,

@@ -9,10 +9,12 @@ import aiohttp
 
 from argo_automation_cpas.iam import IAM
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings(tmp_path):
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         request_timeout=30.0,
         verify_ssl=True,
         iam=SimpleNamespace(
@@ -21,13 +23,13 @@ def settings(tmp_path):
             oidc_client_secret="client-secret",
             token_spool=str(tmp_path / "iam_access.yml"),
         ),
-    )
+    ))
 
 
 @pytest.fixture
 def svc(settings):
     with patch("argo_automation_cpas.iam.SessionWithRetry"):
-        s = IAM(settings)
+        s = IAM()
     s.session = MagicMock(
         http_post=AsyncMock(),
         close=AsyncMock(),

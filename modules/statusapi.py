@@ -4,6 +4,7 @@ from datetime import datetime, timezone
 
 import aiohttp
 
+from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.http import SessionWithRetry
 
 LOG = logging.getLogger(__name__)
@@ -12,9 +13,9 @@ JOB_PICKED_UP_MESSAGE = "Event picked up by argo-automation-cpas"
 
 
 class StatusAPI:
-    def __init__(self, settings):
-        self.settings = settings
-        self.session = SessionWithRetry(settings)
+    def __init__(self):
+        self.settings = get_settings()
+        self.session = SessionWithRetry()
 
     async def close(self):
         await self.session.close()

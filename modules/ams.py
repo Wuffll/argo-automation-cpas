@@ -5,12 +5,14 @@ import logging
 from argo_ams_library import ArgoMessagingService
 from argo_ams_library.amsexceptions import AmsException, AmsServiceException
 
+from argo_automation_cpas.config import get_settings
+
 LOG = logging.getLogger(__name__)
 
 
 class AMS:
-    def __init__(self, settings):
-        self.settings = settings
+    def __init__(self):
+        self.settings = get_settings()
 
     def init(self):
         ams = ArgoMessagingService(

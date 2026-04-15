@@ -202,5 +202,11 @@ def load_config(path=None):
     return Settings(config_path, parser)
 
 
+_settings = None
+
+
 def get_settings(path=None):
-    return load_config(path)
+    global _settings
+    if _settings is None:
+        _settings = load_config(path)
+    return _settings

@@ -25,7 +25,7 @@ def parse_args():
     return parser.parse_args()
 
 
-async def loop(settings, sleep):
+async def loop(sleep):
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGTERM, signal.SIGINT):
@@ -35,7 +35,7 @@ async def loop(settings, sleep):
 
     while not stop.is_set():
         try:
-            app = Application(settings)
+            app = Application()
             await app.run()
         except Exception:
             LOG.exception("Unhandled error in pipeline cycle")
@@ -52,12 +52,12 @@ def main():
     args = parse_args()
 
     try:
-        settings = get_settings()
+        get_settings()
     except FileNotFoundError as exc:
         logging.basicConfig()
         logging.error("%s", exc)
         raise SystemExit(1)
 
-    setup_logging(settings)
+    setup_logging()
 
-    asyncio.run(loop(settings, args.sleep))
+    asyncio.run(loop(args.sleep))

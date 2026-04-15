@@ -4,14 +4,15 @@ import logging
 import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
+from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)
 
 
 class Ansible:
-    def __init__(self, settings):
-        self.settings = settings
+    def __init__(self):
+        self.settings = get_settings()
 
     async def run(self, playbook, inventory=None, webapi_overrides=None, component_tokens=None,
                   add_tenants=None, remove_tenants=None, show_artifacts=None):

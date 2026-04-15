@@ -2,6 +2,8 @@ import logging
 import logging.handlers
 import sys
 
+from argo_automation_cpas.config import get_settings
+
 
 DEFAULT_LOG_LEVEL = logging.INFO
 DEFAULT_SYSLOG_ADDRESS = "/dev/log"
@@ -35,7 +37,7 @@ def _make_syslog_handler(address, facility, level):
     return handler
 
 
-def setup_logging(settings):
+def setup_logging():
     """Configure the root logger based on settings.general.loggers.
 
     Recognised logger names (set via [general] loggers = ...):
@@ -49,7 +51,7 @@ def setup_logging(settings):
       syslog_address  — socket path or host:port (default: /dev/log)
       syslog_facility — syslog facility name, e.g. LOG_USER (default: LOG_USER)
     """
-    general = settings.general
+    general = get_settings().general
     loggers = getattr(general, "loggers", [])
 
     unknown = [name for name in loggers if name not in _KNOWN_LOGGERS]

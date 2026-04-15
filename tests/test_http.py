@@ -6,10 +6,12 @@ import aiohttp
 
 from argo_automation_cpas.http import SessionWithRetry
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(request_timeout=30.0, verify_ssl=True)
+    return prime_settings(SimpleNamespace(request_timeout=30.0, verify_ssl=True))
 
 
 # ---------------------------------------------------------------------------
@@ -20,7 +22,7 @@ def settings():
 @patch("argo_automation_cpas.http.aiohttp.TCPConnector")
 @patch("argo_automation_cpas.http.aiohttp.ClientTimeout")
 def test_session_init_basic(mock_timeout, mock_connector, mock_session, settings):
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
 
     mock_timeout.assert_called_once_with(total=30.0)
     mock_connector.assert_called_once_with(ssl=True)
@@ -33,9 +35,9 @@ def test_session_init_basic(mock_timeout, mock_connector, mock_session, settings
 @patch("argo_automation_cpas.http.aiohttp.TCPConnector")
 @patch("argo_automation_cpas.http.aiohttp.ClientTimeout")
 def test_session_init_with_base_url(mock_timeout, mock_connector, mock_session):
-    settings = SimpleNamespace(request_timeout=10.0, verify_ssl=False)
+    prime_settings(SimpleNamespace(request_timeout=10.0, verify_ssl=False))
 
-    SessionWithRetry(settings, base_url="https://api.example.com")
+    SessionWithRetry(base_url="https://api.example.com")
 
     mock_connector.assert_called_once_with(ssl=False)
     call_kwargs = mock_session.call_args.kwargs
@@ -55,7 +57,7 @@ async def test_http_get_success(settings):
     cm.__aenter__ = AsyncMock(return_value=response)
     cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.session = MagicMock()
     svc.session.get = MagicMock(return_value=cm)
 
@@ -73,7 +75,7 @@ async def test_http_get_text_response(settings):
     cm.__aenter__ = AsyncMock(return_value=response)
     cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.session = MagicMock()
     svc.session.get = MagicMock(return_value=cm)
 
@@ -95,7 +97,7 @@ async def test_http_post_success(settings):
     cm.__aenter__ = AsyncMock(return_value=response)
     cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.session = MagicMock()
     svc.session.post = MagicMock(return_value=cm)
 
@@ -119,7 +121,7 @@ async def test_http_patch_success(settings):
     cm.__aenter__ = AsyncMock(return_value=response)
     cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.session = MagicMock()
     svc.session.patch = MagicMock(return_value=cm)
 
@@ -148,7 +150,7 @@ async def test_retries_on_connection_error(mock_sleep, settings):
 
     calls = iter([fail_cm, ok_cm])
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.retry_delay = 0.01
     svc.session = MagicMock()
     svc.session.get = MagicMock(side_effect=lambda *a, **kw: next(calls))
@@ -165,7 +167,7 @@ async def test_exhausts_retries(mock_sleep, settings):
     fail_cm.__aenter__ = AsyncMock(side_effect=aiohttp.ClientConnectionError("fail"))
     fail_cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.retries = 2
     svc.retry_delay = 0.01
     svc.session = MagicMock()
@@ -189,7 +191,7 @@ async def test_does_not_retry_http_errors(settings):
     cm.__aenter__ = AsyncMock(return_value=response)
     cm.__aexit__ = AsyncMock(return_value=False)
 
-    svc = SessionWithRetry(settings)
+    svc = SessionWithRetry()
     svc.session = MagicMock()
     svc.session.get = MagicMock(return_value=cm)
 

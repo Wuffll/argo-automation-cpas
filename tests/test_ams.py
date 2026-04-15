@@ -8,10 +8,12 @@ from argo_ams_library.amsexceptions import AmsException, AmsServiceException
 
 from argo_automation_cpas.ams import AMS
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         ams=SimpleNamespace(
             host="api.devel.msg.argo.grnet.gr",
             token="test-token",
@@ -24,7 +26,7 @@ def settings():
         automation=SimpleNamespace(
             tenants=[],
         ),
-    )
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -37,7 +39,7 @@ def test_init_returns_instance(mock_ams_cls, settings):
     mock_ams.has_sub.return_value = True
     mock_ams_cls.return_value = mock_ams
 
-    svc = AMS(settings).init()
+    svc = AMS().init()
 
     mock_ams_cls.assert_called_once_with(
         endpoint=settings.ams.host,
@@ -58,7 +60,7 @@ def test_init_service_exception_exits(mock_ams_cls, settings):
     mock_ams_cls.return_value = mock_ams
 
     with pytest.raises(SystemExit) as exc_info:
-        AMS(settings).init()
+        AMS().init()
 
     assert exc_info.value.code == 1
 
@@ -70,7 +72,7 @@ def test_init_missing_subscription_exits(mock_ams_cls, settings):
     mock_ams_cls.return_value = mock_ams
 
     with pytest.raises(SystemExit) as exc_info:
-        AMS(settings).init()
+        AMS().init()
 
     assert exc_info.value.code == 1
 
@@ -88,7 +90,7 @@ async def test_pull_messages_success(mock_asyncio, settings):
     })
     mock_asyncio.to_thread = AsyncMock(return_value=[msg])
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     payloads = await svc.pull_messages()
@@ -101,7 +103,7 @@ async def test_pull_messages_success(mock_asyncio, settings):
 async def test_pull_messages_no_messages(mock_asyncio, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=[])
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     payloads = await svc.pull_messages()
@@ -113,7 +115,7 @@ async def test_pull_messages_no_messages(mock_asyncio, settings):
 async def test_pull_messages_ams_exception(mock_asyncio, settings):
     mock_asyncio.to_thread = AsyncMock(side_effect=AmsException("error"))
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     payloads = await svc.pull_messages()
@@ -131,7 +133,7 @@ async def test_pull_and_print_success(mock_asyncio, settings, capsys):
     msg.get_data.return_value = json.dumps({"tenant_name": "EGI"})
     mock_asyncio.to_thread = AsyncMock(return_value=[("ack-1", msg)])
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     await svc.pull_and_print()
@@ -144,7 +146,7 @@ async def test_pull_and_print_success(mock_asyncio, settings, capsys):
 async def test_pull_and_print_no_messages(mock_asyncio, settings, capsys):
     mock_asyncio.to_thread = AsyncMock(return_value=[])
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     await svc.pull_and_print()
@@ -158,7 +160,7 @@ async def test_pull_and_print_raw_fallback(mock_asyncio, settings, capsys):
     msg.get_data.return_value = "raw-data"
     mock_asyncio.to_thread = AsyncMock(return_value=[("ack-1", msg)])
 
-    svc = AMS(settings)
+    svc = AMS()
     svc._ams = MagicMock()
 
     await svc.pull_and_print()

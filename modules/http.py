@@ -3,6 +3,8 @@ import logging
 
 import aiohttp
 
+from argo_automation_cpas.config import get_settings
+
 LOG = logging.getLogger(__name__)
 
 DEFAULT_RETRIES = 3
@@ -10,7 +12,8 @@ DEFAULT_RETRY_DELAY = 1.0
 
 
 class SessionWithRetry:
-    def __init__(self, settings, base_url=None):
+    def __init__(self, base_url=None):
+        settings = get_settings()
         timeout = aiohttp.ClientTimeout(total=settings.request_timeout)
         kwargs = dict(
             timeout=timeout,

@@ -5,6 +5,7 @@ import os
 from argo_automation_cpas.ams import AMS
 from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
+from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
@@ -21,12 +22,12 @@ def _event_playbook(settings, event):
 
 
 class Application:
-    def __init__(self, settings, only_ansible=None, only_ams=False, filter_events=False,
+    def __init__(self, only_ansible=None, only_ams=False, filter_events=False,
                  only_webapi=False, only_iam=False, only_statusapi=None,
                  update_status=None, event=None, message=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
                  add_tenants=None, remove_tenants=None):
-        self.settings = settings
+        self.settings = get_settings()
         self.only_ansible = only_ansible
         self.only_ams = only_ams
         self.filter_events = filter_events
@@ -49,7 +50,7 @@ class Application:
             return
 
         if self.only_ansible is not None:
-            ansible = Ansible(self.settings)
+            ansible = Ansible()
             await ansible.run(
                 self.only_ansible,
                 inventory=self.inventory,
@@ -60,12 +61,12 @@ class Application:
             return
 
         if self.only_webapi:
-            webapi = WebAPI(self.settings)
+            webapi = WebAPI()
             await webapi.run()
             return
 
         if self.only_iam:
-            iam = IAM(self.settings)
+            iam = IAM()
             try:
                 token = await iam.fetch_token()
                 if token:
@@ -75,8 +76,8 @@ class Application:
             return
 
         if self.only_statusapi is not None:
-            iam = IAM(self.settings)
-            status_api = StatusAPI(self.settings)
+            iam = IAM()
+            status_api = StatusAPI()
             try:
                 token = await iam.fetch_token()
                 if self.update_status is not None:
@@ -98,20 +99,20 @@ class Application:
             return
 
         if self.only_ams:
-            ams = await asyncio.to_thread(AMS(self.settings).init)
+            ams = await asyncio.to_thread(AMS().init)
             await ams.pull_and_print(filter_events=self.filter_events)
             return
 
-        ams = await asyncio.to_thread(AMS(self.settings).init)
+        ams = await asyncio.to_thread(AMS().init)
 
         payloads = await ams.pull_messages()
         if not payloads:
             return
 
-        webapi = WebAPI(self.settings)
-        iam = IAM(self.settings)
-        status_api = StatusAPI(self.settings)
-        ansible = Ansible(self.settings)
+        webapi = WebAPI()
+        iam = IAM()
+        status_api = StatusAPI()
+        ansible = Ansible()
 
         try:
             token = await iam.fetch_token()

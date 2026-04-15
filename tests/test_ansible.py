@@ -4,10 +4,12 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from argo_automation_cpas.ansible import Ansible
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         ansible_private_data_dir="/tmp/ansible",
         ansible=SimpleNamespace(
             ssh_private_key="/home/user/.ssh/sshkey",
@@ -22,7 +24,7 @@ def settings():
         webapi=SimpleNamespace(
             tokens_spool="/tmp/webapi_tokens.json",
         ),
-    )
+    ))
 
 
 @patch("argo_automation_cpas.ansible.print_artifacts")
@@ -31,7 +33,7 @@ async def test_run_basic(mock_asyncio, mock_print, settings):
     mock_runner = MagicMock(status="successful", rc=0)
     mock_asyncio.to_thread = AsyncMock(return_value=mock_runner)
 
-    svc = Ansible(settings)
+    svc = Ansible()
     result = await svc.run("connectors.yml")
 
     mock_asyncio.to_thread.assert_called_once()
@@ -49,7 +51,7 @@ async def test_run_basic(mock_asyncio, mock_print, settings):
 async def test_run_with_add_tenants(mock_asyncio, mock_print, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml", add_tenants=["egi", "eudat"])
 
     _, kwargs = mock_asyncio.to_thread.call_args
@@ -67,7 +69,7 @@ async def test_run_with_add_tenants(mock_asyncio, mock_print, settings):
 async def test_run_with_remove_tenants(mock_asyncio, mock_print, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml", remove_tenants=["egi"])
 
     _, kwargs = mock_asyncio.to_thread.call_args
@@ -80,7 +82,7 @@ async def test_run_with_remove_tenants(mock_asyncio, mock_print, settings):
 async def test_run_with_webapi_overrides(mock_asyncio, mock_print, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     overrides = {"connector_tenant_topo_type": "GOCDB", "connector_tenant_topo_feed": "https://gocdb.example.com"}
     await svc.run("connectors.yml", add_tenants=["egi"], webapi_overrides=overrides)
 
@@ -95,7 +97,7 @@ async def test_run_with_webapi_overrides(mock_asyncio, mock_print, settings):
 async def test_run_with_inventory(mock_asyncio, mock_print, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml", inventory="hosts.ini")
 
     _, kwargs = mock_asyncio.to_thread.call_args
@@ -108,7 +110,7 @@ async def test_run_with_show_artifacts(mock_asyncio, mock_print, settings):
     mock_runner = MagicMock(status="successful", rc=0)
     mock_asyncio.to_thread = AsyncMock(return_value=mock_runner)
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml", show_artifacts=["connector"])
 
     mock_print.assert_called_once_with(mock_runner, ["connector"])
@@ -119,7 +121,7 @@ async def test_run_with_show_artifacts(mock_asyncio, mock_print, settings):
 async def test_run_user_group_in_extravars(mock_asyncio, mock_print, settings):
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml")
 
     _, kwargs = mock_asyncio.to_thread.call_args
@@ -133,7 +135,7 @@ async def test_run_no_private_key(mock_asyncio, mock_print, settings):
     settings.ansible.ssh_private_key = ""
     mock_asyncio.to_thread = AsyncMock(return_value=MagicMock(status="successful", rc=0))
 
-    svc = Ansible(settings)
+    svc = Ansible()
     await svc.run("connectors.yml")
 
     _, kwargs = mock_asyncio.to_thread.call_args
@@ -146,7 +148,7 @@ async def test_run_failed(mock_asyncio, mock_print, settings):
     mock_runner = MagicMock(status="failed", rc=2)
     mock_asyncio.to_thread = AsyncMock(return_value=mock_runner)
 
-    svc = Ansible(settings)
+    svc = Ansible()
     result = await svc.run("connectors.yml")
 
     assert result is False

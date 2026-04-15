@@ -8,10 +8,12 @@ import aiohttp
 
 from argo_automation_cpas.webapi import WebAPI
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         request_timeout=30.0,
         verify_ssl=True,
         automation=SimpleNamespace(tenants=["TENANT-A"]),
@@ -24,13 +26,13 @@ def settings():
             components=["connectors", "sensu"],
             tokens_spool="/tmp/webapi_tokens.json",
         ),
-    )
+    ))
 
 
 @pytest.fixture
 def svc(settings):
     with patch("argo_automation_cpas.webapi.SessionWithRetry"):
-        s = WebAPI(settings)
+        s = WebAPI()
     s.session = MagicMock(
         http_get=AsyncMock(),
         http_post=AsyncMock(),

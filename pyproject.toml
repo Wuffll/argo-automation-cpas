@@ -62,6 +62,7 @@ argo_automation_cpas = "modules/"
 "argo_automation_cpas.cli" = "cli/"
 
 [tool.setuptools.data-files]
+"" = ["pyproject.toml", "poetry.lock"]
 "etc" = [
 	"config/argo-cpas.conf.template",
 	"config/roles-defaults.yml",

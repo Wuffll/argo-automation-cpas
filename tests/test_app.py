@@ -6,10 +6,12 @@ from unittest.mock import AsyncMock, MagicMock, patch, call
 
 from argo_automation_cpas.app import Application
 
+from conftest import prime_settings
+
 
 @pytest.fixture
 def settings():
-    return SimpleNamespace(
+    return prime_settings(SimpleNamespace(
         request_timeout=30.0,
         verify_ssl=True,
         ansible_private_data_dir="/tmp/ansible",
@@ -57,7 +59,7 @@ def settings():
         statusapi=SimpleNamespace(
             api="https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status",
         ),
-    )
+    ))
 
 
 # ---------------------------------------------------------------------------
@@ -66,14 +68,14 @@ def settings():
 
 @patch("argo_automation_cpas.app.clean_artifacts")
 async def test_run_clean_artifacts(mock_clean, settings):
-    app = Application(settings, clean_artifacts=[])
+    app = Application(clean_artifacts=[])
     await app.run()
     mock_clean.assert_called_once_with("/tmp/ansible/artifacts", [])
 
 
 @patch("argo_automation_cpas.app.clean_artifacts")
 async def test_run_clean_artifacts_with_roles(mock_clean, settings):
-    app = Application(settings, clean_artifacts=["connector"])
+    app = Application(clean_artifacts=["connector"])
     await app.run()
     mock_clean.assert_called_once_with("/tmp/ansible/artifacts", ["connector"])
 
@@ -88,11 +90,11 @@ async def test_run_only_ansible(mock_ansible_cls, settings):
     mock_ansible.run = AsyncMock()
     mock_ansible_cls.return_value = mock_ansible
 
-    app = Application(settings, only_ansible="connectors.yml", inventory="hosts.ini",
+    app = Application(only_ansible="connectors.yml", inventory="hosts.ini",
                       add_tenants=["egi"], remove_tenants=["eudat"], show_artifacts=[])
     await app.run()
 
-    mock_ansible_cls.assert_called_once_with(settings)
+    mock_ansible_cls.assert_called_once_with()
     mock_ansible.run.assert_called_once_with(
         "connectors.yml",
         inventory="hosts.ini",
@@ -112,10 +114,10 @@ async def test_run_only_webapi(mock_webapi_cls, settings):
     mock_webapi.run = AsyncMock()
     mock_webapi_cls.return_value = mock_webapi
 
-    app = Application(settings, only_webapi=True)
+    app = Application(only_webapi=True)
     await app.run()
 
-    mock_webapi_cls.assert_called_once_with(settings)
+    mock_webapi_cls.assert_called_once_with()
     mock_webapi.run.assert_called_once()
 
 
@@ -130,7 +132,7 @@ async def test_run_only_iam(mock_iam_cls, settings, capsys):
     mock_iam.close = AsyncMock()
     mock_iam_cls.return_value = mock_iam
 
-    app = Application(settings, only_iam=True)
+    app = Application(only_iam=True)
     await app.run()
 
     mock_iam.fetch_token.assert_called_once()
@@ -145,7 +147,7 @@ async def test_run_only_iam_no_token(mock_iam_cls, settings, capsys):
     mock_iam.close = AsyncMock()
     mock_iam_cls.return_value = mock_iam
 
-    app = Application(settings, only_iam=True)
+    app = Application(only_iam=True)
     await app.run()
 
     assert capsys.readouterr().out == ""
@@ -169,7 +171,7 @@ async def test_run_only_statusapi(mock_iam_cls, mock_statusapi_cls, settings):
     mock_statusapi.close = AsyncMock()
     mock_statusapi_cls.return_value = mock_statusapi
 
-    app = Application(settings, only_statusapi="tenant-abc")
+    app = Application(only_statusapi="tenant-abc")
     await app.run()
 
     mock_iam.fetch_token.assert_called_once()
@@ -194,7 +196,7 @@ async def test_run_only_ams(mock_asyncio, mock_ams_cls, settings):
 
     mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
 
-    app = Application(settings, only_ams=True)
+    app = Application(only_ams=True)
     await app.run()
 
     mock_ams_instance.pull_and_print.assert_called_once_with(filter_events=False)
@@ -247,7 +249,7 @@ async def test_run_full_flow(
     mock_ansible.run = AsyncMock(return_value=True)
     mock_ansible_cls.return_value = mock_ansible
 
-    app = Application(settings)
+    app = Application()
     await app.run()
 
     mock_iam.fetch_token.assert_called_once()
@@ -272,7 +274,7 @@ async def test_run_full_flow_no_ams_message(mock_asyncio, mock_ams_cls, settings
     mock_ams_cls.return_value = mock_ams
     mock_asyncio.to_thread = AsyncMock(return_value=mock_ams_instance)
 
-    app = Application(settings)
+    app = Application()
     await app.run()
 
     mock_ams_instance.pull_messages.assert_called_once()
