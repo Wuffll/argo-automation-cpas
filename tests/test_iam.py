@@ -15,8 +15,12 @@ from conftest import prime_settings
 @pytest.fixture
 def settings(tmp_path):
     return prime_settings(SimpleNamespace(
-        request_timeout=30.0,
-        verify_ssl=True,
+        general=SimpleNamespace(
+            request_timeout=30.0,
+            verify_ssl=True,
+            retries=3,
+            retry_delay=1.0,
+        ),
         iam=SimpleNamespace(
             api="https://iam.example.com/token",
             oidc_client_id="client-id",

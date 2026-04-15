@@ -7,23 +7,20 @@ from argo_automation_cpas.config import get_settings
 
 LOG = logging.getLogger(__name__)
 
-DEFAULT_RETRIES = 3
-DEFAULT_RETRY_DELAY = 1.0
-
 
 class SessionWithRetry:
     def __init__(self, base_url=None):
-        settings = get_settings()
-        timeout = aiohttp.ClientTimeout(total=settings.request_timeout)
+        general = get_settings().general
+        timeout = aiohttp.ClientTimeout(total=general.request_timeout)
         kwargs = dict(
             timeout=timeout,
-            connector=aiohttp.TCPConnector(ssl=settings.verify_ssl),
+            connector=aiohttp.TCPConnector(ssl=general.verify_ssl),
         )
         if base_url:
             kwargs["base_url"] = base_url
         self.session = aiohttp.ClientSession(**kwargs)
-        self.retries = DEFAULT_RETRIES
-        self.retry_delay = DEFAULT_RETRY_DELAY
+        self.retries = general.retries
+        self.retry_delay = general.retry_delay
 
     async def _request(self, method, url, **kwargs):
         method_obj = getattr(self.session, method)

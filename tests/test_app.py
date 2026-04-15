@@ -12,11 +12,14 @@ from conftest import prime_settings
 @pytest.fixture
 def settings():
     return prime_settings(SimpleNamespace(
-        request_timeout=30.0,
-        verify_ssl=True,
         ansible_private_data_dir="/tmp/ansible",
         ansible_playbook="init.yml",
-        general=SimpleNamespace(),
+        general=SimpleNamespace(
+            request_timeout=30.0,
+            verify_ssl=True,
+            retries=3,
+            retry_delay=1.0,
+        ),
         automation=SimpleNamespace(
             tenants=["TENANT-A"],
         ),

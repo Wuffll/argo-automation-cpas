@@ -69,6 +69,28 @@ def test_general_section(config_file):
     assert s.general.log_level == 20  # logging.INFO
     assert s.general.log_file == "/opt/argo-automation-cpas/var/log/argo-cpas.log"
     assert s.general.syslog_address == "/dev/log"
+    assert s.general.request_timeout == 30.0
+    assert s.general.verify_ssl is True
+    assert s.general.retries == 3
+    assert s.general.retry_delay == 1.0
+
+
+def test_general_section_http_overrides(tmp_path):
+    body = FULL_CONFIG.replace(
+        "syslog_facility = user\n",
+        "syslog_facility = user\n"
+        "request_timeout = 5.5\n"
+        "verify_ssl = false\n"
+        "retries = 7\n"
+        "retry_delay = 2.25\n",
+    )
+    path = tmp_path / "argo-cpas.conf"
+    path.write_text(body)
+    s = load_config(str(path))
+    assert s.general.request_timeout == 5.5
+    assert s.general.verify_ssl is False
+    assert s.general.retries == 7
+    assert s.general.retry_delay == 2.25
 
 
 # ---------------------------------------------------------------------------
@@ -173,8 +195,6 @@ def test_top_level_attributes(config_file):
     s = load_config(config_file)
     assert s.venv == "/opt/argo-automation-cpas"
     assert s.base_url == s.webapi.url
-    assert s.request_timeout == 30.0
-    assert s.verify_ssl is True
     assert s.ansible_playbook == "init.yml"
     assert s.ansible_private_data_dir.endswith("ansible")
 

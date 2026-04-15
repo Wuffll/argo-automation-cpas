@@ -14,8 +14,12 @@ from conftest import prime_settings
 @pytest.fixture
 def settings():
     return prime_settings(SimpleNamespace(
-        request_timeout=30.0,
-        verify_ssl=True,
+        general=SimpleNamespace(
+            request_timeout=30.0,
+            verify_ssl=True,
+            retries=3,
+            retry_delay=1.0,
+        ),
         automation=SimpleNamespace(tenants=["TENANT-A"]),
         webapi=SimpleNamespace(
             host="api.example.com",

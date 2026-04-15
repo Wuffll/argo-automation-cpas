@@ -11,7 +11,9 @@ from conftest import prime_settings
 
 @pytest.fixture
 def settings():
-    return prime_settings(SimpleNamespace(request_timeout=30.0, verify_ssl=True))
+    return prime_settings(SimpleNamespace(general=SimpleNamespace(
+        request_timeout=30.0, verify_ssl=True, retries=3, retry_delay=1.0,
+    )))
 
 
 # ---------------------------------------------------------------------------
@@ -35,7 +37,9 @@ def test_session_init_basic(mock_timeout, mock_connector, mock_session, settings
 @patch("argo_automation_cpas.http.aiohttp.TCPConnector")
 @patch("argo_automation_cpas.http.aiohttp.ClientTimeout")
 def test_session_init_with_base_url(mock_timeout, mock_connector, mock_session):
-    prime_settings(SimpleNamespace(request_timeout=10.0, verify_ssl=False))
+    prime_settings(SimpleNamespace(general=SimpleNamespace(
+        request_timeout=10.0, verify_ssl=False, retries=3, retry_delay=1.0,
+    )))
 
     SessionWithRetry(base_url="https://api.example.com")
 

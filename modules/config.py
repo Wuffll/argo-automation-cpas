@@ -15,6 +15,8 @@ DEFAULT_CONFIG_LOCATIONS = (
 )
 DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
+DEFAULT_RETRIES = 3
+DEFAULT_RETRY_DELAY = 1.0
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
 DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
@@ -56,6 +58,10 @@ class Settings:
             ),
             syslog_address=general.get("syslog_address", "/dev/log"),
             syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
+            request_timeout=general.getfloat("request_timeout", DEFAULT_REQUEST_TIMEOUT),
+            verify_ssl=general.getboolean("verify_ssl", DEFAULT_VERIFY_SSL),
+            retries=general.getint("retries", DEFAULT_RETRIES),
+            retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
         )
         self.ams = Section(
             project=ams.get("project", ""),
@@ -107,8 +113,6 @@ class Settings:
         )
 
         self.base_url = self.webapi.url
-        self.request_timeout = DEFAULT_REQUEST_TIMEOUT
-        self.verify_ssl = DEFAULT_VERIFY_SSL
         self.ansible_private_data_dir = os.path.join(self.venv, "ansible")
         self.ansible_playbook = DEFAULT_ANSIBLE_PLAYBOOK
 

@@ -7,6 +7,10 @@ log_level = INFO
 log_file = %(VENV)svar/log/argo-cpas.log
 syslog_address = /dev/log
 syslog_facility = user
+request_timeout = 30.0
+verify_ssl = true
+retries = 3
+retry_delay = 5.0
 
 [automation]
 tenants = AUTOMATION
