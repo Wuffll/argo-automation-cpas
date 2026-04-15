@@ -15,3 +15,6 @@
 - name: Remove cron jobs for removed tenants
   ansible.builtin.include_tasks: ./cron-setup-remove.yml
   when: connector_remove_tenants | length > 0
+
+- name: Flush role handlers
+  ansible.builtin.meta: flush_handlers
