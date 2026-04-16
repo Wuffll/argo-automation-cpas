@@ -62,6 +62,7 @@ class Settings:
             verify_ssl=general.getboolean("verify_ssl", DEFAULT_VERIFY_SSL),
             retries=general.getint("retries", DEFAULT_RETRIES),
             retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
+            strip_ansi=general.getboolean("strip_ansi", True),
         )
         self.ams = Section(
             project=ams.get("project", ""),

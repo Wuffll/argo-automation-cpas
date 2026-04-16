@@ -79,10 +79,15 @@ class Ansible:
         if remove_tenants is not None:
             extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
 
+        envvars = {}
+        if self.settings.general.strip_ansi:
+            envvars["ANSIBLE_NOCOLOR"] = "1"
+
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
             quiet=True,
+            envvars=envvars,
         )
 
         if extravars:

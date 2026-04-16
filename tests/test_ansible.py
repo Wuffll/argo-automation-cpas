@@ -10,6 +10,7 @@ from conftest import prime_settings
 @pytest.fixture
 def settings():
     return prime_settings(SimpleNamespace(
+        general=SimpleNamespace(strip_ansi=True),
         ansible_private_data_dir="/tmp/ansible",
         ansible=SimpleNamespace(
             ssh_private_key="/home/user/.ssh/sshkey",

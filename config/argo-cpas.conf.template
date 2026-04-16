@@ -11,6 +11,7 @@ request_timeout = 30.0
 verify_ssl = true
 retries = 3
 retry_delay = 5.0
+strip_ansi = true
 
 [automation]
 tenants = AUTOMATION
