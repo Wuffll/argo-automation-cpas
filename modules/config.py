@@ -17,6 +17,7 @@ DEFAULT_REQUEST_TIMEOUT = 30.0
 DEFAULT_VERIFY_SSL = True
 DEFAULT_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
+DEFAULT_DAEMON_SLEEP = 60
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
 DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
@@ -63,6 +64,7 @@ class Settings:
             retries=general.getint("retries", DEFAULT_RETRIES),
             retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
             strip_ansi=general.getboolean("strip_ansi", True),
+            daemon_sleep=general.getint("daemon_sleep", DEFAULT_DAEMON_SLEEP),
         )
         self.ams = Section(
             project=ams.get("project", ""),

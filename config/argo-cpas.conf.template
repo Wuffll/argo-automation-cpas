@@ -12,6 +12,7 @@ verify_ssl = true
 retries = 3
 retry_delay = 5.0
 strip_ansi = true
+daemon_sleep = 60
 
 [automation]
 tenants = AUTOMATION

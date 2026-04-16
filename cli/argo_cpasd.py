@@ -10,17 +10,15 @@ from argo_automation_cpas.log import setup_logging
 
 LOG = logging.getLogger(__name__)
 
-DEFAULT_SLEEP = 60
-
 
 def parse_args():
     parser = argparse.ArgumentParser(description="ARGO CPAS automation daemon")
     parser.add_argument(
         "--sleep",
         type=int,
-        default=DEFAULT_SLEEP,
+        default=None,
         metavar="SECONDS",
-        help="Seconds to sleep between AMS poll cycles (default: %(default)s)",
+        help="Seconds to sleep between AMS poll cycles (overrides config daemon_sleep)",
     )
     return parser.parse_args()
 
@@ -52,7 +50,7 @@ def main():
     args = parse_args()
 
     try:
-        get_settings()
+        settings = get_settings()
     except FileNotFoundError as exc:
         logging.basicConfig()
         logging.error("%s", exc)
@@ -60,4 +58,5 @@ def main():
 
     setup_logging()
 
-    asyncio.run(loop(args.sleep))
+    sleep = args.sleep if args.sleep is not None else settings.general.daemon_sleep
+    asyncio.run(loop(sleep))
