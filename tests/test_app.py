@@ -57,6 +57,7 @@ def settings():
             subscription="events-sub-1",
             pullmsgs=1,
             ack=False,
+            return_immediately=True,
             events=["INIT_TOPOLOGY_CONNECTOR"],
         ),
         statusapi=SimpleNamespace(

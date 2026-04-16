@@ -70,6 +70,7 @@ class Settings:
             token=ams.get("token", ""),
             pullmsgs=int(ams.get("pullmsgs", "1")),
             ack=ams.getboolean("ack", False),
+            return_immediately=ams.getboolean("return_immediately", True),
             events=self._split_csv(ams.get("events", "INIT_TOPOLOGY_CONNECTOR")),
             url=self._normalize_url(ams.get("host", "")),
         )

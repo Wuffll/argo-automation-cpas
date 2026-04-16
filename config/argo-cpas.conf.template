@@ -20,8 +20,9 @@ project = ARGO-MON-AUTOMATION
 host = api.devel.msg.argo.grnet.gr
 subscription = events-sub-2
 token = AUTOMATION_TOKEN
-pullmsgs = 10
+pullmsgs = 1
 ack = false
+return_immediately = true
 events = INIT_TOPOLOGY_CONNECTOR
 
 [webapi]

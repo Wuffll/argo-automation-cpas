@@ -87,7 +87,7 @@ class AMS:
         method = self._ams.pullack if self.settings.ams.ack else self._ams.pull_sub
         LOG.info("Pulling messages from AMS subscription %s (ack=%s)", subscription, self.settings.ams.ack)
         try:
-            msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs)
+            msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
             return []
@@ -112,7 +112,7 @@ class AMS:
         method = self._ams.pullack if self.settings.ams.ack else self._ams.pull_sub
         LOG.info("Pulling message from AMS subscription %s (ack=%s)", subscription, self.settings.ams.ack)
         try:
-            msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs)
+            msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
             return
