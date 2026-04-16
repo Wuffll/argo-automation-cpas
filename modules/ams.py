@@ -82,7 +82,7 @@ class AMS:
 
     async def pull_messages(self):
         subscription = self.settings.ams.subscription
-        method = self._ams.pullack if self.settings.ams.ack else self._ams.pull_sub
+        method = self._ams.pullack_sub if self.settings.ams.ack else self._ams.pull_sub
         LOG.info("Pulling messages from AMS subscription %s (ack=%s)", subscription, self.settings.ams.ack)
         try:
             msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
@@ -107,7 +107,7 @@ class AMS:
 
     async def pull_and_print(self, filter_events=False):
         subscription = self.settings.ams.subscription
-        method = self._ams.pullack if self.settings.ams.ack else self._ams.pull_sub
+        method = self._ams.pullack_sub if self.settings.ams.ack else self._ams.pull_sub
         LOG.info("Pulling message from AMS subscription %s (ack=%s)", subscription, self.settings.ams.ack)
         try:
             msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
