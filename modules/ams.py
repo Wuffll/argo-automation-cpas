@@ -67,17 +67,12 @@ class AMS:
         tenant_name = props.get("tenant_name")
         tenant_id = props.get("tenant_id")
         if not tenant_name or not tenant_id:
-            LOG.warning("Skipping AMS message missing properties.tenant_name/tenant_id: %s", payload)
-            return False
-        tenants = self.settings.automation.tenants
-        if tenants and tenant_name not in tenants:
-            LOG.info("Skipping AMS message for tenant_name=%s (not in automation.tenants)",
-                     tenant_name)
+            LOG.warning("AMS message missing properties.tenant_name/tenant_id: %s", payload)
             return False
         events = self.settings.ams.events
         name = payload.get("name")
         if events and name not in events:
-            LOG.info("Skipping AMS message for tenant_name=%s name=%s (not in ams.events)",
+            LOG.info("AMS message for tenant_name=%s name=%s not in ams.events",
                      tenant_name, name)
             return False
         return True
