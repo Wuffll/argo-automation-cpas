@@ -85,17 +85,17 @@ def test_init_missing_subscription_exits(mock_ams_cls, settings):
 def test_rewind_offset(settings):
     svc = AMS()
     svc._ams = MagicMock()
-    svc._ams.getoffsets_sub.return_value = {"min": 0, "max": 100}
+    svc._ams.getoffsets_sub.return_value = {"min": 0, "current": 100, "max": 105}
 
-    svc.rewind_offset(5)
+    svc.rewind_offset(10)
 
-    svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 95)
+    svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 90)
 
 
 def test_rewind_offset_clamps_to_min(settings):
     svc = AMS()
     svc._ams = MagicMock()
-    svc._ams.getoffsets_sub.return_value = {"min": 98, "max": 100}
+    svc._ams.getoffsets_sub.return_value = {"min": 98, "current": 100, "max": 105}
 
     svc.rewind_offset(5)
 
