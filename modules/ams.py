@@ -53,6 +53,14 @@ class AMS:
         self._ams = ams
         return self
 
+    def rewind_offset(self, n):
+        sub = self.settings.ams.subscription
+        offsets = self._ams.getoffsets_sub(sub)
+        current = offsets["max"]
+        new_offset = max(offsets["min"], current - n)
+        self._ams.modifyoffset_sub(sub, new_offset)
+        LOG.info("Rewound subscription %s offset from %d to %d", sub, current, new_offset)
+
     def _decode_message(self, msg):
         if isinstance(msg, tuple):
             msg = msg[1]

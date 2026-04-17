@@ -105,6 +105,13 @@ def parse_args():
         ),
     )
     parser.add_argument(
+        "--rewind",
+        type=int,
+        default=None,
+        metavar="N",
+        help="Used with --only-ams. Move subscription offset back by N messages before pulling.",
+    )
+    parser.add_argument(
         "--add-tenants",
         nargs="+",
         default=None,
@@ -146,6 +153,7 @@ def main():
         inventory=args.inventory,
         show_artifacts=args.show_artifacts,
         clean_artifacts=args.clean_artifacts,
+        rewind=args.rewind,
         add_tenants=args.add_tenants,
         remove_tenants=args.remove_tenants,
     )
