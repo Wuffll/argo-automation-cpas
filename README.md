@@ -5,6 +5,7 @@ Automation service for the dynamic configuration of ARGO components: Connectors,
 ## Features
 
 - Asynchronous event-driven architecture built on `aiohttp`
+- Daemon mode (`argo-cpasd`) with configurable poll interval for continuous operation
 - Pulls tenant provisioning events from AMS subscriptions
 - Fetches topology configuration and refreshes component tokens via the ARGO Web API
 - Obtains and caches OIDC access tokens from an IAM identity provider
@@ -13,6 +14,7 @@ Automation service for the dynamic configuration of ARGO components: Connectors,
 - Manages Ansible artifacts (inspect, filter by role, clean up)
 - Flexible logging to stdout, file, and/or syslog
 - CLI with granular `--only-*` flags for testing individual subsystems in isolation
+- Singleton configuration shared across all service modules
 
 ## Requirements
 
@@ -37,6 +39,12 @@ poetry install --with devel
 # full pipeline: pull AMS event -> fetch config -> run ansible
 poetry run argo-cpas
 
+# run as a daemon (polls AMS every daemon_sleep seconds)
+poetry run argo-cpasd
+
+# run daemon with custom sleep interval (overrides config)
+poetry run argo-cpasd --sleep 120
+
 # run only a specific ansible playbook
 poetry run argo-cpas --only-ansible connectors.yml
 
@@ -52,6 +60,15 @@ poetry run argo-cpas --only-ansible connectors.yml --remove-tenants TENANT-C
 # pull and print one AMS message (no ack)
 poetry run argo-cpas --only-ams
 
+# move subscription offset back 10 messages and pull
+poetry run argo-cpas --only-ams --offset -10
+
+# move subscription offset forward 5 messages and pull
+poetry run argo-cpas --only-ams --offset +5
+
+# filter AMS messages by configured tenants and events
+poetry run argo-cpas --only-ams --filter-events
+
 # probe Web API and refresh component tokens
 poetry run argo-cpas --only-webapi
 
@@ -60,6 +77,9 @@ poetry run argo-cpas --only-iam
 
 # fetch automation status for a tenant
 poetry run argo-cpas --only-statusapi <TENANT_ID>
+
+# update automation status for a tenant event
+poetry run argo-cpas --only-statusapi <TENANT_ID> --update-status IN_PROGRESS --event INIT_TOPOLOGY_CONNECTOR
 
 # show ansible-runner artifacts (optionally filter by role)
 poetry run argo-cpas --only-ansible --show-artifacts connector
@@ -71,7 +91,7 @@ poetry run argo-cpas --clean-artifacts
 poetry run argo-cpas --clean-artifacts connector
 ```
 
-### CLI flags
+### CLI flags (`argo-cpas`)
 
 | Flag                            | Description                                                                                                                       |
 |---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
@@ -81,7 +101,8 @@ poetry run argo-cpas --clean-artifacts connector
 | `--remove-tenants TENANT [...]` | Tenant name(s) to remove (populates `connector_remove_tenants` extravars).                                                        |
 | `--show-artifacts [ROLE ...]`   | Print ansible-runner stdout/stderr after a run. Optionally filter output to tasks from specific role(s).                          |
 | `--clean-artifacts [ROLE ...]`  | Remove ansible-runner artifact directories and exit. Without arguments removes all; with role name(s) removes only matching runs. |
-| `--only-ams`                    | Pull one message from the AMS subscription, print it, and exit.                                                                   |
+| `--only-ams`                    | Pull one message from the AMS subscription (without ack), print it, and exit.                                                     |
+| `--offset N`                    | Used with `--only-ams`. Move subscription offset by N messages before pulling (e.g. `+10` forward, `-10` back).                   |
 | `--filter-events`               | Used with `--only-ams`. Print only messages matching `automation.tenants` and `ams.events` from the config.                       |
 | `--only-webapi`                 | Probe the Web API and fetch/refresh component tokens, then exit.                                                                  |
 | `--only-iam`                    | Fetch an IAM OIDC token, print it, and exit.                                                                                      |
@@ -90,22 +111,31 @@ poetry run argo-cpas --clean-artifacts connector
 | `--event EVENT`                 | Event name used with `--update-status` (e.g. `INIT_TOPOLOGY_CONNECTOR`).                                                          |
 | `--message MESSAGE`             | Used with `--update-status`. Override the default job message (`Event picked up by argo-automation-cpas`).                        |
 
+### CLI flags (`argo-cpasd`)
+
+| Flag              | Description                                                                       |
+|-------------------|-----------------------------------------------------------------------------------|
+| `--sleep SECONDS` | Seconds to sleep between AMS poll cycles. Overrides `daemon_sleep` from config.   |
+
 ## Project layout
 
 ```
 cli/
   argo_cpas.py              # CLI entrypoint and argument parsing
+  argo_cpasd.py             # Daemon entrypoint with poll loop
 modules/
   app.py                    # Application class orchestrating the full pipeline
-  config.py                 # INI config parser and Settings dataclass
+  config.py                 # INI config parser and Settings singleton
   log.py                    # Logging setup (stdout, file, syslog)
   ams.py                    # AMS client initialisation, message pull and decode
-  webapi.py                 # Web API probing, topology config, token refresh
+  webapi.py                 # Web API topology config, token refresh
   iam.py                    # OIDC token fetch and cache
   statusapi.py              # Status API reporting and querying
-  http.py                   # aiohttp session factory and retry wrapper
+  http.py                   # SessionWithRetry: aiohttp session with retry logic
   artifacts.py              # Ansible artifact printing and cleanup
   ansible.py                # ansible-runner execution with extravars
+init/
+  argo-cpasd.service        # systemd unit file for the daemon
 ansible/
   project/
     init.yml                # Bootstrap/demo playbook
@@ -122,6 +152,7 @@ config/
 docker/
   Dockerfile.controller_ubuntu  # Container image for the controller
 tests/
+  conftest.py               # Shared test fixtures and settings singleton reset
   test_config.py            # Configuration unit tests
 version.py                  # Version string (0.1.0)
 Makefile                    # Build targets (wheel-prod, wheel-devel, clean)
@@ -155,28 +186,35 @@ A template is provided in `config/argo-cpas.conf.template`.
 | `log_file`        | Path to the log file (used when `file` is in `loggers`). Supports `%(VENV)s` interpolation.     | `%(VENV)svar/log/argo-cpas.log` |
 | `syslog_address`  | Unix socket path or `host:port` for the syslog handler.                                         | `/dev/log`                      |
 | `syslog_facility` | Syslog facility name (e.g. `user`, `local0`, `daemon`).                                         | `user`                          |
+| `request_timeout` | HTTP request timeout in seconds for all `aiohttp` sessions.                                     | `30.0`                          |
+| `verify_ssl`      | Whether to verify TLS certificates.                                                             | `true`                          |
+| `retries`         | Number of retry attempts on HTTP connection errors.                                             | `3`                             |
+| `retry_delay`     | Base delay in seconds between retries (linear backoff).                                         | `1.0`                           |
+| `strip_ansi`      | Strip ANSI color codes from Ansible output by setting `ANSIBLE_NOCOLOR=1`.                      | `true`                          |
+| `daemon_sleep`    | Seconds to sleep between AMS poll cycles in daemon mode (`argo-cpasd`).                         | `60`                            |
 
 ### `[automation]` section
 
-| Option    | Description                                                                                                           | Example              |
-|-----------|-----------------------------------------------------------------------------------------------------------------------|----------------------|
-| `tenants` | Comma-separated list of tenant names the service manages. Used when iterating over tenants for Web API token refresh. | `TENANT-A, TENANT-B` |
+| Option    | Description                                                                                                                                       | Example              |
+|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| `tenants` | Comma-separated list of tenant names the service manages. Used to filter AMS events and iterate over tenants for Web API token refresh.            | `TENANT-A, TENANT-B` |
 
 ### `[ams]` section
 
 Configuration for the ARGO Messaging Service connection.
 
-| Option         | Description                                                                                                                                                                     | Example                       |
-|----------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
-| `project`      | AMS project name.                                                                                                                                                               | `ARGO-MON-AUTOMATION`         |
-| `host`         | AMS API hostname (without `https://` prefix).                                                                                                                                   | `api.devel.msg.argo.grnet.gr` |
-| `subscription` | AMS subscription name to pull events from.                                                                                                                                      | `events-sub-2`                |
-| `token`        | AMS authentication token.                                                                                                                                                       | _(secret)_                    |
-| `pullmsgs`     | Maximum number of messages to pull per request (used as `num` for `pullack`/`pull_sub`). Default: `1`.                                                                          | `10`                          |
-| `ack`          | Whether to acknowledge pulled messages. `true` uses `pullack` (pull + ack), `false` uses `pull_sub` (pull without ack — messages remain in the subscription). Default: `false`. | `false`                       |
-| `events`       | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.                                                                                  | `INIT_TOPOLOGY_CONNECTOR`     |
+| Option               | Description                                                                                                                                                                           | Example                       |
+|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
+| `project`            | AMS project name.                                                                                                                                                                     | `ARGO-MON-AUTOMATION`         |
+| `host`               | AMS API hostname (without `https://` prefix).                                                                                                                                         | `api.devel.msg.argo.grnet.gr` |
+| `subscription`       | AMS subscription name to pull events from.                                                                                                                                            | `events-sub-2`                |
+| `token`              | AMS authentication token.                                                                                                                                                             | _(secret)_                    |
+| `pullmsgs`           | Maximum number of messages to pull per request (used as `num` for `pullack_sub`/`pull_sub`). Default: `1`.                                                                            | `10`                          |
+| `ack`                | Whether to acknowledge pulled messages in the main pipeline. `true` uses `pullack_sub` (pull + ack), `false` uses `pull_sub` (pull without ack). Default: `false`.                    | `false`                       |
+| `return_immediately` | Whether pull requests return immediately when no messages are available. Default: `true`.                                                                                              | `true`                        |
+| `events`             | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.                                                                                        | `INIT_TOPOLOGY_CONNECTOR`     |
 
-The service constructs the full AMS URL as `https://<host>` automatically.
+The service constructs the full AMS URL as `https://<host>` automatically. The `--only-ams` flag always pulls without ack regardless of the `ack` setting.
 
 ### `[webapi]` section
 
@@ -250,14 +288,19 @@ These tokens are passed as the `connector_tokens` extravar to Ansible, making pe
 
 The following values are hardcoded and not currently exposed in the configuration file:
 
-| Setting                    | Value                     | Description                                                |
-|----------------------------|---------------------------|------------------------------------------------------------|
-| `request_timeout`          | `30.0` seconds            | HTTP request timeout for all `aiohttp` sessions            |
-| `verify_ssl`               | `True`                    | Whether to verify TLS certificates                         |
-| `ansible_playbook`         | `init.yml`                | Default playbook used in the full pipeline (AMS-triggered) |
-| `ansible_private_data_dir` | `<VENV>/ansible`          | Base directory for `ansible-runner`                        |
-| HTTP retries               | 3 attempts                | Number of retries on connection errors                     |
-| HTTP retry delay           | 1.0s base, linear backoff | Delay between retry attempts                               |
+| Setting                    | Value            | Description                                                |
+|----------------------------|------------------|------------------------------------------------------------|
+| `ansible_playbook`         | `init.yml`       | Default playbook used in the full pipeline (AMS-triggered) |
+| `ansible_private_data_dir` | `<VENV>/ansible` | Base directory for `ansible-runner`                        |
+
+## Systemd
+
+A systemd unit file is provided at `init/argo-cpasd.service`. Install it to `/usr/lib/systemd/system/` and enable it:
+
+```bash
+systemctl daemon-reload
+systemctl enable --now argo-cpasd
+```
 
 ## Building
 
