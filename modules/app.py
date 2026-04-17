@@ -26,7 +26,7 @@ class Application:
                  only_webapi=False, only_iam=False, only_statusapi=None,
                  update_status=None, event=None, message=None, inventory=None,
                  show_artifacts=None, clean_artifacts=None,
-                 rewind=None, add_tenants=None, remove_tenants=None):
+                 offset=None, add_tenants=None, remove_tenants=None):
         self.settings = get_settings()
         self.only_ansible = only_ansible
         self.only_ams = only_ams
@@ -40,7 +40,7 @@ class Application:
         self.inventory = inventory
         self.show_artifacts = show_artifacts
         self.clean_artifacts = clean_artifacts
-        self.rewind = rewind
+        self.offset = offset
         self.add_tenants = add_tenants
         self.remove_tenants = remove_tenants
 
@@ -101,8 +101,8 @@ class Application:
 
         if self.only_ams:
             ams = await asyncio.to_thread(AMS().init)
-            if self.rewind is not None:
-                await asyncio.to_thread(ams.rewind_offset, self.rewind)
+            if self.offset is not None:
+                await asyncio.to_thread(ams.move_offset, self.offset)
             await ams.pull_and_print(filter_events=self.filter_events)
             return
 

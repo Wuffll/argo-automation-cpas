@@ -79,27 +79,47 @@ def test_init_missing_subscription_exits(mock_ams_cls, settings):
 
 
 # ---------------------------------------------------------------------------
-# rewind_offset
+# move_offset
 # ---------------------------------------------------------------------------
 
-def test_rewind_offset(settings):
+def test_move_offset_back(settings):
     svc = AMS()
     svc._ams = MagicMock()
     svc._ams.getoffsets_sub.return_value = {"min": 0, "current": 100, "max": 105}
 
-    svc.rewind_offset(10)
+    svc.move_offset("-10")
 
     svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 90)
 
 
-def test_rewind_offset_clamps_to_min(settings):
+def test_move_offset_forward(settings):
+    svc = AMS()
+    svc._ams = MagicMock()
+    svc._ams.getoffsets_sub.return_value = {"min": 0, "current": 100, "max": 105}
+
+    svc.move_offset("+3")
+
+    svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 103)
+
+
+def test_move_offset_clamps_to_min(settings):
     svc = AMS()
     svc._ams = MagicMock()
     svc._ams.getoffsets_sub.return_value = {"min": 98, "current": 100, "max": 105}
 
-    svc.rewind_offset(5)
+    svc.move_offset("-5")
 
     svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 98)
+
+
+def test_move_offset_clamps_to_max(settings):
+    svc = AMS()
+    svc._ams = MagicMock()
+    svc._ams.getoffsets_sub.return_value = {"min": 0, "current": 100, "max": 105}
+
+    svc.move_offset("+20")
+
+    svc._ams.modifyoffset_sub.assert_called_once_with(settings.ams.subscription, 105)
 
 
 # ---------------------------------------------------------------------------
