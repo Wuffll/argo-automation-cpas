@@ -68,6 +68,7 @@ argo_automation_cpas = "modules/"
 	"config/roles-defaults.yml",
 ]
 "usr/lib/systemd/system" = ["init/argo-cpasd.service"]
+"etc/logrotate.d" = ["logrotate/logfile"]
 "var/log" = ["var/log/.keep"]
 "var/cache" = ["var/cache/.keep"]
 "var/spool" = ["var/spool/.keep"]
