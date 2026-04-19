@@ -8,7 +8,6 @@ connector_group: group
 
 connector_infra: ''
 
-connector_cron_default_user: "user"
 
 connector_cron_envvars:
   - name: VENVPY
