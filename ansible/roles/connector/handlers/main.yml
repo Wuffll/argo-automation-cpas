@@ -15,6 +15,7 @@
       {{ connector_virtenv_path}}/usr/bin/topology-{{ item.tenant_topo_type | lower }}-connector.py \
         -g {{ connector_virtenv_path }}/etc/global.conf \
         -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf
+  become_user: "{{ connector_owner }}"
   loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
