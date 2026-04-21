@@ -1,0 +1,80 @@
+---
+# defaults file for connector
+
+connector_virtenv_path: /opt/argo-connectors/
+
+connector_owner: user
+connector_group: group
+
+connector_infra: ''
+
+
+connector_cron_envvars:
+  - name: VENVPY
+    value: "{{ connector_virtenv_path }}/bin/python"
+  - name: VENVDIR
+    value: "{{ connector_virtenv_path }}"
+  - name: VIRTUAL_ENV
+    value: "{{ connector_virtenv_path }}"
+  - name: VENVBIN
+    value: "{{ connector_virtenv_path }}/usr/bin"
+  - name: VENVETC
+    value: "{{ connector_virtenv_path }}/etc"
+
+connector_cron_default_minute: "7"
+connector_cron_default_hour: "0"
+connector_cron_downtimes_default_minute: "58"
+connector_cron_downtimes_default_hour: "21"
+
+connector_add_tenant_names: ""
+connector_remove_tenant_names: ""
+connector_add_tenants: []
+connector_remove_tenants: []
+
+connector_tenants:
+  - tenant_name: DEFAULT
+    tenant_combine: false
+    tenant_webapi_token: "{{ connector_tokens.default.webapi }}"
+    tenant_auth_useplainhttpauth: true
+    tenant_auth_plainhttpuser: HTTP_USER
+    tenant_auth_plainhttppass: HTTP_PASSWORD
+    tenant_feed_servicetype: "https://goc.egi.eu/gocdbpi/private/?method=get_service_types"
+    tenant_feed_weights: "https://operations-portal.egi.eu/vapor/downloadLavoisier/option/json/view/VAPOR_Ngi_Sites_Info"
+    tenant_feed_downtimes: "https://goc.egi.eu/gocdbpi/private/?method=get_downtime&scope="
+    tenant_topo_feedpaging: false
+    tenant_topo_feed: "https://goc.egi.eu/"
+    tenant_topo_feedserviceendpoints: "https://goc.egi.eu/gocdbpi/private/?method=get_service_endpoint&scope="
+    tenant_topo_feedservicegroups: "https://goc.egi.eu/gocdbpi/private/?method=get_service_group&scope="
+    tenant_topo_feedsites: "https://goc.egi.eu/gocdbpi/private/?method=get_site&scope="
+    tenant_topo_fetchtype: Sites, ServiceGroups
+    # tenant_topo_type: GOCDB
+    tenant_topo_uidserviceendpoints: false
+    tenant_empty_weights: false
+    tenant_empty_downtimes: false
+    tenant_cron_servicetypes_disable: false
+    tenant_cron_downtimes_disable: false
+    tenant_cron_metricprofiles_disable: false
+    tenant_cron_weights_disable: false
+    tenant_cron_topology_disable: false
+    tenant_honornotificationflag: false
+    tenant_bdii: true
+    tenant_bdiihost: "bdii.egi.cro-ngi.hr"
+    tenant_bdiiport: 2170
+    tenant_bdiiquerybase: "o=grid"
+    tenant_bdiiqueryfiltersrm: "(&(objectClass=GlueService)(|(GlueServiceType=srm_v1)(GlueServiceType=srm)))"
+    tenant_bdiiqueryattributessrm: "GlueServiceEndpoint"
+    tenant_bdiiqueryfiltersepath: "(objectClass=GlueSATop)"
+    tenant_bdiiqueryattributessepath: "GlueVOInfoAccessControlBaseRule GlueVOInfoPath"
+    tenant_jobs:
+      - name: Critical
+        dirname: Critical
+        profiles: ARGO_MON_CRITICAL
+        metricprofilenamespace: ch.cern.SAM
+      - name: OPS-MONITOR-Critical
+        dirname: OPS-MONITOR-Critical
+        profiles: OPS_MONITOR_CRITICAL
+        metricprofilenamespace: ch.cern.SAM
+    cron_schedules:
+      topology:
+        minute: "7"
+        hour: "*/3"

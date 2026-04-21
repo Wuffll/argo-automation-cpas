@@ -1,0 +1,8 @@
+- name: Demo bootstrap playbook
+  hosts: localhost
+  gather_facts: false
+  connection: local
+  tasks:
+    - name: Confirm the bootstrap playbook is wired correctly
+      ansible.builtin.debug:
+        msg: "argo-automation-cpas bootstrap playbook executed"

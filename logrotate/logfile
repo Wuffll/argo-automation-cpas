@@ -1,0 +1,7 @@
+/opt/argo-automation-cpas/var/log/argo-cpas.log {
+    size 1M
+    rotate 365
+    compress
+    missingok
+    notifempty
+}

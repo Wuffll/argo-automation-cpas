@@ -1,0 +1,12 @@
+---
+
+- name: Playbook to configure connectors
+  hosts: all
+  become: true
+  vars:
+    errors_ignore: false
+  roles:
+    - { role: connector, connector_owner: "{{ user_connector }}", connector_group: "{{ group_connector }}", connector_cron_default_user: "{{ user_connector }}" }
+
+
+# vim: ft=yaml.ansible

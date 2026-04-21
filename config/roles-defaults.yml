@@ -1,0 +1,14 @@
+# Ansible extra vars applied to every connector playbook run.
+
+connector_tenant_topo_type: CSV
+connector_tenant_cron_weights_disable: true
+connector_tenant_cron_downtimes_disable: true
+connector_tenant_webapi_token: "{{ connector_tokens.default.webapi }}"
+connector_tenant_bdii: false
+connector_tenant_jobs:
+  - name: CORE
+    dirname: CORE
+connector_tenant_auth_useplainhttpauth: false
+connector_tenant_topo_fetchtype: ServiceGroups
+connector_tenant_topo_uidserviceendpoints: true
+connector_tenant_topo_feed: http://dummy.csv

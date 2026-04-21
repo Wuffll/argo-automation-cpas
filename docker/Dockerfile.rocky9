@@ -1,0 +1,53 @@
+FROM rockylinux:9
+LABEL org.opencontainers.image.authors=daniel.vrcic@gmail.com
+RUN groupadd user -g 1000 && useradd -u 1000 -g 1000 user -m -d /home/user -s /bin/zsh
+RUN dnf -y update; dnf clean all
+RUN dnf -y install epel-release rocky-repos && \
+    dnf -y install \
+            procps-ng \
+      ack \
+      ctags \
+      cronie \
+      fortune-mod \
+      git \
+      glibc-all-langpacks \
+      iproute \
+      make \
+      mc \
+      net-tools \
+      passwd \
+      python3-devel \
+      python3-pip \
+      python3-setuptools \
+      python3.12-devel \
+      rpmdevtools \
+      openssh-server \
+      sudo \
+      supervisor \
+      the_silver_searcher \
+      tmux \
+      vim \
+      wget \
+      yum-utils \
+      zsh
+RUN dnf --enablerepo=devel install -y ncurses-compat-libs
+RUN pip install -U pip; pip3 install -U pip
+RUN passwd -d root
+VOLUME [ "/sys/fs/cgroup" ]
+RUN sed -r -i 's/(^Defaults.*always_set_home)/# \1/' /etc/sudoers
+RUN echo "user ALL=(ALL) NOPASSWD: ALL" >> /etc/sudoers
+RUN sudo python3.12 -m venv /opt/poetry-tool/
+RUN sudo sh -c '\
+  . /opt/poetry-tool/bin/activate \
+  && pip install -U pip \
+  && pip install -U setuptools \
+  && pip install -U poetry==2.*'
+RUN sudo ln -s /opt/poetry-tool/bin/poetry /usr/local/bin/
+USER user
+WORKDIR /home/user
+RUN curl -sfL https://git.io/chezmoi | sh
+COPY chezmoi-config-apply.sh /home/user
+COPY sshkey.pub /home/user/.ssh/authorized_keys
+RUN sudo chmod 700 /home/user/.ssh && sudo chown -R user:user /home/user/.ssh
+RUN sudo chmod 0400 /etc/shadow
+CMD ["/bin/zsh"]

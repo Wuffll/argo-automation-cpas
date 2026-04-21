@@ -1,0 +1,54 @@
+[DEFAULT]
+VENV = /opt/argo-automation-cpas/
+
+[general]
+loggers = stdout, file, syslog
+log_level = INFO
+log_file = %(VENV)svar/log/argo-cpas.log
+syslog_address = /dev/log
+syslog_facility = user
+request_timeout = 30.0
+verify_ssl = true
+retries = 3
+retry_delay = 5.0
+strip_ansi = true
+daemon_sleep = 60
+
+[automation]
+tenants = AUTOMATION
+
+[ams]
+project = ARGO-MON-AUTOMATION
+host = api.devel.msg.argo.grnet.gr
+subscription = events-sub-2
+token = AUTOMATION_TOKEN
+pullmsgs = 1
+ack = false
+return_immediately = true
+events = INIT_TOPOLOGY_CONNECTOR
+
+[webapi]
+host = api.devel.mon.argo.grnet.gr
+url_api_config = /api/v2/feeds/topology
+url_api_integrations = /api/v3/integrations/components/{component}/by-tenant-name/{tenant_name}/refresh
+token_component_admin = t0k3n
+components = monbox, connector, poem-admin, poem-viewer
+
+[statusapi]
+api = https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
+
+[iam]
+api = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
+oidc_client_id = client-id
+oidc_client_secret = client-secret
+
+[ansible]
+user_connector = user
+group_connector = user
+ssh_private_key = /home/user/.ssh/sshkey
+defaults_file = %(VENV)setc/roles-defaults.yml
+tokens_manual = %(VENV)setc/tokens.yml
+connectors_playbook = connectors.yml
+connectors_inventory = connectors.ini
+
+# vim: ft=conf

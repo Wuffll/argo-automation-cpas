@@ -1,0 +1,64 @@
+---
+
+- name: Reload cron daemon on connector cron changes
+  listen: Reload cron daemon
+  ansible.builtin.systemd_service:
+    name: crond
+    state: reloaded
+
+
+- name: Run topology connector
+  listen: Run topology connector
+  ansible.builtin.shell:
+    cmd: |
+      source {{ connector_virtenv_path }}/bin/activate
+      {{ connector_virtenv_path}}/usr/bin/topology-{{ item.tenant_topo_type | lower }}-connector.py \
+        -g {{ connector_virtenv_path }}/etc/global.conf \
+        -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  when: not item.tenant_cron_topology_disable | default(false)
+
+
+# - name: Run downtimes connector
+#   listen: Run downtimes connector
+#   ansible.builtin.shell:
+#     cmd: |
+#       source {{ connector_virtenv_path }}/bin/activate
+#       {{ connector_virtenv_path}}/usr/bin/downtimes-{{ item.tenant_topo_type | lower }}-connector.py \
+#         -g {{ connector_virtenv_path }}/etc/global.conf \
+#         -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf \
+#         -d $(date --date '+1 days' '+%Y-%m-%d')
+#   loop: "{{ connector_tenants }}"
+#   loop_control:
+#     label: "{{ item.tenant_name }}"
+#   when: not item.tenant_cron_downtimes_disable | default(false)
+#
+#
+# - name: Run service-types connector
+#   listen: Run service-types connector
+#   ansible.builtin.shell:
+#     cmd: |
+#       source {{ connector_virtenv_path }}/bin/activate
+#       {{ connector_virtenv_path}}/usr/bin/service-types-{{ item.tenant_topo_type | lower }}-connector.py \
+#         -g {{ connector_virtenv_path }}/etc/global.conf \
+#         -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf
+#   loop: "{{ connector_tenants }}"
+#   loop_control:
+#     label: "{{ item.tenant_name }}"
+#   when: not item.tenant_cron_servicetypes_disable | default(false)
+#
+#
+# - name: Run weights connector
+#   listen: Run weights connector
+#   ansible.builtin.shell:
+#     cmd: |
+#       source {{ connector_virtenv_path }}/bin/activate
+#       {{ connector_virtenv_path}}/usr/bin/weights-vapor-connector.py \
+#         -g {{ connector_virtenv_path }}/etc/global.conf \
+#         -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf
+#   loop: "{{ connector_tenants }}"
+#   loop_control:
+#     label: "{{ item.tenant_name }}"
+#   when: not item.tenant_cron_weights_disable | default(false)

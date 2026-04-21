@@ -1,0 +1,101 @@
+[project]
+name = "argo-automation-cpas"
+dynamic = ["version"]
+license = "Apache-2.0"
+readme = "README.md"
+authors = [
+	{ name = "Daniel Vrcic", email ="daniel.vrcic@gmail.com" }
+]
+description = "Automation service for the dynamic configuration of ARGO components: Connectors, POEM, Archiver and Sensu (CPAS)."
+dependencies = [
+	"aiohttp==3.11.0",
+	"ansible-runner==2.4.0",
+    "ansible-core==2.20.4",
+	"argo-ams-library",
+	"pyyaml",
+	"ansible (>=13.5.0,<14.0.0)"
+]
+requires-python = ">=3.12"
+
+[build-system]
+requires = ["setuptools"]
+build-backend = "setuptools.build_meta"
+
+[tool.poetry]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = "^3.12"
+aiohttp = "*"
+ansible-core = "*"
+ansible-runner = "*"
+argo-ams-library = "*"
+
+[tool.poetry.group.devel.dependencies]
+pytest = "^8.3.0"
+pytest-asyncio = "^0.25.0"
+ruff = "^0.11.0"
+build = "*"
+pdbpp = "*"
+
+[project.scripts]
+argo-cpas = "argo_automation_cpas.cli.argo_cpas:main"
+argo-cpasd = "argo_automation_cpas.cli.argo_cpasd:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+pythonpath = ["."]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.setuptools]
+packages = [
+	'argo_automation_cpas',
+	'argo_automation_cpas.cli',
+]
+
+[tool.setuptools.package-dir]
+argo_automation_cpas = "modules/"
+"argo_automation_cpas.cli" = "cli/"
+
+[tool.setuptools.data-files]
+"" = ["pyproject.toml", "poetry.lock"]
+"etc" = [
+	"config/argo-cpas.conf.template",
+	"config/roles-defaults.yml",
+]
+"usr/lib/systemd/system" = ["init/argo-cpasd.service"]
+"etc/logrotate.d" = ["logrotate/logfile"]
+"var/log" = ["var/log/.keep"]
+"var/cache" = ["var/cache/.keep"]
+"var/spool" = ["var/spool/.keep"]
+"ansible/project" = [
+	"ansible/project/ansible.cfg",
+	"ansible/project/init.yml",
+	"ansible/project/connectors.yml",
+]
+"ansible/inventory" = [
+	"ansible/inventory/connectors.ini",
+]
+"ansible/roles/connector/defaults" = [
+	"ansible/roles/connector/defaults/main.yml",
+]
+"ansible/roles/connector/handlers" = [
+	"ansible/roles/connector/handlers/main.yml",
+]
+"ansible/roles/connector/tasks" = [
+	"ansible/roles/connector/tasks/main.yml",
+	"ansible/roles/connector/tasks/conf-setup-add.yml",
+	"ansible/roles/connector/tasks/conf-setup-remove.yml",
+	"ansible/roles/connector/tasks/cron-setup-add.yml",
+	"ansible/roles/connector/tasks/cron-setup-remove.yml",
+]
+"ansible/roles/connector/templates" = [
+	"ansible/roles/connector/templates/customer.conf.j2",
+]
+
+[tool.setuptools.dynamic]
+version = { attr = "version.vernum" }

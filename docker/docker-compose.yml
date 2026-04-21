@@ -1,0 +1,137 @@
+services:
+  controller:
+    env_file:
+      - compose.env
+    image: ${IMAGEC}
+    command: sudo /usr/bin/supervisord -nc /etc/supervisor/supervisord.conf
+    entrypoint: /sbin/init
+    container_name: controller
+    privileged: true
+    hostname: controller
+    cgroup: host
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    stdin_open: true
+    user: root
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - $HOME:/mnt
+      - $HOME/.docker_zsh_history:/home/user/.zsh_history
+      - /dev/log:/dev/log
+      - /etc/localtime:/etc/localtime:ro
+      - ../:/home/user/argo-cpas-source/
+      - ../config/:$VENV/etc
+      - ../var/:$VENV/var
+      - ../ansible:$VENV/ansible
+      - ../modules/:$VENV/lib/python3.12/site-packages/argo_automation_cpas
+      - type: bind
+        source: ${SSH_AUTH_SOCK}
+        target: ${SSH_AUTH_SOCK}
+    environment:
+      - SSH_AUTH_SOCK
+
+    networks:
+      argo-automation-play:
+        ipv4_address: 172.21.0.12
+
+  connectors:
+    env_file:
+      - compose.env
+    image: ${IMAGES1}
+    command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
+    entrypoint: /sbin/init
+    container_name: connectors
+    hostname: connectors
+    cgroup: host
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    stdin_open: true
+    user: root
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - $HOME:/mnt
+      - $HOME/.docker_zsh_history:/home/user/.zsh_history
+      - /dev/log:/dev/log
+      - /etc/localtime:/etc/localtime:ro
+      - type: bind
+        source: ${SSH_AUTH_SOCK}
+        target: ${SSH_AUTH_SOCK}
+    environment:
+      - SSH_AUTH_SOCK
+    networks:
+      argo-automation-play:
+        ipv4_address: 172.21.0.15
+
+  poem:
+    env_file:
+      - compose.env
+    image: ${IMAGES2}
+    command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
+    entrypoint: /sbin/init
+    container_name: poem
+    hostname: poem
+    cgroup: host
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    stdin_open: true
+    user: root
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - $HOME:/mnt
+      - $HOME/.docker_zsh_history:/home/user/.zsh_history
+      - /dev/log:/dev/log
+      - /etc/localtime:/etc/localtime:ro
+      - type: bind
+        source: ${SSH_AUTH_SOCK}
+        target: ${SSH_AUTH_SOCK}
+    environment:
+      - SSH_AUTH_SOCK
+    networks:
+      argo-automation-play:
+        ipv4_address: 172.21.0.16
+
+  #archiver:
+    #env_file:
+      #- compose.env
+    #image: ${IMAGES3}
+    #command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
+    #entrypoint: /sbin/init
+    #container_name: archiver
+    #hostname: archiver
+    #cgroup: host
+    #tty: true
+    #tmpfs:
+      #- /run
+      #- /tmp
+    #stdin_open: true
+    #user: root
+    #volumes:
+      #- /sys/fs/cgroup:/sys/fs/cgroup
+      #- $HOME:/mnt
+      #- $HOME/.docker_zsh_history:/home/user/.zsh_history
+      #- /dev/log:/dev/log
+      #- /etc/localtime:/etc/localtime:ro
+      #- type: bind
+        #source: ${SSH_AUTH_SOCK}
+        #target: ${SSH_AUTH_SOCK}
+    #environment:
+      #- SSH_AUTH_SOCK
+    #networks:
+      #argo-automation-play:
+        #ipv4_address: 172.21.0.17
+
+networks:
+  argo-automation-play:
+    driver: bridge
+    enable_ipv6: false
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.21.0.0/24
+          gateway: 172.21.0.1
