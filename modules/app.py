@@ -108,8 +108,8 @@ class Application:
 
         ams = await asyncio.to_thread(AMS().init)
 
-        payloads = await ams.pull_messages()
-        if not payloads:
+        ams_events = await ams.pull_messages()
+        if not ams_events:
             return
 
         webapi = WebAPI()
@@ -127,7 +127,7 @@ class Application:
                 self.settings.webapi.url_api_config, token=connector_token
             )
 
-            for payload in payloads:
+            for payload in ams_events:
                 props = payload.get("properties", {})
                 tenant_name = props["tenant_name"]
                 tenant_id = props["tenant_id"]
