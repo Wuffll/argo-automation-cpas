@@ -93,27 +93,29 @@ class Settings:
             token_spool=os.path.join(self.venv, "var", "spool", "iam_access.yml"),
         )
         self.statusapi = Section(
-            api=statusapi.get("api", "") if statusapi else "",
+            api=statusapi.get("api", "")
         )
 
-        defaults_file = ansible.get("defaults_file", "") if ansible else ""
+        defaults_file = ansible.get("defaults_file", "")
         if defaults_file and not os.path.isabs(defaults_file):
             defaults_file = os.path.join(self.config_dir, defaults_file)
 
-        tokens_file = ansible.get("tokens_manual", "") if ansible else ""
+        tokens_file = ansible.get("tokens_manual", "")
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
         self.ansible = Section(
-            user_connector=ansible.get("user_connector", "") if ansible else "",
-            group_connector=ansible.get("group_connector", "") if ansible else "",
-            ssh_private_key=ansible.get("ssh_private_key", "") if ansible else "",
+            user_connector=ansible.get("user_connector", ""),
+            group_connector=ansible.get("group_connector", ""),
+            ssh_private_key=ansible.get("ssh_private_key", ""),
             defaults_file=defaults_file,
             defaults=self._load_ansible_defaults(defaults_file),
             tokens_file=tokens_file,
             tokens=self._load_connector_tokens(tokens_file),
-            connectors_playbook=ansible.get("connectors_playbook", "connectors.yml") if ansible else "connectors.yml",
-            connectors_inventory=ansible.get("connectors_inventory", "connectors.ini") if ansible else "connectors.ini",
+            connectors_playbook=ansible.get("connectors_playbook", "connectors.yml"),
+            connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
+            poem_playbook=ansible.get("poem_playbook", "poem.yml"),
+            poem_inventory=ansible.get("poem_inventory", "poem.ini"),
         )
 
         self.base_url = self.webapi.url

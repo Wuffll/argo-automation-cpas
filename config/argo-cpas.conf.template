@@ -50,5 +50,7 @@ defaults_file = %(VENV)setc/roles-defaults.yml
 tokens_manual = %(VENV)setc/tokens.yml
 connectors_playbook = connectors.yml
 connectors_inventory = connectors.ini
+poem_playbook = poem.yml
+poem_inventory = poem.ini
 
 # vim: ft=conf

@@ -18,6 +18,8 @@ def _event_playbook(settings, event):
     """Return (playbook, inventory) for an AMS event name, or (None, None)."""
     if event == "INIT_TOPOLOGY_CONNECTOR":
         return settings.ansible.connectors_playbook, settings.ansible.connectors_inventory
+    elif event == "INIT_POEM":
+        return settings.ansible.poem_playbook, settings.ansible.poem_inventory
     return None, None
 
 
@@ -111,6 +113,8 @@ class Application:
         ams_events = await ams.pull_messages()
         if not ams_events:
             return
+
+        import pdb; pdb.set_trace()
 
         webapi = WebAPI()
         iam = IAM()
