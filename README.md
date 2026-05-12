@@ -27,7 +27,7 @@ Automation service for the dynamic configuration of ARGO components: Connectors,
 poetry install
 ```
 
-For development (includes pytest, ruff, pdbpp):
+For development (includes ruff, pdbpp):
 
 ```bash
 poetry install --with devel
@@ -151,9 +151,6 @@ config/
   tokens.yml                # Manual connector tokens (per-tenant Web API tokens)
 docker/
   Dockerfile.controller_ubuntu  # Container image for the controller
-tests/
-  conftest.py               # Shared test fixtures and settings singleton reset
-  test_config.py            # Configuration unit tests
 version.py                  # Version string (0.1.0)
 Makefile                    # Build targets (wheel-prod, wheel-devel, clean)
 pyproject.toml              # Project metadata and tool configuration
@@ -310,12 +307,6 @@ make wheel-prod
 
 # development wheel (appends date-based .dev suffix to version)
 make wheel-devel
-```
-
-## Testing
-
-```bash
-poetry run pytest
 ```
 
 ## License
