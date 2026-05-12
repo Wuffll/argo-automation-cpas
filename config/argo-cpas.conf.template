@@ -25,7 +25,7 @@ token = AUTOMATION_TOKEN
 pullmsgs = 1
 ack = false
 return_immediately = true
-events = INIT_TOPOLOGY_CONNECTOR
+events = INIT_TOPOLOGY_CONNECTOR, INIT_POEM
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
