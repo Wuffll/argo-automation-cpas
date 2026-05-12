@@ -45,8 +45,8 @@ class Settings:
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
         iam = self._get_section(parser, "iam")
-        statusapi = self._get_optional_section(parser, "statusapi")
-        ansible = self._get_optional_section(parser, "ansible")
+        statusapi = self._get_section(parser, "statusapi")
+        ansible = self._get_section(parser, "ansible")
 
         self.automation = Section(
             tenants=self._split_csv(automation.get("tenants", "")),
@@ -123,11 +123,6 @@ class Settings:
     def _get_section(self, parser, section_name):
         if not parser.has_section(section_name):
             raise ValueError("Missing required section [%s] in %s" % (section_name, self.path))
-        return parser[section_name]
-
-    def _get_optional_section(self, parser, section_name):
-        if not parser.has_section(section_name):
-            return None
         return parser[section_name]
 
     def _normalize_url(self, value):
