@@ -1,0 +1,35 @@
+---
+
+- name: Query whether tenants_tenant table exist - {{ item.tenant_name }}
+  vars:
+    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
+  community.postgresql.postgresql_query:
+    db: "{{ poem_db_name }}"
+    login_host: localhost
+    login_user: "{{ poem_db_user }}"
+    login_password: "{{ poem_db_password }}"
+    search_path: "{{ item.tenant_name | lower }}"
+    query: SELECT username FROM users_custuser
+  register: poem_tenant_query
+  failed_when: false
+
+
+- name: Table users_custuser exist - {{ item.tenant_name }}
+  ansible.builtin.set_fact:
+    poem_tenant_tables_exists: |
+      {% if "not exist" in poem_tenant_query.msg | default('') -%}
+        {{ false }}
+      {% else %}
+        {{ true }}
+      {% endif %}
+
+
+- name: Create tenant tables - {{ item.tenant_name }}
+  ansible.builtin.shell:
+    cmd: |
+      source {{ poem_virtenv_path }}/bin/activate
+      poem-tenant -t {{ item.tenant_name }} -d {{ item.tenant_fqdn }}
+    chdir:
+      "{{ poem_virtenv_path }}"
+  when: not poem_tenant_tables_exists | from_yaml
+  changed_when: not poem_tenant_tables_exists | from_yaml

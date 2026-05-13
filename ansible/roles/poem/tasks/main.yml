@@ -1,0 +1,22 @@
+---
+
+- name: Set up tenants DB tables
+  ansible.builtin.include_tasks: ./tenant-db-tables.yml
+  loop: "{{ poem_tenants }}"
+  when: is_installed
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: Set up tokens
+  ansible.builtin.include_tasks: ./tokens-tenants-set.yml
+  loop: "{{ poem_tenants }}"
+  when: is_installed
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
+- name: Remove tenants
+  ansible.builtin.include_tasks: ./remove_tenants.yml
+  loop: "{{ poem_remove_tenants }}"
+  when: is_installed and poem_remove_tenants
