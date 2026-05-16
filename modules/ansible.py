@@ -31,6 +31,7 @@ class Ansible:
                         break
 
         extravars = dict()
+
         if add_tenants is not None:
             entries = []
             for t in add_tenants:
@@ -39,6 +40,10 @@ class Ansible:
                 if key in webapi_token_by_tenant:
                     entry["tenant_webapi_token"] = webapi_token_by_tenant[key]
                     LOG.info("Set tenant_webapi_token for tenant=%s from component_tokens", key)
+                poem_fqdn = t.lower() + self.settings.ansible.poem_fqdn_suffix
+                if poem_fqdn:
+                    LOG.info("Set POEM FQDN=%s", poem_fqdn)
+                    entry["tenant_fqdn"] = poem_fqdn
                 entries.append(entry)
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
