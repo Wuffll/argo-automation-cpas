@@ -52,5 +52,6 @@ connectors_playbook = connectors.yml
 connectors_inventory = connectors.ini
 poem_playbook = poem.yml
 poem_inventory = poem.ini
+poem_fqdn_suffix = devel.mon.argo.grnet.gr
 
 # vim: ft=conf

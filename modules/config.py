@@ -116,6 +116,7 @@ class Settings:
             connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
             poem_playbook=ansible.get("poem_playbook", "poem.yml"),
             poem_inventory=ansible.get("poem_inventory", "poem.ini"),
+            poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
         )
 
         self.base_url = self.webapi.url
