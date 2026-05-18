@@ -35,7 +35,7 @@ class SessionWithRetry:
                     else:
                         body = await response.text()
                     return body
-            except aiohttp.ClientConnectionError as exc:
+            except (aiohttp.ClientConnectionError, asyncio.TimeoutError) as exc:
                 last_exc = exc
                 if attempt < self.retries - 1:
                     wait = self.retry_delay * (attempt + 1)
