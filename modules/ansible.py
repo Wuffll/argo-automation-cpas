@@ -5,6 +5,7 @@ import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
 from argo_automation_cpas.config import get_settings
+from argo_automation_cpas.restapi_tokens import RestAPITokens
 from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)
@@ -20,31 +21,31 @@ class Ansible:
             for k, v in self.settings.ansible.defaults.items()
             if k.startswith(self.PREFIX + "tenant_")
         }
+        self.restapi_tokens = RestAPITokens()
 
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
         extravars = dict()
 
         if add_tenants is not None:
+            restapi_tokens = self.restapi_tokens.ensure_tokens(add_tenants)
             entries = []
             for t in add_tenants:
-                key = t.upper()
-                entry = {"tenant_name": key}
-                if key in component_tokens:
-                    tokens = component_tokens[key]
-                poem_tokens = dict()
+                entry = {"tenant_name": t}
+                tokens = (component_tokens or {}).get(t) or {}
                 poem_tokens = {
-                    'webapi_ro': component_tokens[key].get('poem-viewer'),
-                    'webapi_rw': component_tokens[key].get('poem-admin')
+                    'webapi_ro': tokens.get('poem-viewer'),
+                    'webapi_rw': tokens.get('poem-admin'),
+                    'restapi': restapi_tokens[t].get('restapi')
                 }
                 entry["tokens"] = poem_tokens
-                poem_fqdn = f'{t}.{self.settings.ansible.poem_fqdn_suffix}'
+                poem_fqdn = f'{t.lower()}.{self.settings.ansible.poem_fqdn_suffix}'
                 if poem_fqdn:
                     LOG.info("Set POEM FQDN=%s", poem_fqdn)
                     entry["tenant_fqdn"] = poem_fqdn
                 entries.append(entry)
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
-            extravars["poem_remove_tenants"] = [t.upper() for t in remove_tenants]
+            extravars["poem_remove_tenants"] = [t for t in remove_tenants]
 
         return extravars
 
