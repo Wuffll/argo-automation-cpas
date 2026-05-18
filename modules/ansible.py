@@ -27,7 +27,10 @@ class Ansible:
         extravars = dict()
 
         if add_tenants is not None:
-            restapi_tokens = self.restapi_tokens.ensure_tokens(add_tenants)
+            restapi_tokens = self.restapi_tokens.ensure_tokens(
+                add_tenants,
+                self.settings.ansible.poem_restapi_token,
+            )
             entries = []
             for t in add_tenants:
                 entry = {"tenant_name": t}

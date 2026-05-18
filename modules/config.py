@@ -21,6 +21,7 @@ DEFAULT_DAEMON_SLEEP = 60
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
 DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
+DEFAULT_POEM_RESTAPI_TOKEN = os.path.join(DEFAULT_VENV, "var", "spool", "restapi_tokens.json")
 
 _SYSLOG_FACILITIES = {
     name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
@@ -104,6 +105,10 @@ class Settings:
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
+        poem_restapi_token = ansible.get("poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN)
+        if poem_restapi_token and not os.path.isabs(poem_restapi_token):
+            poem_restapi_token = os.path.join(self.config_dir, poem_restapi_token)
+
         self.ansible = Section(
             user_connector=ansible.get("user_connector", ""),
             group_connector=ansible.get("group_connector", ""),
@@ -117,6 +122,7 @@ class Settings:
             poem_playbook=ansible.get("poem_playbook", "poem.yml"),
             poem_inventory=ansible.get("poem_inventory", "poem.ini"),
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
+            poem_restapi_token=poem_restapi_token,
         )
 
         self.base_url = self.webapi.url

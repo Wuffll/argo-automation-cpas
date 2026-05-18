@@ -53,5 +53,6 @@ connectors_inventory = connectors.ini
 poem_playbook = poem.yml
 poem_inventory = poem.ini
 poem_fqdn_suffix = devel.mon.argo.grnet.gr
+poem_restapi_token = %(VENV)svar/spool/restapi_tokens.json
 
 # vim: ft=conf

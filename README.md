@@ -259,6 +259,7 @@ Configuration for the Ansible connector playbook runs.
 | `tokens_manual`        | Path to a YAML file containing manual connector tokens. The file must have a top-level `connector_tokens` mapping. Supports `%(VENV)s` interpolation.                                | _(empty)_        |
 | `connectors_playbook`  | Filename of the connectors playbook inside `ansible/project/`.                                                                                                                       | `connectors.yml` |
 | `connectors_inventory` | Filename of the connectors inventory inside `ansible/inventory/`.                                                                                                                    | `connectors.ini` |
+| `poem_restapi_token`   | Path to the JSON file used to cache generated POEM REST-API tenant tokens. Supports `%(VENV)s` interpolation.                                                                        | `<VENV>/var/spool/restapi_tokens.json` |
 
 
 ### Ansible roles-defaults file (`roles-defaults.yml`)
