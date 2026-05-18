@@ -22,14 +22,6 @@ class Ansible:
         }
 
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
-        webapi_token_by_tenant = {}
-        if component_tokens:
-            for tenant_name, components in component_tokens.items():
-                for component, token in (components or {}).items():
-                    if "poem" in component and token:
-                        webapi_token_by_tenant[tenant_name.upper()] = token
-                        break
-
         extravars = dict()
 
         if add_tenants is not None:
@@ -37,10 +29,15 @@ class Ansible:
             for t in add_tenants:
                 key = t.upper()
                 entry = {"tenant_name": key}
-                if key in webapi_token_by_tenant:
-                    entry["tenant_webapi_token"] = webapi_token_by_tenant[key]
-                    LOG.info("Set tenant_webapi_token for tenant=%s from component_tokens", key)
-                poem_fqdn = t.lower() + self.settings.ansible.poem_fqdn_suffix
+                if key in component_tokens:
+                    tokens = component_tokens[key]
+                poem_tokens = dict()
+                poem_tokens = {
+                    'webapi_ro': component_tokens[key].get('poem-viewer'),
+                    'webapi_rw': component_tokens[key].get('poem-admin')
+                }
+                entry["tokens"] = poem_tokens
+                poem_fqdn = f'{t}.{self.settings.ansible.poem_fqdn_suffix}'
                 if poem_fqdn:
                     LOG.info("Set POEM FQDN=%s", poem_fqdn)
                     entry["tenant_fqdn"] = poem_fqdn

@@ -19,8 +19,8 @@
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
       poem-token webapi -t {{ item.tenant_name }} \
-      -ko {{ poem_tokens[item.tenant_name | lower].webapi_ro }} \
-      -kw {{ poem_tokens[item.tenant_name | lower].webapi_rw }}
+      -ko {{ item.tokens.webapi_ro }} \
+      -kw {{ item.tokens.webapi_rw }}
     chdir:
       "{{ poem_virtenv_path }}"
   when: poem_token_query.rowcount == 0
@@ -46,7 +46,7 @@
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
       poem-token restapi -t {{ item.tenant_name }} \
-      -k {{ poem_tokens[item.tenant_name | lower].restapi }}
+      -k {{ item.tokens.restapi }}
     chdir:
       "{{ poem_virtenv_path }}"
   when: poem_token_query.rowcount == 0
