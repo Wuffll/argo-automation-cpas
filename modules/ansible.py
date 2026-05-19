@@ -51,7 +51,7 @@ class Ansible:
                 if poem_fqdn:
                     LOG.info("Set POEM FQDN=%s", poem_fqdn)
                     entry["tenant_fqdn"] = poem_fqdn
-                entries.append(entry)
+                entries.append({**entry, **self.poem_tenant_defaults})
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
             extravars["poem_remove_tenants"] = [t for t in remove_tenants]
