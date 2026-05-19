@@ -106,7 +106,11 @@ class Ansible:
         # Fall back to the webapi tokens spool when not provided explicitly
         # (e.g. manual --only-ansible runs skip the webapi refresh step).
         if component_tokens is None:
-            component_tokens = WebAPI.load_tokens(self.settings.webapi.tokens_spool)
+            webapi = WebAPI()
+            try:
+                component_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+            finally:
+                await webapi.close()
             if component_tokens:
                 LOG.info("Loaded tokens from spool %s for tenants: %s",
                          self.settings.webapi.tokens_spool,

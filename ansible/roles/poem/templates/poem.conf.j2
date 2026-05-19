@@ -1,18 +1,14 @@
-{% for t in poem_tenants %}
-{{' '}}{{' '}}
-[GENERAL_{{ t.tenant_name }}]
-Namespace = {{ t.tenant_namespace }}
-SamlLoginString = {{ t.tenant_samlloginstring }}
-SamlServiceName = {{ t.tenant_samlservicename }}
-TermsOfUse = {{ t.tenant_termsofuse }}
-PrivacyPolicies = {{ t.tenant_privacypolicies }}
-{% if t.tenant_servicetitles | default(false) %}
-UseServiceTitles = {{ t.tenant_servicetitles }}
+[GENERAL_{{ tenant_name }}]
+Namespace = {{ tenant_namespace }}
+SamlLoginString = {{ tenant_samlloginstring }}
+SamlServiceName = {{ tenant_samlservicename }}
+TermsOfUse = {{ tenant_termsofuse }}
+PrivacyPolicies = {{ tenant_privacypolicies }}
+{% if tenant_servicetitles | default(false) %}
+UseServiceTitles = {{ tenant_servicetitles }}
 {% endif %}
 {{' '}}
-[SUPERUSER_{{ t.tenant_name }}]
-Name = {{ t.tenant_superuser_name }}
-Password = {{ t.tenant_superuser_password }}
-Email = {{ t.tenant_superuser_email }}
-{{' '}}{{' '}}
-{% endfor %}
+[SUPERUSER_{{ tenant_name }}]
+Name = {{ tenant_superuser_name }}
+Password = {{ tenant_superuser_password }}
+Email = {{ tenant_superuser_email }}

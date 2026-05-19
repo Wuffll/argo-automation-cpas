@@ -1,0 +1,54 @@
+---
+
+- name: Read poem.conf - {{ item.tenant_name }}
+  ansible.builtin.slurp:
+    src: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+  register: poem_conf_file
+
+
+- name: Check tenant poem.conf sections - {{ item.tenant_name }}
+  ansible.builtin.set_fact:
+    poem_conf_lines: "{{ (poem_conf_file.content | b64decode).splitlines() }}"
+    poem_general_section_exists: >-
+      {{ ('[GENERAL_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
+    poem_superuser_section_exists: >-
+      {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
+
+
+- name: Append GENERAL section to poem.conf - {{ item.tenant_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    marker: "# {mark} ANSIBLE MANAGED GENERAL_{{ item.tenant_name }}"
+    insertafter: EOF
+    block: |
+      [GENERAL_{{ item.tenant_name }}]
+      Namespace = {{ item.tenant_namespace }}
+      SamlLoginString = {{ item.tenant_samlloginstring }}
+      SamlServiceName = {{ item.tenant_samlservicename }}
+      TermsOfUse = {{ item.tenant_termsofuse }}
+      PrivacyPolicies = {{ item.tenant_privacypolicies }}
+      {% if item.tenant_servicetitles | default(false) %}
+      UseServiceTitles = {{ item.tenant_servicetitles }}
+      {% endif %}
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  when: not poem_general_section_exists
+  notify: Restart apache
+
+
+- name: Append SUPERUSER section to poem.conf - {{ item.tenant_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    marker: "# {mark} ANSIBLE MANAGED SUPERUSER_{{ item.tenant_name }}"
+    insertafter: EOF
+    block: |
+      [SUPERUSER_{{ item.tenant_name }}]
+      Name = {{ item.tenant_superuser_name }}
+      Password = {{ item.tenant_superuser_password }}
+      Email = {{ item.tenant_superuser_email }}
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  when: not poem_superuser_section_exists
+  notify: Restart apache

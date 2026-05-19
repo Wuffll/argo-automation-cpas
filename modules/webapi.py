@@ -48,8 +48,7 @@ class WebAPI:
         )
         return overrides
 
-    @staticmethod
-    def load_tokens(path):
+    def load_tokens(self, path):
         if not os.path.exists(path):
             return {}
         try:
@@ -90,15 +89,13 @@ class WebAPI:
                                 component, tenant_name, exc)
         return tokens
 
-    @staticmethod
-    def save_tokens(tokens, path):
+    def save_tokens(self, tokens, path):
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as fh:
             json.dump(tokens, fh, indent=2)
         LOG.info("Webapi tokens saved to %s", path)
 
-    @staticmethod
-    def find_connector_token(tokens):
+    def find_connector_token(self, tokens):
         return next(
             (t[component] for t in tokens.values() for component in t if "connector" in component),
             None,

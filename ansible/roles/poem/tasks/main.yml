@@ -8,6 +8,13 @@
     label: "{{ item.tenant_name }}"
 
 
+- name: Set up tenants config file
+  ansible.builtin.include_tasks: ./tenant-poem-conf.yml
+  loop: "{{ poem_tenants }}"
+  when: poem_tenants | length > 0
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
 - name: Set up tokens
   ansible.builtin.include_tasks: ./tokens-tenants-set.yml
   loop: "{{ poem_tenants }}"
@@ -17,6 +24,6 @@
 
 
 - name: Remove tenants
-  ansible.builtin.include_tasks: ./remove_tenants.yml
+  ansible.builtin.include_tasks: ./remove-tenants.yml
   loop: "{{ poem_remove_tenants }}"
   when: poem_remove_tenants | length > 0
