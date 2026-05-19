@@ -13,6 +13,7 @@ LOG = logging.getLogger(__name__)
 
 class Ansible:
     PREFIX = "connector_"
+    PREFIX2 = "poem_"
 
     def __init__(self):
         self.settings = get_settings()
@@ -20,6 +21,11 @@ class Ansible:
             k[len(self.PREFIX):]: v
             for k, v in self.settings.ansible.defaults.items()
             if k.startswith(self.PREFIX + "tenant_")
+        }
+        self.poem_tenant_defaults = {
+            k[len(self.PREFIX2):]: v
+            for k, v in self.settings.ansible.defaults.items()
+            if k.startswith(self.PREFIX2 + "tenant_")
         }
         self.restapi_tokens = RestAPITokens()
 

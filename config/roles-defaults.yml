@@ -12,3 +12,7 @@ connector_tenant_auth_useplainhttpauth: false
 connector_tenant_topo_fetchtype: ServiceGroups
 connector_tenant_topo_uidserviceendpoints: true
 connector_tenant_topo_feed: http://dummy.csv
+
+poem_tenant_superuser_name: poem
+poem_tenant_superuser_password: poempass
+poem_tenant_namespace: poemnamespace
