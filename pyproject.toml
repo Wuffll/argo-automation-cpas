@@ -32,8 +32,6 @@ ansible-runner = "*"
 argo-ams-library = "*"
 
 [tool.poetry.group.devel.dependencies]
-pytest = "^8.3.0"
-pytest-asyncio = "^0.25.0"
 ruff = "^0.11.0"
 build = "*"
 pdbpp = "*"
@@ -41,11 +39,6 @@ pdbpp = "*"
 [project.scripts]
 argo-cpas = "argo_automation_cpas.cli.argo_cpas:main"
 argo-cpasd = "argo_automation_cpas.cli.argo_cpasd:main"
-
-[tool.pytest.ini_options]
-testpaths = ["tests"]
-asyncio_mode = "auto"
-pythonpath = ["."]
 
 [tool.ruff]
 line-length = 100

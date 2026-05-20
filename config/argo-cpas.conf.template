@@ -25,7 +25,7 @@ token = AUTOMATION_TOKEN
 pullmsgs = 1
 ack = false
 return_immediately = true
-events = INIT_TOPOLOGY_CONNECTOR
+events = INIT_TOPOLOGY_CONNECTOR, INIT_POEM
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
@@ -50,5 +50,9 @@ defaults_file = %(VENV)setc/roles-defaults.yml
 tokens_manual = %(VENV)setc/tokens.yml
 connectors_playbook = connectors.yml
 connectors_inventory = connectors.ini
+poem_playbook = poem.yml
+poem_inventory = poem.ini
+poem_fqdn_suffix = devel.mon.argo.grnet.gr
+poem_restapi_token = %(VENV)svar/spool/restapi_tokens.json
 
 # vim: ft=conf

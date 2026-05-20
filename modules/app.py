@@ -18,6 +18,8 @@ def _event_playbook(settings, event):
     """Return (playbook, inventory) for an AMS event name, or (None, None)."""
     if event == "INIT_TOPOLOGY_CONNECTOR":
         return settings.ansible.connectors_playbook, settings.ansible.connectors_inventory
+    if event == "INIT_POEM":
+        return settings.ansible.poem_playbook, settings.ansible.poem_inventory
     return None, None
 
 
@@ -108,8 +110,8 @@ class Application:
 
         ams = await asyncio.to_thread(AMS().init)
 
-        payloads = await ams.pull_messages()
-        if not payloads:
+        ams_events = await ams.pull_messages()
+        if not ams_events:
             return
 
         webapi = WebAPI()
@@ -122,12 +124,8 @@ class Application:
             component_tokens = await webapi.refresh_tokens()
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
-            connector_token = webapi.find_connector_token(component_tokens)
-            webapi_overrides = await webapi.fetch_topology_config(
-                self.settings.webapi.url_api_config, token=connector_token
-            )
 
-            for payload in payloads:
+            for payload in ams_events:
                 props = payload.get("properties", {})
                 tenant_name = props["tenant_name"]
                 tenant_id = props["tenant_id"]
@@ -136,6 +134,7 @@ class Application:
                          tenant_name, tenant_id, event)
 
                 playbook, event_inventory = _event_playbook(self.settings, event)
+
                 if not playbook:
                     LOG.info(
                         "Skipping tenant_name=%s event=%s: no playbook mapping",
@@ -156,35 +155,71 @@ class Application:
                 await status_api.update_job_status(
                     tenant_id, event, "IN_PROGRESS", token,
                 )
-                ok = await ansible.run(
-                    playbook,
-                    inventory=self.inventory or event_inventory,
-                    webapi_overrides=webapi_overrides,
-                    component_tokens=component_tokens,
-                    add_tenants=self.add_tenants or [tenant_name],
-                    remove_tenants=self.remove_tenants,
-                    show_artifacts=self.show_artifacts,
-                )
-                if ok:
-                    await status_api.update_job_status(
-                        tenant_id, event, "COMPLETED", token,
-                        message=(
-                            "Connector successfully configured for tenant %s "
-                            "by argo-automation-cpas" % tenant_name
-                        ),
+
+                if playbook.startswith("connectors"):
+                    connector_token = webapi.find_connector_token(component_tokens)
+                    webapi_overrides = await webapi.fetch_topology_config(
+                        self.settings.webapi.url_api_config, token=connector_token
                     )
-                else:
-                    LOG.warning(
-                        "Ansible run failed for tenant_name=%s event=%s",
-                        tenant_name, event,
+                    ok = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        webapi_overrides=webapi_overrides,
+                        component_tokens=component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
                     )
-                    await status_api.update_job_status(
-                        tenant_id, event, "FAILED", token,
-                        message=(
-                            "Connector configuration failed for tenant %s "
-                            "by argo-automation-cpas" % tenant_name
-                        ),
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id, event, "COMPLETED", token,
+                            message=(
+                                "Connector successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name, event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id, event, "FAILED", token,
+                            message=(
+                                "Connector configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+
+                elif playbook.startswith("poem"):
+                    ok = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        component_tokens=component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
                     )
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id, event, "COMPLETED", token,
+                            message=(
+                                "POEM successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name, event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id, event, "FAILED", token,
+                            message=(
+                                "POEM configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
         finally:
             await webapi.close()
             await iam.close()
