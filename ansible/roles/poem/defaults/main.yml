@@ -1,0 +1,74 @@
+---
+# defaults file for poem role
+
+poem_owner: apache
+poem_group: apache
+
+poem_virtenv_path: /opt/poem
+
+poem_db_name: postgres
+poem_db_user: postgres
+poem_db_password: postgres
+poem_db_host: localhost
+
+poem_sec_seckeypath: "{{ poem_virtenv_path }}/etc/poem/secret_key"
+
+poem_super_general_publicpage: poem.devel.argo.grnet.gr
+poem_super_general_termsofuse: https://ui.argo.grnet.gr/egi/termsofUse/ALL
+poem_super_general_privacypolicies: https://argo.egi.eu/egi/policies/
+poem_super_user_name: poem
+poem_super_user_password: superpoemsecret
+poem_super_user_email: super@poem.email
+
+poem_super_user_default_pass: DEFAULTSUPERUSERPASS
+
+poem_certificates_destpath: /etc/grid-security/
+poem_caanchors: /etc/pki/ca-trust/source/anchors/
+
+poem_token_super_restapi: RESTSUPERPOEM
+poem_token_super_webapi: WEBSUPERPOEM
+poem_tokens:
+  egi:
+    webapi_ro: ROEGI
+    webapi_rw: RWEGI
+    restapi: RESTEGI
+  eudat:
+    webapi_ro: ROEUDAT
+    webapi_rw: RWEUDAT
+    restapi: RESTEUDAT
+  sdc:
+    webapi_ro: ROSDC
+    webapi_rw: RWSDC
+    restapi: RESTSDC
+  ni4os:
+    webapi_ro: RONI4OS
+    webapi_rw: RWNI4OS
+    restapi: RESTNI4OS
+  submerse:
+    webapi_ro: ROSUBMERSE
+    webapi_rw: RWSUBMERSE
+    restapi: RESTSUBMERSE
+  hpc:
+    webapi_ro: ROHPC
+    webapi_rw: RWHPC
+    restapi: RESTHPC
+  internal:
+    webapi_ro: ROINTERNAL
+    webapi_rw: RWINTERNAL
+    restapi: RESTINTERNAL
+# tenant_fqdn: poem-devel.egi.eu
+
+poem_remove_tenants: []
+
+poem_tenants:
+  - tenant_name: EGI
+    tenant_fqdn: poem-devel.egi.eu
+    tenant_namespace: CH.CERN.SAM
+    tenant_samlloginstring: "Login using EGI CHECK-IN"
+    tenant_samlservicename: "ARGO POEM EGI-CheckIN"
+    tenant_termsofuse: https://argo.egi.eu/egi/Critical/termsofUse
+    tenant_privacypolicies: https://argo.egi.eu/egi/Critical/policies/
+    tenant_superuser_name: poem
+    tenant_superuser_password: "{{ poem_super_user_default_pass }}"
+    tenant_superuser_email: argo-ggus-support@grnet.gr
+    tenant_saml2_metadata: "https://aai-dev.egi.eu/auth/realms/egi/protocol/saml/descriptor"

@@ -21,6 +21,7 @@ DEFAULT_DAEMON_SLEEP = 60
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
 DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
 DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
+DEFAULT_POEM_RESTAPI_TOKEN = os.path.join(DEFAULT_VENV, "var", "spool", "restapi_tokens.json")
 
 _SYSLOG_FACILITIES = {
     name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
@@ -45,8 +46,8 @@ class Settings:
         ams = self._get_section(parser, "ams")
         webapi = self._get_section(parser, "webapi")
         iam = self._get_section(parser, "iam")
-        statusapi = self._get_optional_section(parser, "statusapi")
-        ansible = self._get_optional_section(parser, "ansible")
+        statusapi = self._get_section(parser, "statusapi")
+        ansible = self._get_section(parser, "ansible")
 
         self.automation = Section(
             tenants=self._split_csv(automation.get("tenants", "")),
@@ -93,27 +94,35 @@ class Settings:
             token_spool=os.path.join(self.venv, "var", "spool", "iam_access.yml"),
         )
         self.statusapi = Section(
-            api=statusapi.get("api", "") if statusapi else "",
+            api=statusapi.get("api", "")
         )
 
-        defaults_file = ansible.get("defaults_file", "") if ansible else ""
+        defaults_file = ansible.get("defaults_file", "")
         if defaults_file and not os.path.isabs(defaults_file):
             defaults_file = os.path.join(self.config_dir, defaults_file)
 
-        tokens_file = ansible.get("tokens_manual", "") if ansible else ""
+        tokens_file = ansible.get("tokens_manual", "")
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
+        poem_restapi_token = ansible.get("poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN)
+        if poem_restapi_token and not os.path.isabs(poem_restapi_token):
+            poem_restapi_token = os.path.join(self.config_dir, poem_restapi_token)
+
         self.ansible = Section(
-            user_connector=ansible.get("user_connector", "") if ansible else "",
-            group_connector=ansible.get("group_connector", "") if ansible else "",
-            ssh_private_key=ansible.get("ssh_private_key", "") if ansible else "",
+            user_connector=ansible.get("user_connector", ""),
+            group_connector=ansible.get("group_connector", ""),
+            ssh_private_key=ansible.get("ssh_private_key", ""),
             defaults_file=defaults_file,
             defaults=self._load_ansible_defaults(defaults_file),
             tokens_file=tokens_file,
             tokens=self._load_connector_tokens(tokens_file),
-            connectors_playbook=ansible.get("connectors_playbook", "connectors.yml") if ansible else "connectors.yml",
-            connectors_inventory=ansible.get("connectors_inventory", "connectors.ini") if ansible else "connectors.ini",
+            connectors_playbook=ansible.get("connectors_playbook", "connectors.yml"),
+            connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
+            poem_playbook=ansible.get("poem_playbook", "poem.yml"),
+            poem_inventory=ansible.get("poem_inventory", "poem.ini"),
+            poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
+            poem_restapi_token=poem_restapi_token,
         )
 
         self.base_url = self.webapi.url
@@ -123,11 +132,6 @@ class Settings:
     def _get_section(self, parser, section_name):
         if not parser.has_section(section_name):
             raise ValueError("Missing required section [%s] in %s" % (section_name, self.path))
-        return parser[section_name]
-
-    def _get_optional_section(self, parser, section_name):
-        if not parser.has_section(section_name):
-            return None
         return parser[section_name]
 
     def _normalize_url(self, value):

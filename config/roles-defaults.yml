@@ -12,3 +12,12 @@ connector_tenant_auth_useplainhttpauth: false
 connector_tenant_topo_fetchtype: ServiceGroups
 connector_tenant_topo_uidserviceendpoints: true
 connector_tenant_topo_feed: http://dummy.csv
+
+poem_tenant_superuser_name: poem
+poem_tenant_superuser_password: poempass
+poem_tenant_namespace: poemnamespace
+poem_tenant_samlloginstring: poemsaml2
+poem_tenant_samlservicename: poemsamlservicename
+poem_tenant_termsofuse: https://argo.egi.eu/egi/Critical/termsofUse
+poem_tenant_privacypolicies: https://argo.egi.eu/egi/Critical/policies/
+poem_tenant_superuser_email: argo-ggus-support@grnet.gr

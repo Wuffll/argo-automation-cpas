@@ -1,0 +1,12 @@
+---
+
+- name: Playbook to configure POEM web application
+  hosts: all
+  become: true
+  vars:
+    errors_ignore: false
+  roles:
+    - { role: poem }
+
+
+# vim: ft=yaml.ansible

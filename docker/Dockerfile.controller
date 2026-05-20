@@ -49,6 +49,12 @@ RUN sudo sh -c '\
   && pip install -U pip \
   && pip install -U setuptools'
 RUN sudo chown -R user:user /opt/argo-automation-cpas
+RUN python3.12 -m venv /opt/ansible/
+RUN sh -c '\
+  . /opt/ansible/bin/activate \
+  && pip install -U pip \
+  && pip install -U ansible'
+RUN chown -R user:user /opt/ansible
 USER user
 WORKDIR /home/user
 RUN curl -sfL https://git.io/chezmoi | sh
