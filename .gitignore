@@ -17,3 +17,6 @@ lint/
 
 # Local environment
 .env
+
+# Ignore dev temp SSH keys for /docker
+docker/sshkey*
