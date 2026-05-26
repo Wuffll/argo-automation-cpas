@@ -6,34 +6,26 @@
   register: poem_conf_file_exists
 
 
-- name: Initialize empty poem_conf_file content
-  ansible.builtin.set_fact:
-    poem_conf_file:
-      content: ''
-  when: not poem_conf_file_exists.stat.exists
-
-
 - name: Read poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.slurp:
     src: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
-  register: poem_conf_content
+  register: poem_conf_file
   when: poem_conf_file_exists.stat.exists
 
 
-- name: Set content poem_conf_file from readed poem.auto.conf
+- name: Set poem.auto.conf content fact - {{ item.tenant_name }}
   ansible.builtin.set_fact:
-    poem_conf_file:
-      content: "{{ poem_conf_content }}"
-  when: poem_conf_file_exists.stat.exists
+    poem_conf_text: >-
+      {{ poem_conf_file.content | default('') | b64decode
+         if poem_conf_file_exists.stat.exists else '' }}
 
 
 - name: Check tenant poem.auto.conf sections - {{ item.tenant_name }}
   ansible.builtin.set_fact:
-    poem_conf_lines: "{{ (poem_conf_file.content | b64decode).splitlines() }}"
     poem_general_section_exists: >-
-      {{ ('[GENERAL_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
+      {{ ('[GENERAL_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines() }}
     poem_superuser_section_exists: >-
-      {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
+      {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines() }}
 
 
 - name: Append GENERAL section to poem.auto.conf - {{ item.tenant_name }}
