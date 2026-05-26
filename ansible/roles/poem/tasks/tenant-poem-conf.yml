@@ -1,12 +1,33 @@
 ---
 
-- name: Read poem.conf - {{ item.tenant_name }}
+- name: Check if poem.auto.conf exists
+  ansible.builtin.stat:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+  register: poem_conf_file_exists
+
+
+- name: Initialize empty poem_conf_file content
+  ansible.builtin.set_fact:
+    poem_conf_file:
+      content: ''
+  when: not poem_conf_file_exists.stat.exists
+
+
+- name: Read poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.slurp:
-    src: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
-  register: poem_conf_file
+    src: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+  register: poem_conf_content
+  when: poem_conf_file_exists.stat.exists
 
 
-- name: Check tenant poem.conf sections - {{ item.tenant_name }}
+- name: Set content poem_conf_file from readed poem.auto.conf
+  ansible.builtin.set_fact:
+    poem_conf_file:
+      content: "{{ poem_conf_content }}"
+  when: poem_conf_file_exists.stat.exists
+
+
+- name: Check tenant poem.auto.conf sections - {{ item.tenant_name }}
   ansible.builtin.set_fact:
     poem_conf_lines: "{{ (poem_conf_file.content | b64decode).splitlines() }}"
     poem_general_section_exists: >-
@@ -15,11 +36,14 @@
       {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
 
 
-- name: Append GENERAL section to poem.conf - {{ item.tenant_name }}
+- name: Append GENERAL section to poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.blockinfile:
-    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
     marker: "# {mark} ANSIBLE MANAGED GENERAL_{{ item.tenant_name }}"
     insertafter: EOF
+    create: true
+    prepend_newline: true
+    append_newline: true
     block: |
       [GENERAL_{{ item.tenant_name }}]
       Namespace = {{ item.tenant_namespace }}
@@ -37,11 +61,13 @@
   notify: Restart apache
 
 
-- name: Append SUPERUSER section to poem.conf - {{ item.tenant_name }}
+- name: Append SUPERUSER section to poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.blockinfile:
-    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
     marker: "# {mark} ANSIBLE MANAGED SUPERUSER_{{ item.tenant_name }}"
     insertafter: EOF
+    prepend_newline: true
+    append_newline: true
     block: |
       [SUPERUSER_{{ item.tenant_name }}]
       Name = {{ item.tenant_superuser_name }}
