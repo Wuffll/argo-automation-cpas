@@ -22,10 +22,21 @@
 
 - name: Check tenant poem.auto.conf sections - {{ item.tenant_name }}
   ansible.builtin.set_fact:
-    poem_general_section_exists: >-
-      {{ ('[GENERAL_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines() }}
-    poem_superuser_section_exists: >-
-      {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines() }}
+    poem_general_section_exists: "{{ (('[GENERAL_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
+    poem_superuser_section_exists: "{{ (('[SUPERUSER_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
+
+
+- name: Enable auto_fqdns in poem.auto.conf SECURITY section
+  ansible.builtin.ini_file:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+    section: SECURITY
+    option: AllowedHosts
+    value: "{{ poem_auto_fqdns_name }}"
+    create: true
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  notify: Restart apache
 
 
 - name: Append GENERAL section to poem.auto.conf - {{ item.tenant_name }}
@@ -50,6 +61,20 @@
     group: "{{ poem_group }}"
     mode: "0644"
   when: not poem_general_section_exists
+  notify: Restart apache
+
+
+- name: Add tenant FQDN to auto_fqdns - {{ item.tenant_name }}
+  ansible.builtin.lineinfile:
+    path: "{{ poem_auto_fqdns_file }}"
+    line: "{{ item.tenant_fqdn }}"
+    create: true
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  when:
+    - item.tenant_fqdn is defined
+    - item.tenant_fqdn | length > 0
   notify: Restart apache
 
 
