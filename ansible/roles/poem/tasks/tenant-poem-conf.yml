@@ -1,25 +1,52 @@
 ---
 
-- name: Read poem.conf - {{ item.tenant_name }}
+- name: Check if poem.auto.conf exists
+  ansible.builtin.stat:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+  register: poem_conf_file_exists
+
+
+- name: Read poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.slurp:
-    src: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    src: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
   register: poem_conf_file
+  when: poem_conf_file_exists.stat.exists
 
 
-- name: Check tenant poem.conf sections - {{ item.tenant_name }}
+- name: Set poem.auto.conf content fact - {{ item.tenant_name }}
   ansible.builtin.set_fact:
-    poem_conf_lines: "{{ (poem_conf_file.content | b64decode).splitlines() }}"
-    poem_general_section_exists: >-
-      {{ ('[GENERAL_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
-    poem_superuser_section_exists: >-
-      {{ ('[SUPERUSER_' ~ item.tenant_name ~ ']') in (poem_conf_file.content | b64decode).splitlines() }}
+    poem_conf_text: >-
+      {{ poem_conf_file.content | default('') | b64decode
+         if poem_conf_file_exists.stat.exists else '' }}
 
 
-- name: Append GENERAL section to poem.conf - {{ item.tenant_name }}
+- name: Check tenant poem.auto.conf sections - {{ item.tenant_name }}
+  ansible.builtin.set_fact:
+    poem_general_section_exists: "{{ (('[GENERAL_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
+    poem_superuser_section_exists: "{{ (('[SUPERUSER_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
+
+
+- name: Enable auto_fqdns in poem.auto.conf SECURITY section
+  ansible.builtin.ini_file:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+    section: SECURITY
+    option: AllowedHosts
+    value: "{{ poem_auto_fqdns_name }}"
+    create: true
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  notify: Restart apache
+
+
+- name: Append GENERAL section to poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.blockinfile:
-    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
     marker: "# {mark} ANSIBLE MANAGED GENERAL_{{ item.tenant_name }}"
     insertafter: EOF
+    create: true
+    prepend_newline: true
+    append_newline: true
     block: |
       [GENERAL_{{ item.tenant_name }}]
       Namespace = {{ item.tenant_namespace }}
@@ -37,11 +64,27 @@
   notify: Restart apache
 
 
-- name: Append SUPERUSER section to poem.conf - {{ item.tenant_name }}
+- name: Add tenant FQDN to auto_fqdns - {{ item.tenant_name }}
+  ansible.builtin.lineinfile:
+    path: "{{ poem_auto_fqdns_file }}"
+    line: "{{ item.tenant_fqdn }}"
+    create: true
+    owner: "{{ poem_owner }}"
+    group: "{{ poem_group }}"
+    mode: "0644"
+  when:
+    - item.tenant_fqdn is defined
+    - item.tenant_fqdn | length > 0
+  notify: Restart apache
+
+
+- name: Append SUPERUSER section to poem.auto.conf - {{ item.tenant_name }}
   ansible.builtin.blockinfile:
-    path: "{{ poem_virtenv_path }}/etc/poem/poem.conf"
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
     marker: "# {mark} ANSIBLE MANAGED SUPERUSER_{{ item.tenant_name }}"
     insertafter: EOF
+    prepend_newline: true
+    append_newline: true
     block: |
       [SUPERUSER_{{ item.tenant_name }}]
       Name = {{ item.tenant_superuser_name }}
