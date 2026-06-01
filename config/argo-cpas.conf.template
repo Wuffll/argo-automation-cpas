@@ -22,10 +22,14 @@ project = ARGO-MON-AUTOMATION
 host = api.devel.msg.argo.grnet.gr
 subscription = events-sub-2
 token = AUTOMATION_TOKEN
+url_api_integrations = /v1/integrations/{component}/by-project-name/{project-name}/refresh
+token_component_admin = tOKen # [Insert Token Here]
+components = argo-monbox, argo-archiver
 pullmsgs = 1
 ack = false
 return_immediately = true
 events = INIT_TOPOLOGY_CONNECTOR, INIT_POEM
+tokens_spool = %(VENV)svar/spool/ams_tokens.json
 
 [webapi]
 host = api.devel.mon.argo.grnet.gr
@@ -33,6 +37,7 @@ url_api_config = /api/v2/feeds/topology
 url_api_integrations = /api/v3/integrations/components/{component}/by-tenant-name/{tenant_name}/refresh
 token_component_admin = t0k3n
 components = monbox, connector, poem-admin, poem-viewer
+tokens_spool = %(VENV)svar/spool/webapi_tokens.json
 
 [statusapi]
 api = https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_id}/status
@@ -41,6 +46,7 @@ api = https://api-status.devel.mon.argo.grnet.gr/v1/automation/tenants/{tenant_i
 api = https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token
 oidc_client_id = client-id
 oidc_client_secret = client-secret
+token_spool = %(VENV)svar/spool/iam_access.yaml
 
 [ansible]
 user_connector = user
@@ -54,5 +60,9 @@ poem_playbook = poem.yml
 poem_inventory = poem.ini
 poem_fqdn_suffix = devel.mon.argo.grnet.gr
 poem_restapi_token = %(VENV)svar/spool/restapi_tokens.json
+
+[monboxgit]
+git_branch_backend = address_to_git_branch_backend
+git_branch_agent = address_to_git_branch_agent
 
 # vim: ft=conf

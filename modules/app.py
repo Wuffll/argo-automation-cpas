@@ -106,6 +106,15 @@ class Application:
             if self.offset is not None:
                 await asyncio.to_thread(ams.move_offset, self.offset)
             await ams.pull_and_print(filter_events=self.filter_events)
+
+            print("Only AMS | Trying to get ams tokens!")
+            try:
+                ams_component_tokens = await ams.refresh_tokens()
+                if any(ams_component_tokens.values()):
+                    ams.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
+            finally:
+                await ams.close()
+
             return
 
         ams = await asyncio.to_thread(AMS().init)
@@ -124,6 +133,10 @@ class Application:
             component_tokens = await webapi.refresh_tokens()
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
+
+            ams_component_tokens = await ams.refresh_tokens()
+            if any(ams_component_tokens.values()):
+                ams.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
 
             for payload in ams_events:
                 props = payload.get("properties", {})
@@ -221,6 +234,7 @@ class Application:
                             ),
                         )
         finally:
+            await ams.close()
             await webapi.close()
             await iam.close()
             await status_api.close()

@@ -20,3 +20,9 @@ lint/
 
 # Ignore dev temp SSH keys for /docker
 docker/sshkey*
+
+# Ignore IDE cache
+.idea
+
+config/argo-cpas.conf
+var/*

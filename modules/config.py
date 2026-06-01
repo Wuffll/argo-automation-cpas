@@ -19,8 +19,6 @@ DEFAULT_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 DEFAULT_DAEMON_SLEEP = 60
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
-DEFAULT_IAM_TOKEN_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "iam_access.yml")
-DEFAULT_WEBAPI_TOKENS_SPOOL = os.path.join(DEFAULT_VENV, "var", "spool", "webapi_tokens.json")
 DEFAULT_POEM_RESTAPI_TOKEN = os.path.join(DEFAULT_VENV, "var", "spool", "restapi_tokens.json")
 
 _SYSLOG_FACILITIES = {
@@ -70,13 +68,17 @@ class Settings:
         self.ams = Section(
             project=ams.get("project", ""),
             host=ams.get("host", ""),
+            url=self._normalize_url(ams.get("host", "")),
             subscription=ams.get("subscription", ""),
             token=ams.get("token", ""),
+            url_api_integrations = ams.get("url_api_integrations", ""),
+            token_component_admin = ams.get("token_component_admin", ""),
+            components = self._split_csv(ams.get("components", "")),
             pullmsgs=int(ams.get("pullmsgs", "1")),
             ack=ams.getboolean("ack", False),
             return_immediately=ams.getboolean("return_immediately", True),
             events=self._split_csv(ams.get("events", "INIT_TOPOLOGY_CONNECTOR")),
-            url=self._normalize_url(ams.get("host", "")),
+            tokens_spool=ams.get("tokens_spool", ""),
         )
         self.webapi = Section(
             host=webapi.get("host", ""),
@@ -85,13 +87,13 @@ class Settings:
             url_api_integrations=webapi.get("url_api_integrations", ""),
             token_component_admin=webapi.get("token_component_admin", ""),
             components=self._split_csv(webapi.get("components", "")),
-            tokens_spool=os.path.join(self.venv, "var", "spool", "webapi_tokens.json"),
+            tokens_spool=webapi.get("tokens_spool", ""),
         )
         self.iam = Section(
             api=iam.get("api", ""),
             oidc_client_id=iam.get("oidc_client_id", ""),
             oidc_client_secret=iam.get("oidc_client_secret", ""),
-            token_spool=os.path.join(self.venv, "var", "spool", "iam_access.yml"),
+            tokens_spool=iam.get("tokens_spool", ""),
         )
         self.statusapi = Section(
             api=statusapi.get("api", "")
