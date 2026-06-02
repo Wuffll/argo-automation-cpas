@@ -69,9 +69,11 @@ argo_automation_cpas = "modules/"
 	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
 	"ansible/project/connectors.yml",
+	"ansible/project/poem.yml",
 ]
 "ansible/inventory" = [
 	"ansible/inventory/connectors.ini",
+	"ansible/inventory/poem.ini",
 ]
 "ansible/roles/connector/defaults" = [
 	"ansible/roles/connector/defaults/main.yml",
@@ -88,6 +90,20 @@ argo_automation_cpas = "modules/"
 ]
 "ansible/roles/connector/templates" = [
 	"ansible/roles/connector/templates/customer.conf.j2",
+]
+"ansible/roles/poem/defaults" = [
+	"ansible/roles/poem/defaults/main.yml",
+]
+"ansible/roles/poem/handlers" = [
+	"ansible/roles/poem/handlers/main.yml",
+]
+"ansible/roles/poem/tasks" = [
+	"ansible/roles/poem/tasks/main.yml",
+	"ansible/roles/poem/tasks/remove-tenants.yml",
+	"ansible/roles/poem/tasks/tenant-db-tables.yml",
+	"ansible/roles/poem/tasks/tenant-poem-conf.yml",
+	"ansible/roles/poem/tasks/tenant-sync-superpoem-metrics.yml",
+	"ansible/roles/poem/tasks/tokens-tenants-set.yml",
 ]
 
 [tool.setuptools.dynamic]
