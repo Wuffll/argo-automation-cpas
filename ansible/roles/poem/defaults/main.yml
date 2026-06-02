@@ -34,31 +34,6 @@ poem_tokens:
     webapi_ro: ROEGI
     webapi_rw: RWEGI
     restapi: RESTEGI
-  eudat:
-    webapi_ro: ROEUDAT
-    webapi_rw: RWEUDAT
-    restapi: RESTEUDAT
-  sdc:
-    webapi_ro: ROSDC
-    webapi_rw: RWSDC
-    restapi: RESTSDC
-  ni4os:
-    webapi_ro: RONI4OS
-    webapi_rw: RWNI4OS
-    restapi: RESTNI4OS
-  submerse:
-    webapi_ro: ROSUBMERSE
-    webapi_rw: RWSUBMERSE
-    restapi: RESTSUBMERSE
-  hpc:
-    webapi_ro: ROHPC
-    webapi_rw: RWHPC
-    restapi: RESTHPC
-  internal:
-    webapi_ro: ROINTERNAL
-    webapi_rw: RWINTERNAL
-    restapi: RESTINTERNAL
-# tenant_fqdn: poem-devel.egi.eu
 
 poem_remove_tenants: []
 

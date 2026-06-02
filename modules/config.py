@@ -123,6 +123,7 @@ class Settings:
             poem_inventory=ansible.get("poem_inventory", "poem.ini"),
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
             poem_restapi_token=poem_restapi_token,
+            poem_superuserpassword=ansible.get("poem_superuserpassword", ""),
         )
 
         self.base_url = self.webapi.url

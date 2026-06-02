@@ -51,6 +51,8 @@ class Ansible:
                 if poem_fqdn:
                     LOG.info("Set POEM FQDN=%s", poem_fqdn)
                     entry["tenant_fqdn"] = poem_fqdn
+                if self.settings.ansible.poem_superuserpassword:
+                    self.poem_tenant_defaults['tenant_superuser_password'] = self.settings.ansible.poem_superuserpassword
                 entries.append({**entry, **self.poem_tenant_defaults})
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
@@ -59,10 +61,6 @@ class Ansible:
         return extravars
 
     def _connector_extravars(self, webapi_overrides, component_tokens, add_tenants, remove_tenants):
-        # Keys prefixed with "connector_tenant_" become per-tenant defaults
-        # e.g. connector_tenant_topo_type -> tenant_topo_type
-
-        # webapi overrides take precedence over roles-defaults.yml
         for k, v in (webapi_overrides or {}).items():
             if k.startswith(self.PREFIX + "tenant_"):
                 self.connector_tenant_defaults[k[len(self.PREFIX):]] = v
@@ -73,8 +71,6 @@ class Ansible:
         if self.settings.ansible.group_connector:
             extravars["group_connector"] = self.settings.ansible.group_connector
 
-        # Build a case-insensitive lookup {TENANT_UPPER: webapi_token} from the
-        # "connector" component entries in component_tokens.
         webapi_token_by_tenant = {}
         if component_tokens:
             for tenant_name, components in component_tokens.items():
@@ -109,8 +105,6 @@ class Ansible:
             private_key or "none",
         )
 
-        # Fall back to the webapi tokens spool when not provided explicitly
-        # (e.g. manual --only-ansible runs skip the webapi refresh step).
         if component_tokens is None:
             webapi = WebAPI()
             try:
