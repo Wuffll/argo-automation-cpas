@@ -54,7 +54,7 @@ class Application:
 
         if self.only_ansible is not None:
             ansible = Ansible()
-            await ansible.run(
+            (ok, extravars) = await ansible.run(
                 self.only_ansible,
                 inventory=self.inventory,
                 add_tenants=self.add_tenants,
@@ -174,7 +174,7 @@ class Application:
                     webapi_overrides = await webapi.fetch_topology_config(
                         self.settings.webapi.url_api_config, token=connector_token
                     )
-                    ok = await ansible.run(
+                    (ok, _) = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
                         webapi_overrides=webapi_overrides,
@@ -205,7 +205,7 @@ class Application:
                         )
 
                 elif playbook.startswith("poem"):
-                    ok = await ansible.run(
+                    (ok, extravars) = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
                         component_tokens=component_tokens,
@@ -233,6 +233,7 @@ class Application:
                                 "by argo-automation-cpas" % tenant_name
                             ),
                         )
+
         finally:
             await ams.close()
             await webapi.close()

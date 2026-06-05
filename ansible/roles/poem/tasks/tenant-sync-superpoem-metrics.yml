@@ -1,0 +1,25 @@
+---
+
+- name: Query whether any metrics are imported - {{ item.tenant_name }}
+  vars:
+    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
+  community.postgresql.postgresql_query:
+    db: "{{ poem_db_name }}"
+    login_host: localhost
+    login_user: "{{ poem_db_user }}"
+    login_password: "{{ poem_db_password }}"
+    search_path: "{{ item.tenant_name }}"
+    query: "SELECT 1 FROM poem_metric"
+  register: poem_metric_query
+  failed_when: false
+
+
+- name: Sync SuperPOEM metrics for pre-configured metric profiles - {{ item.tenant_name }}
+  ansible.builtin.shell:
+    cmd: |
+      source {{ poem_virtenv_path }}/bin/activate
+      poem-manage sync_metrics -t {{ item.tenant_name }} -u poem
+    chdir:
+      "{{ poem_virtenv_path }}"
+  when: poem_metric_query.rowcount == 0
+  changed_when: poem_metric_query.rowcount == 0
