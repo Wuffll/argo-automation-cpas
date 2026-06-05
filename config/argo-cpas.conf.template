@@ -62,6 +62,7 @@ poem_fqdn_suffix = devel.mon.argo.grnet.gr
 poem_restapi_token = %(VENV)svar/spool/restapi_tokens.json
 
 [monboxgit]
+git_ssh_key_path = path_to_repo_readwrite_ssh_key
 git_branch_backend = address_to_git_branch_backend
 git_branch_agent = address_to_git_branch_agent
 

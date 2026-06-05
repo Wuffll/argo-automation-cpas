@@ -46,6 +46,7 @@ class Settings:
         iam = self._get_section(parser, "iam")
         statusapi = self._get_section(parser, "statusapi")
         ansible = self._get_section(parser, "ansible")
+        monboxgit = self._get_section(parser, "monboxgit")
 
         self.automation = Section(
             tenants=self._split_csv(automation.get("tenants", "")),
@@ -93,10 +94,16 @@ class Settings:
             api=iam.get("api", ""),
             oidc_client_id=iam.get("oidc_client_id", ""),
             oidc_client_secret=iam.get("oidc_client_secret", ""),
-            tokens_spool=iam.get("tokens_spool", ""),
+            token_spool=iam.get("token_spool", ""),
         )
         self.statusapi = Section(
             api=statusapi.get("api", "")
+        )
+
+        self.monboxgit = Section(
+            git_ssh_key_path=monboxgit.get("git_ssh_key_path", ""),
+            git_branch_backend=monboxgit.get("git_branch_backend", ""),
+            git_branch_agent=monboxgit.get("git_branch_agent", "")
         )
 
         defaults_file = ansible.get("defaults_file", "")
