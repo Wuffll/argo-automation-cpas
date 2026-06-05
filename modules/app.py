@@ -9,7 +9,9 @@ from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
+from argo_automation_cpas.monboxgit import MonboxGit, NewTenantAgentInfo, NewTenantBackendInfo
 
+from argo_automation_cpas.restapi_tokens import RestAPITokens
 
 LOG = logging.getLogger(__name__)
 
@@ -26,8 +28,8 @@ def _event_playbook(settings, event):
 class Application:
     def __init__(self, only_ansible=None, only_ams=False, filter_events=False,
                  only_webapi=False, only_iam=False, only_statusapi=None,
-                 update_status=None, event=None, message=None, inventory=None,
-                 show_artifacts=None, clean_artifacts=None,
+                 only_monbox_git=None, update_status=None, event=None, message=None,
+                 inventory=None, show_artifacts=None, clean_artifacts=None,
                  offset=None, add_tenants=None, remove_tenants=None):
         self.settings = get_settings()
         self.only_ansible = only_ansible
@@ -36,6 +38,7 @@ class Application:
         self.only_webapi = only_webapi
         self.only_iam = only_iam
         self.only_statusapi = only_statusapi
+        self.only_monbox_git = only_monbox_git
         self.update_status = update_status
         self.event = event
         self.message = message
@@ -117,6 +120,81 @@ class Application:
 
             return
 
+        if self.only_monbox_git:
+            print("Application::run() | You are running the initialization of monbox-git only!")
+            monboxgit = MonboxGit()
+
+            tenant_ids = self.settings.automation.tenants
+            monbox_tenant_secrets = []
+            
+            if tenant_ids is None:
+                print("Only MonboxGit | tenant_ids is None!")
+                return
+
+            ams = await asyncio.to_thread(AMS().init)
+            webapi = WebAPI()
+
+            restApiTokensClient = RestAPITokens()
+            restApiTokens = restApiTokensClient.load_tokens()
+
+            if restApiTokens is None:
+                print("Error: RestAPI tokens not found!")
+                return
+
+            try:
+                for tenant_id in tenant_ids:
+
+                    tenant_id_lower = tenant_id.lower()
+                    restApiToken = restApiTokens[tenant_id]
+
+                    if restApiToken is None:
+                        print("Error: there is no restapi_token for tenant with id: " + tenant_id)
+                        return
+
+                    restApiToken = restApiToken["restapi"]
+
+                    monbox_webapi_component = "monbox"
+                    webapi_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+                    webapi_tokens = webapi_tokens[tenant_id]
+
+                    if webapi_tokens is None:
+                        print("Error: there is no webapi_token for tenant with id: " + tenant_id)
+                        return
+
+                    webapi_token = webapi_tokens[monbox_webapi_component]
+
+                    if webapi_token is None:
+                        print("Error: there is no monbox webapi_token for tenant with id: " + tenant_id)
+                        return
+
+                    monbox_ams_component = "argo-monbox"
+                    ams_tokens = ams.load_tokens(self.settings.ams.tokens_spool)
+                    ams_tokens = ams_tokens[tenant_id]
+
+                    if ams_tokens is None:
+                        print("Error: there is no ams_token for tenant with id: " + tenant_id)
+                        return
+
+                    ams_token = ams_tokens.get(monbox_ams_component)
+                    if ams_token is None:
+                        print("Error: there is no argo-monbox ams_token for tenant with id: " + tenant_id)
+                        return
+
+                    newAgentTenantInfo = NewTenantAgentInfo(tenant_id = tenant_id_lower,
+                                                            tenant_poem_host= tenant_id + ".poem.devel.mon.argo.grnet.gr",
+                                                            tenant_poem_token = restApiToken)
+
+                    newBackendTenantInfo = NewTenantBackendInfo(tenant_id = tenant_id_lower,
+                                                                ams_token = ams_token,
+                                                                webapi_token = webapi_token)
+
+                    await monboxgit.init_new_tenant(newBackendTenantInfo, newAgentTenantInfo)
+            finally:
+                await ams.close()
+                await webapi.close()
+
+            return
+
         ams = await asyncio.to_thread(AMS().init)
 
         ams_events = await ams.pull_messages()
@@ -130,6 +208,7 @@ class Application:
 
         try:
             token = await iam.fetch_token()
+
             component_tokens = await webapi.refresh_tokens()
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
