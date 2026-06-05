@@ -70,19 +70,14 @@ class NewTenantBackendInfo:
 class MonboxGit:
     def __init__(self):
         self.settings = get_settings()
-        self.events = []
-
-        #file_data_yaml = yaml.safe_load(SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE)  # yaml.safe_load(file_data)
 
     async def init_new_tenant(self, tenant_backend_info, tenant_agent_info):
-        commit_id = str(uuid.uuid4()) + " | " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S")
+        commit_id = str(uuid.uuid4()) + " | " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
 
         await self._commit_sensu_backend_changes(tenant_backend_info, commit_id)
         await self._commit_sensu_agent_changes(tenant_agent_info, commit_id)
 
     async def _commit_sensu_backend_changes(self, tenant_backend_info, commit_id=""):
-        # print("BACKEND")
-
         commit_branch = self.settings.monboxgit.git_branch_backend
 
         ssh_key = self.settings.monboxgit.git_ssh_key_path
@@ -100,15 +95,11 @@ class MonboxGit:
 
         yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, new_tenant_info)
 
-        # print(yaml.dump(yaml_data, sort_keys=False))
-
         await self._commit_file_to_git_repo(content=yaml.dump(yaml_data, sort_keys=False),
                                             branch=commit_branch,
                                             commit_id=commit_id)
 
     async def _commit_sensu_agent_changes(self, tenant_agent_info, commit_id=""):
-        # print("AGENT")
-        
         commit_branch = self.settings.monboxgit.git_branch_agent
 
         ssh_key = self.settings.monboxgit.git_ssh_key_path
@@ -126,9 +117,6 @@ class MonboxGit:
 
         yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, new_tenant_info)
 
-        # yaml_data ready to convert to file and commit to repo
-        # print(yaml.dump(yaml_data, sort_keys=False))
-
         await self._commit_file_to_git_repo(content=yaml.dump(yaml_data, sort_keys=False),
                                             branch=commit_branch,
                                             commit_id=commit_id)
@@ -145,7 +133,6 @@ class MonboxGit:
         repo_ssh = f"git@github.com:{owner}/{repo}.git"
 
         temp_dir = tempfile.mkdtemp()
-        print(str(temp_dir))
         
         try:
             repo = Repo.init(temp_dir)
@@ -160,9 +147,6 @@ class MonboxGit:
 
             last_slash_index = directory.rfind("/")
             path_to_file = directory[:(last_slash_index + 1)] if last_slash_index != -1 else ""
-            file_name = directory[last_slash_index + 1:]
-            print(path_to_file)
-            print(file_name)
 
             full_target_path = os.path.join(temp_dir, directory)
             os.makedirs(os.path.dirname(os.path.join(temp_dir, path_to_file)), exist_ok=True)
@@ -191,8 +175,6 @@ class MonboxGit:
 
     # returns agent yaml file with new tenant; ready for commit
     def _add_new_tenant_to_agent_yaml(self, yaml_data, new_tenant_info):
-        # print("yaml_data")
-        # print(yaml_data)
         tenant_data_entries = yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY]
 
         # fill string template with tenant data
@@ -212,8 +194,6 @@ class MonboxGit:
 
     # returns backend yaml file with new tenant; ready for commit
     def _add_new_tenant_to_backend_yaml(self, yaml_data, new_tenant_info):
-        # print("yaml_data")
-        # print(yaml_data)
         # NEW TENANT SECTION DATA
         tenant_data_entries = yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
 

@@ -110,7 +110,7 @@ class Application:
                 await asyncio.to_thread(ams.move_offset, self.offset)
             await ams.pull_and_print(filter_events=self.filter_events)
 
-            print("Only AMS | Trying to get ams tokens!")
+            print("Only AMS | Refreshing AMS tokens!")
             try:
                 ams_component_tokens = await ams.refresh_tokens()
                 if any(ams_component_tokens.values()):
@@ -121,7 +121,7 @@ class Application:
             return
 
         if self.only_monbox_git:
-            print("Application::run() | You are running the initialization of monbox-git only!")
+            print("Only MonboxGit | You are running the initialization of monbox-git only!")
             monboxgit = MonboxGit()
 
             tenant_ids = self.settings.automation.tenants
@@ -138,7 +138,7 @@ class Application:
             restApiTokens = restApiTokensClient.load_tokens()
 
             if restApiTokens is None:
-                print("Error: RestAPI tokens not found!")
+                print("Only MonboxGit | Error: RestAPI tokens not found!")
                 return
 
             try:
@@ -148,7 +148,7 @@ class Application:
                     restApiToken = restApiTokens[tenant_id]
 
                     if restApiToken is None:
-                        print("Error: there is no restapi_token for tenant with id: " + tenant_id)
+                        print("Only MonboxGit | Error: there is no restapi_token for tenant with id: " + tenant_id)
                         return
 
                     restApiToken = restApiToken["restapi"]
@@ -158,13 +158,13 @@ class Application:
                     webapi_tokens = webapi_tokens[tenant_id]
 
                     if webapi_tokens is None:
-                        print("Error: there is no webapi_token for tenant with id: " + tenant_id)
+                        print("Only MonboxGit | Error: there is no webapi_token for tenant with id: " + tenant_id)
                         return
 
                     webapi_token = webapi_tokens[monbox_webapi_component]
 
                     if webapi_token is None:
-                        print("Error: there is no monbox webapi_token for tenant with id: " + tenant_id)
+                        print("Only MonboxGit | Error: there is no monbox webapi_token for tenant with id: " + tenant_id)
                         return
 
                     monbox_ams_component = "argo-monbox"
@@ -172,12 +172,12 @@ class Application:
                     ams_tokens = ams_tokens[tenant_id]
 
                     if ams_tokens is None:
-                        print("Error: there is no ams_token for tenant with id: " + tenant_id)
+                        print("Only MonboxGit | Error: there is no ams_token for tenant with id: " + tenant_id)
                         return
 
                     ams_token = ams_tokens.get(monbox_ams_component)
                     if ams_token is None:
-                        print("Error: there is no argo-monbox ams_token for tenant with id: " + tenant_id)
+                        print("Only MonboxGit | Error: there is no argo-monbox ams_token for tenant with id: " + tenant_id)
                         return
 
                     newAgentTenantInfo = NewTenantAgentInfo(tenant_id = tenant_id_lower,
