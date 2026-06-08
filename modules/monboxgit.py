@@ -86,7 +86,7 @@ class MonboxGit:
         file_path = "data/default.yaml"
 
         file_data = self._download_github_file_api(owner=repo_owner,
-                                                   control_repo=repo_name,
+                                                   repo=repo_name,
                                                    branch=commit_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
@@ -120,7 +120,7 @@ class MonboxGit:
         file_path = "data/default.yaml"
 
         file_data = self._download_github_file_api(owner=repo_owner,
-                                                   control_repo=repo_name,
+                                                   repo=repo_name,
                                                    branch=commit_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
@@ -162,6 +162,7 @@ class MonboxGit:
 
             git_ssh_key_path = self.settings.monboxgit.git_ssh_key_path
 
+            # Force Git to use custom SSH key
             os.environ["GIT_SSH_COMMAND"] = f"ssh -i {git_ssh_key_path} -o IdentitiesOnly=yes"
 
             origin.fetch(branch)
@@ -187,8 +188,6 @@ class MonboxGit:
 
             repo.git.add(all=True)
             repo.index.commit("Upload via Python script\n\nCommit Tag: " + commit_id)
-
-            # Force Git to use custom SSH key
 
             repo.git.push("origin", f"HEAD:{branch}")
 
