@@ -110,6 +110,7 @@ poetry run argo-cpas --clean-artifacts connector
 | `--update-status STATUS`        | Used with `--only-statusapi` and `--event`. PATCH a job status (e.g. `IN_PROGRESS`, `DONE`, `ERROR`) for the given tenant/event.  |
 | `--event EVENT`                 | Event name used with `--update-status` (e.g. `INIT_TOPOLOGY_CONNECTOR`).                                                          |
 | `--message MESSAGE`             | Used with `--update-status`. Override the default job message (`Event picked up by argo-automation-cpas`).                        |
+| `--only-monbox-git`             | Only run the monbox automation (applied only to tenants specified in automation.tenants section of argo-cpas.conf)                |
 
 ### CLI flags (`argo-cpasd`)
 
@@ -134,6 +135,7 @@ modules/
   http.py                   # SessionWithRetry: aiohttp session with retry logic
   artifacts.py              # Ansible artifact printing and cleanup
   ansible.py                # ansible-runner execution with extravars
+  monboxgit.py              # Monbox automation via git commits
 init/
   argo-cpasd.service        # systemd unit file for the daemon
 ansible/
@@ -200,16 +202,19 @@ A template is provided in `config/argo-cpas.conf.template`.
 
 Configuration for the ARGO Messaging Service connection.
 
-| Option               | Description                                                                                                                                                                           | Example                       |
-|----------------------|---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
-| `project`            | AMS project name.                                                                                                                                                                     | `ARGO-MON-AUTOMATION`         |
-| `host`               | AMS API hostname (without `https://` prefix).                                                                                                                                         | `api.devel.msg.argo.grnet.gr` |
-| `subscription`       | AMS subscription name to pull events from.                                                                                                                                            | `events-sub-2`                |
-| `token`              | AMS authentication token.                                                                                                                                                             | _(secret)_                    |
-| `pullmsgs`           | Maximum number of messages to pull per request (used as `num` for `pullack_sub`/`pull_sub`). Default: `1`.                                                                            | `10`                          |
-| `ack`                | Whether to acknowledge pulled messages in the main pipeline. `true` uses `pullack_sub` (pull + ack), `false` uses `pull_sub` (pull without ack). Default: `false`.                    | `false`                       |
-| `return_immediately` | Whether pull requests return immediately when no messages are available. Default: `true`.                                                                                              | `true`                        |
-| `events`             | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.                                                                                        | `INIT_TOPOLOGY_CONNECTOR`     |
+| Option                  | Description                                                                                                                                                        | Example                       |
+|-------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------|-------------------------------|
+| `project`               | AMS project name.                                                                                                                                                  | `ARGO-MON-AUTOMATION`         |
+| `host`                  | AMS API hostname (without `https://` prefix).                                                                                                                      | `api.devel.msg.argo.grnet.gr` |
+| `subscription`          | AMS subscription name to pull events from.                                                                                                                         | `events-sub-2`                |
+| `token`                 | AMS authentication token.                                                                                                                                          | _(secret)_                    |
+| `url_api_integrations`  | API URL used for fetching component-admin AMS token.                                                                                                               | _(secret)_                    |
+| `token_component_admin` | component-admin token needed for fetching AMS tokens.                                                                                                              | _(secret)_                    |
+| `components`            | List of components; for each component on the list an AMS token is fetched.                                                                                        | _(secret)_                    |
+| `pullmsgs`              | Maximum number of messages to pull per request (used as `num` for `pullack_sub`/`pull_sub`). Default: `1`.                                                         | `10`                          |
+| `ack`                   | Whether to acknowledge pulled messages in the main pipeline. `true` uses `pullack_sub` (pull + ack), `false` uses `pull_sub` (pull without ack). Default: `false`. | `false`                       |
+| `return_immediately`    | Whether pull requests return immediately when no messages are available. Default: `true`.                                                                          | `true`                        |
+| `events`                | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.                                                                     | `INIT_TOPOLOGY_CONNECTOR`     |
 
 The service constructs the full AMS URL as `https://<host>` automatically. The `--only-ams` flag always pulls without ack regardless of the `ack` setting.
 
@@ -261,6 +266,17 @@ Configuration for the Ansible connector playbook runs.
 | `connectors_inventory` | Filename of the connectors inventory inside `ansible/inventory/`.                                                                                                                    | `connectors.ini` |
 | `poem_restapi_token`   | Path to the JSON file used to cache generated POEM REST-API tenant tokens. Supports `%(VENV)s` interpolation.                                                                        | `<VENV>/var/spool/restapi_tokens.json` |
 
+### `[monboxgit]` section (optional)
+
+Configuration for the monbox automation.
+
+| Option               | Description                                                        | Default                                                   |
+|----------------------|--------------------------------------------------------------------|-----------------------------------------------------------|
+| `git_repo_owner`     | The name of the GitHub account where the repository is stored.     | `ARGOeu`                                                  |
+| `git_repo_name`      | The name of the repository where the git commits are to be pushed. | `argo-mon-deployment`                                     |
+| `git_ssh_key_path`   | Path to the SSH key used for git commits.                          | `/etc/argo-cpas/keys/{key_file_name}`                     |
+| `git_branch_backend` | Name of the branch for backend git commit changes.                 | `sensu_backend_auto_devel_mon_argo_grnet_gr`              |
+| `git_branch_agent`   | Name of the branch for agent git commit changes.                   | `sensu_agent_auto_devel_mon_argo_grnet_gr`                |
 
 ### Ansible roles-defaults file (`roles-defaults.yml`)
 
