@@ -181,7 +181,7 @@ class Application:
                         return
 
                     newAgentTenantInfo = NewTenantAgentInfo(tenant_id = tenant_id_lower,
-                                                            tenant_poem_host= tenant_id + ".poem.devel.mon.argo.grnet.gr",
+                                                            tenant_poem_host= tenant_id_lower + ".poem.devel.mon.argo.grnet.gr",
                                                             tenant_poem_token = restApiToken)
 
                     newBackendTenantInfo = NewTenantBackendInfo(tenant_id = tenant_id_lower,

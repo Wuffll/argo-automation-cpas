@@ -78,12 +78,21 @@ class MonboxGit:
         await self._commit_sensu_agent_changes(tenant_agent_info, commit_id)
 
     async def _commit_sensu_backend_changes(self, tenant_backend_info, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
         commit_branch = self.settings.monboxgit.git_branch_backend
-
         ssh_key = self.settings.monboxgit.git_ssh_key_path
 
-        file_data = self._download_github_file_api(branch=commit_branch, ssh_key=ssh_key)
+        file_path = "data/default.yaml"
+
+        file_data = self._download_github_file_api(owner=repo_owner,
+                                                   control_repo=repo_name,
+                                                   branch=commit_branch,
+                                                   path=file_path,
+                                                   ssh_key=ssh_key)
+
         yaml_data = yaml.safe_load(file_data)
+        
 
         new_tenant_id = tenant_backend_info.tenant_id
         new_tentant_ams_token = tenant_backend_info.ams_token
@@ -95,18 +104,29 @@ class MonboxGit:
 
         yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, new_tenant_info)
 
-        await self._commit_file_to_git_repo(content=yaml.dump(yaml_data, sort_keys=False),
+        await self._commit_file_to_git_repo(owner=repo_owner,
+                                            repo=repo_name,
+                                            directory=file_path,
+                                            content=yaml.dump(yaml_data, sort_keys=False),
                                             branch=commit_branch,
                                             commit_id=commit_id)
 
     async def _commit_sensu_agent_changes(self, tenant_agent_info, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
         commit_branch = self.settings.monboxgit.git_branch_agent
-
         ssh_key = self.settings.monboxgit.git_ssh_key_path
 
-        file_data = self._download_github_file_api(branch=commit_branch, ssh_key=ssh_key)
-        yaml_data = yaml.safe_load(file_data)
+        file_path = "data/default.yaml"
 
+        file_data = self._download_github_file_api(owner=repo_owner,
+                                                   control_repo=repo_name,
+                                                   branch=commit_branch,
+                                                   path=file_path,
+                                                   ssh_key=ssh_key)
+        yaml_data = yaml.safe_load(file_data)
+        
+        
         new_tenant_id = tenant_agent_info.tenant_id
         new_tentant_poem_host = tenant_agent_info.poem_host
         new_tenant_poem_token = tenant_agent_info.poem_token
@@ -117,18 +137,20 @@ class MonboxGit:
 
         yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, new_tenant_info)
 
-        await self._commit_file_to_git_repo(content=yaml.dump(yaml_data, sort_keys=False),
+        await self._commit_file_to_git_repo(owner=repo_owner,
+                                            repo=repo_name,
+                                            directory=file_path,
                                             branch=commit_branch,
+                                            content=yaml.dump(yaml_data, sort_keys=False),
                                             commit_id=commit_id)
 
     async def _commit_file_to_git_repo(self,
-                                 owner="wuffll",
-                                 repo="test-argo-mon-deployment",
-                                 directory="data/default.yaml",
-                                 content="",
-                                 token="",
-                                 branch="sensu_backend_auto_devel_mon_argo_grnet_gr",
-                                 commit_id=""):
+                                       owner,
+                                       repo,
+                                       directory,
+                                       branch,
+                                       content="",
+                                       commit_id=""):
 
         repo_ssh = f"git@github.com:{owner}/{repo}.git"
 
@@ -159,7 +181,7 @@ class MonboxGit:
                     print("Error: Unable to create file used for commiting to the repo!")
                     return
 
-            f = open(full_target_path, "a")
+            f = open(full_target_path, "w")
             f.write(content)
             f.close()
 
@@ -225,8 +247,8 @@ class MonboxGit:
         return yaml_data
 
     def _download_github_file_api(self,
-                                  owner = "wuffll",
-                                  repo = "test-argo-mon-deployment",
+                                  owner,
+                                  repo,
                                   path = "data/default.yaml",
                                   ssh_key="",
                                   branch="sensu_backend_auto_devel_mon_argo_grnet_gr"):

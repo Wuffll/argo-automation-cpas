@@ -101,6 +101,8 @@ class Settings:
         )
 
         self.monboxgit = Section(
+            git_repo_owner=monboxgit.get("git_repo_owner", ""),
+            git_repo_name=monboxgit.get("git_repo_name",""),
             git_ssh_key_path=monboxgit.get("git_ssh_key_path", ""),
             git_branch_backend=monboxgit.get("git_branch_backend", ""),
             git_branch_agent=monboxgit.get("git_branch_agent", "")
