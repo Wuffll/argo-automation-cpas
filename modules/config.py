@@ -135,6 +135,8 @@ class Settings:
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
             poem_restapi_token=poem_restapi_token,
             poem_superuserpassword=ansible.get("poem_superuserpassword", ""),
+            sensu_user_connector=ansible.get("sensu_user_connector", ""),
+            sensu_inventory=ansible.get("sensu_inventory", "sensu.ini")
         )
 
         self.base_url = self.webapi.url

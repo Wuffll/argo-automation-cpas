@@ -75,6 +75,7 @@ argo_automation_cpas = "modules/"
 "ansible/inventory" = [
 	"ansible/inventory/connectors.ini",
 	"ansible/inventory/poem.ini",
+	"ansible/inventory/sensu.ini"
 ]
 "ansible/roles/connector/defaults" = [
 	"ansible/roles/connector/defaults/main.yml",

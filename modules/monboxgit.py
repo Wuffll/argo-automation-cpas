@@ -39,7 +39,7 @@ SleepRetry: '300'
 SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY = "argo::mon::scg::tenant_sections"
 SENSU_BACKEND_TENANT_SECTION_STRING_TEMPLATE = '''
 poem_url       : https://{tenant_name}.poem.devel.mon.argo.grnet.gr
-poem_token     : Hj38v7mZocJMMk4D9mbH9lFfRjnB5Jgf
+poem_token     : {poem_token}
 webapi_token   : {webapi_token}
 metricprofiles : default_metric
 publish        : 'true'
@@ -56,16 +56,17 @@ profiles  : 'default_metric'
 """
 
 class NewTenantAgentInfo:
-    def __init__(self, tenant_id = "", tenant_poem_host = "", tenant_poem_token = ""):
-        self.tenant_id = tenant_id
+    def __init__(self, tenant_name = "", tenant_poem_host = "", tenant_poem_token = ""):
+        self.tenant_name = tenant_name
         self.poem_host = tenant_poem_host
         self.poem_token = tenant_poem_token
 
 class NewTenantBackendInfo:
-    def __init__(self, tenant_id = "", ams_token = "", webapi_token = ""):
-        self.tenant_id = tenant_id
+    def __init__(self, tenant_name = "", ams_token = "", webapi_token = "", poem_token = ""):
+        self.tenant_name = tenant_name
         self.ams_token = ams_token
         self.webapi_token = webapi_token
+        self.poem_token = poem_token
 
 class MonboxGit:
     def __init__(self):
@@ -74,8 +75,10 @@ class MonboxGit:
     async def init_new_tenant(self, tenant_backend_info, tenant_agent_info):
         commit_id = str(uuid.uuid4()) + " | " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
 
-        await self._commit_sensu_backend_changes(tenant_backend_info, commit_id)
-        await self._commit_sensu_agent_changes(tenant_agent_info, commit_id)
+        backend_commit_status = await self._commit_sensu_backend_changes(tenant_backend_info, commit_id)
+        agent_commit_status = await self._commit_sensu_agent_changes(tenant_agent_info, commit_id)
+
+        return backend_commit_status and agent_commit_status
 
     async def _commit_sensu_backend_changes(self, tenant_backend_info, commit_id=""):
         repo_owner = self.settings.monboxgit.git_repo_owner
@@ -90,21 +93,15 @@ class MonboxGit:
                                                    branch=commit_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
+        
+        if file_data == False:
+            return False
 
         yaml_data = yaml.safe_load(file_data)
-        
 
-        new_tenant_id = tenant_backend_info.tenant_id
-        new_tentant_ams_token = tenant_backend_info.ams_token
-        new_tenant_webapi_token = tenant_backend_info.webapi_token
+        yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, tenant_backend_info)
 
-        new_tenant_info = NewTenantBackendInfo(tenant_id=new_tenant_id,
-                                               ams_token=new_tentant_ams_token,
-                                               webapi_token=new_tenant_webapi_token)
-
-        yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, new_tenant_info)
-
-        await self._commit_file_to_git_repo(owner=repo_owner,
+        return await self._commit_file_to_git_repo(owner=repo_owner,
                                             repo=repo_name,
                                             directory=file_path,
                                             content=yaml.dump(yaml_data, sort_keys=False),
@@ -124,20 +121,15 @@ class MonboxGit:
                                                    branch=commit_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
+    
+        if file_data == False:
+            return False
+
         yaml_data = yaml.safe_load(file_data)
-        
-        
-        new_tenant_id = tenant_agent_info.tenant_id
-        new_tentant_poem_host = tenant_agent_info.poem_host
-        new_tenant_poem_token = tenant_agent_info.poem_token
 
-        new_tenant_info = NewTenantAgentInfo(tenant_id = new_tenant_id,
-                                             tenant_poem_host= new_tentant_poem_host,
-                                             tenant_poem_token= new_tenant_poem_token)
+        yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, tenant_agent_info)
 
-        yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, new_tenant_info)
-
-        await self._commit_file_to_git_repo(owner=repo_owner,
+        return await self._commit_file_to_git_repo(owner=repo_owner,
                                             repo=repo_name,
                                             directory=file_path,
                                             branch=commit_branch,
@@ -180,7 +172,7 @@ class MonboxGit:
                 except FileExistsError as e:
                     print(str(e))
                     print("Error: Unable to create file used for commiting to the repo!")
-                    return
+                    return False
 
             f = open(full_target_path, "w")
             f.write(content)
@@ -191,6 +183,11 @@ class MonboxGit:
 
             repo.git.push("origin", f"HEAD:{branch}")
 
+            return True
+        
+        except e:
+            print(str(e))
+            return False
         finally:
             shutil.rmtree(temp_dir)
 
@@ -205,7 +202,7 @@ class MonboxGit:
         new_tenant_data = yaml.safe_load(new_tenant_agent_string)
 
         # add yaml tenant entry into tenants array
-        yaml_tenant_entry_key = new_tenant_info.tenant_id
+        yaml_tenant_entry_key = new_tenant_info.tenant_name
         tenant_data_entries[yaml_tenant_entry_key] = new_tenant_data
 
         # replace old tenants array with new one
@@ -220,10 +217,11 @@ class MonboxGit:
 
         new_tenant_backend_tenant_string = SENSU_BACKEND_TENANT_SECTION_STRING_TEMPLATE
         new_tenant_backend_tenant_string = new_tenant_backend_tenant_string.format(
-            tenant_name=new_tenant_info.tenant_id,
-            webapi_token=new_tenant_info.webapi_token,)
+            tenant_name=new_tenant_info.tenant_name,
+            webapi_token=new_tenant_info.webapi_token,
+            poem_token=new_tenant_info.poem_token)
 
-        tenant_tenant_entry_key = new_tenant_info.tenant_id
+        tenant_tenant_entry_key = new_tenant_info.tenant_name
         new_tenant_tenant_data = yaml.safe_load(new_tenant_backend_tenant_string)
         tenant_data_entries[tenant_tenant_entry_key] = new_tenant_tenant_data
 
@@ -234,10 +232,10 @@ class MonboxGit:
 
         new_tenant_backend_pub_queue_string = SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE
         new_tenant_backend_pub_queue_string = new_tenant_backend_pub_queue_string.format(
-            tenant_name=new_tenant_info.tenant_id,
+            tenant_name=new_tenant_info.tenant_name,
             ams_token=new_tenant_info.ams_token,)
 
-        tenant_pub_queue_entry_key = "Metrics" + new_tenant_info.tenant_id
+        tenant_pub_queue_entry_key = "Metrics" + new_tenant_info.tenant_name
         new_tenant_pub_queue_data = yaml.safe_load(new_tenant_backend_pub_queue_string)
         tenant_pub_queue_entries[tenant_pub_queue_entry_key] = new_tenant_pub_queue_data
 
@@ -254,7 +252,7 @@ class MonboxGit:
         
         if len(ssh_key) == 0 or ssh_key is None:
             print("download_github_file_api | ssh_key is invalid; exiting early")
-            return
+            return False
 
         env = os.environ
         env["GIT_SSH_COMMAND"] = f"ssh -i {ssh_key} -o StrictHostKeyChecking=no"
