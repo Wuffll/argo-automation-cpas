@@ -61,7 +61,7 @@ poem_inventory = poem.ini
 poem_fqdn_suffix = devel.mon.argo.grnet.gr
 poem_restapi_token = %(VENV)svar/spool/restapi_tokens.json
 poem_superuserpassword = poempass
-sensu_user_connector = rocky
+user_sensu = rocky
 sensu_inventory = sensu.ini
 
 [monboxgit]

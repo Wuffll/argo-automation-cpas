@@ -335,12 +335,12 @@ class Application:
     
     async def _start_monboxgit_runner(self):
         whoami_cmd = "whoami"
-        shell_script_cmd = "sudo /usr/local/bin/run-puppet.sh"
+        shell_script_cmd = "/usr/local/bin/run-puppet.sh"
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             inventory="inventory/sensu.ini",
-            host_pattern="servers",
+            host_pattern="sensus",
             module="shell",
             quiet=True,
             module_args=shell_script_cmd
@@ -353,8 +353,10 @@ class Application:
             kwargs["cmdline"] = "--private-key %s" % private_key
 
         extravars = {}
-        if self.settings.ansible.sensu_user_connector:
-            extravars["user_connector"] = self.settings.ansible.sensu_user_connector
+        if self.settings.ansible.user_sensu:
+            extravars["user_connector"] = self.settings.ansible.user_sensu
+        
+        extravars["ansible_become"] = "yes"
 
         kwargs["extravars"] = extravars
 
