@@ -46,6 +46,7 @@ class Settings:
         iam = self._get_section(parser, "iam")
         statusapi = self._get_section(parser, "statusapi")
         ansible = self._get_section(parser, "ansible")
+        monboxgit = self._get_section(parser, "monboxgit")
 
         self.automation = Section(
             tenants=self._split_csv(automation.get("tenants", "")),
@@ -93,10 +94,20 @@ class Settings:
             api=iam.get("api", ""),
             oidc_client_id=iam.get("oidc_client_id", ""),
             oidc_client_secret=iam.get("oidc_client_secret", ""),
-            tokens_spool=iam.get("tokens_spool", ""),
+            token_spool=iam.get("token_spool", ""),
         )
         self.statusapi = Section(
             api=statusapi.get("api", "")
+        )
+
+        self.monboxgit = Section(
+            git_repo_owner=monboxgit.get("git_repo_owner", ""),
+            git_repo_name=monboxgit.get("git_repo_name",""),
+            git_ssh_key_path=monboxgit.get("git_ssh_key_path", ""),
+            git_branch_backend=monboxgit.get("git_branch_backend", ""),
+            backend_config_file_path=monboxgit.get("backend_config_file_path", ""),
+            git_branch_agent=monboxgit.get("git_branch_agent", ""),
+            agent_config_file_path=monboxgit.get("agent_config_file_path", "")
         )
 
         defaults_file = ansible.get("defaults_file", "")
@@ -126,6 +137,8 @@ class Settings:
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
             poem_restapi_token=poem_restapi_token,
             poem_superuserpassword=ansible.get("poem_superuserpassword", ""),
+            user_sensu=ansible.get("user_sensu", ""),
+            sensu_inventory=ansible.get("sensu_inventory", "sensu.ini")
         )
 
         self.base_url = self.webapi.url

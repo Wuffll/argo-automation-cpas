@@ -124,6 +124,18 @@ def parse_args():
         metavar="TENANT",
         help="Tenant name(s) to remove (sets connector_remove_tenants extravars).",
     )
+    parser.add_argument(
+        "--only-monbox-git",
+        action="store_true",
+        default=False,
+        help="Utilize the monitoring box. Upon completion, exit.",
+    )
+    parser.add_argument(
+        "--tenant-id",
+        default=None,
+        metavar="N",
+        help="Used with --only-monbox-git. Allows for initialization of monbox on specified tenant.",
+    )
     return parser.parse_args()
 
 
@@ -146,6 +158,7 @@ def main():
         only_webapi=args.only_webapi,
         only_iam=args.only_iam,
         only_statusapi=args.only_statusapi,
+        only_monbox_git=args.only_monbox_git,
         update_status=args.update_status,
         event=args.event,
         message=args.message,
