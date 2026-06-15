@@ -1,16 +1,15 @@
 import asyncio
 import datetime
-import json
 import logging
 import os
 import subprocess
 import uuid
 import yaml
-import requests
-import base64
 import tempfile
 import shutil
 from git import Repo
+
+import ansible_runner
 
 from argo_ams_library import ArgoMessagingService
 from argo_ams_library.amsexceptions import AmsException, AmsServiceException
@@ -68,38 +67,146 @@ class NewTenantBackendInfo:
         self.webapi_token = webapi_token
         self.poem_token = poem_token
 
+class NewTenantEntryInfo:
+    def __init__(self, tenant_agent_info, tenant_backend_info):
+        self.tenant_agent_info = tenant_agent_info
+        self.tenant_backend_info = tenant_backend_info
+
 class MonboxGit:
     def __init__(self):
         self.settings = get_settings()
+        self.new_tenant_entries: list[NewTenantEntryInfo]  = []
 
-    async def init_new_tenant(self, tenant_backend_info, tenant_agent_info):
+    async def add_new_tenant(self, webapi, ams, new_tenant_name, rest_api_tokens):
+        tenant_name_lower = new_tenant_name.lower()
+        restApiToken = rest_api_tokens[new_tenant_name]
+
+        if restApiToken is None:
+            print("Error: there is no restapi_token for tenant with id: " + new_tenant_name + "; Exiting early.")
+            return False
+
+        restApiToken = restApiToken["restapi"]
+
+        monbox_webapi_component = "monbox"
+        webapi_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+        webapi_tokens = webapi_tokens[new_tenant_name]
+
+        if webapi_tokens is None:
+            print("Error: there is no webapi_token for tenant with id: " + new_tenant_name + "; Exiting early.")
+            return False
+
+        webapi_token = webapi_tokens[monbox_webapi_component]
+
+        if webapi_token is None:
+            print("Error: there is no monbox webapi_token for tenant with id: " + new_tenant_name + "; Exiting early.")
+            return False
+
+        monbox_ams_component = "argo-monbox"
+        ams_tokens = ams.load_tokens(self.settings.ams.tokens_spool)
+        ams_tokens = ams_tokens[new_tenant_name]
+
+        if ams_tokens is None:
+            print("Error: there is no ams_token for tenant with id: " + new_tenant_name + "; Exiting early.")
+            return False
+
+        ams_token = ams_tokens.get(monbox_ams_component)
+        if ams_token is None:
+            print(f'Error: there is no argo-monbox ams_token for tenant with id: {new_tenant_name}; Exiting early.')
+            return False
+
+        new_tenant_agent_info = NewTenantAgentInfo(tenant_name = tenant_name_lower,
+                                                tenant_poem_host= tenant_name_lower + ".poem.devel.mon.argo.grnet.gr",
+                                                tenant_poem_token = restApiToken)
+
+        new_tenant_backend_info = NewTenantBackendInfo(tenant_name = tenant_name_lower,
+                                                    ams_token = ams_token,
+                                                    webapi_token = webapi_token,
+                                                    poem_token = restApiToken)
+
+        self._add_tenant_to_array(NewTenantEntryInfo(new_tenant_agent_info, new_tenant_backend_info))
+    
+    async def commit_new_tenants(self):
         commit_id = str(uuid.uuid4()) + " | " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
 
-        backend_commit_status = await self._commit_sensu_backend_changes(tenant_backend_info, commit_id)
-        agent_commit_status = await self._commit_sensu_agent_changes(tenant_agent_info, commit_id)
+        backend_commit_status = await self._commit_sensu_backend_changes(commit_id)
+        agent_commit_status = await self._commit_sensu_agent_changes(commit_id)
 
         return backend_commit_status and agent_commit_status
 
-    async def _commit_sensu_backend_changes(self, tenant_backend_info, commit_id=""):
+    async def start_monboxgit_runner(self):
+        whoami_cmd = "whoami"
+        shell_script_cmd = "/usr/local/bin/run-puppet.sh"
+
+        kwargs = dict(
+            private_data_dir=self.settings.ansible_private_data_dir,
+            inventory=f'inventory/{self.settings.ansible.sensu_inventory}',
+            host_pattern="sensus",
+            module="shell",
+            quiet=True,
+            module_args=shell_script_cmd
+        )
+        
+        kwargs["inventory"] = self.settings.ansible.sensu_inventory
+
+        private_key = self.settings.ansible.ssh_private_key
+        if private_key:
+            kwargs["cmdline"] = "--private-key %s" % private_key
+
+        extravars = {}
+        if self.settings.ansible.user_sensu:
+            extravars["user_connector"] = self.settings.ansible.user_sensu
+        
+        extravars["ansible_become"] = "yes"
+
+        kwargs["extravars"] = extravars
+
+        r = await asyncio.to_thread(ansible_runner.run, **kwargs)
+
+        print(f'Runner finished (rc={r.rc})')
+
+        return r.rc
+
+    def clear_added_tenants(self):
+        self.new_tenant_entries.clear()
+
+    def _add_tenant_to_array(self, new_tenant_entry: NewTenantEntryInfo):
+        self.new_tenant_entries.append(new_tenant_entry)
+
+    async def _get_sensu_backend_config(self):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
-        commit_branch = self.settings.monboxgit.git_branch_backend
+        retrieve_branch = self.settings.monboxgit.git_branch_backend
         ssh_key = self.settings.monboxgit.git_ssh_key_path
 
-        file_path = "data/default.yaml"
+        file_path = self.settings.monboxgit.backend_config_file_path
 
         file_data = self._download_github_file_api(owner=repo_owner,
                                                    repo=repo_name,
-                                                   branch=commit_branch,
+                                                   branch=retrieve_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
         
         if file_data == False:
             return False
+    
+        return file_data
+
+    async def _commit_sensu_backend_changes(self, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_backend
+
+        file_data = await self._get_sensu_backend_config()
+        if file_data is False:
+            print("Error: Unable to fetch sensu backend config. Exiting early.")
+            return False
 
         yaml_data = yaml.safe_load(file_data)
 
-        yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, tenant_backend_info)
+        for agent_info in self.new_tenant_entries:
+            yaml_data = self._add_new_tenant_to_backend_yaml(yaml_data, agent_info.tenant_backend_info)
+
+        file_path = self.settings.monboxgit.backend_config_file_path
 
         return await self._commit_file_to_git_repo(owner=repo_owner,
                                             repo=repo_name,
@@ -108,26 +215,41 @@ class MonboxGit:
                                             branch=commit_branch,
                                             commit_id=commit_id)
 
-    async def _commit_sensu_agent_changes(self, tenant_agent_info, commit_id=""):
+    async def _get_sensu_agent_config(self):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
-        commit_branch = self.settings.monboxgit.git_branch_agent
+        retrieve_branch = self.settings.monboxgit.git_branch_agent
         ssh_key = self.settings.monboxgit.git_ssh_key_path
-
-        file_path = "data/default.yaml"
+        
+        file_path = self.settings.monboxgit.agent_config_file_path
 
         file_data = self._download_github_file_api(owner=repo_owner,
                                                    repo=repo_name,
-                                                   branch=commit_branch,
+                                                   branch=retrieve_branch,
                                                    path=file_path,
                                                    ssh_key=ssh_key)
-    
+        
         if file_data == False:
+            return False
+        
+        return file_data
+
+    async def _commit_sensu_agent_changes(self, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_agent
+
+        file_data = await self._get_sensu_agent_config()
+        if file_data == False:
+            print("Error: Unable to fetch sensu backend config. Exiting early.")
             return False
 
         yaml_data = yaml.safe_load(file_data)
 
-        yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, tenant_agent_info)
+        for agent_info in self.new_tenant_entries:
+            yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, agent_info.tenant_agent_info)
+
+        file_path = self.settings.monboxgit.agent_config_file_path
 
         return await self._commit_file_to_git_repo(owner=repo_owner,
                                             repo=repo_name,

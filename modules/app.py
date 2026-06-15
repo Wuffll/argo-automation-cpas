@@ -2,8 +2,6 @@ import asyncio
 import logging
 import os
 
-import ansible_runner
-
 from argo_automation_cpas.ams import AMS
 from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
@@ -144,11 +142,20 @@ class Application:
 
             try:
                 for tenant_name in tenant_names:
-                    await self._add_new_tenant(monboxgit, webapi, ams, tenant_name, restapi_tokens)
-                    
-                    print("Only Monbox | Successfully commited file changes.")
+                    await monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+                
+                print("Only Monbox | Successfully commited file changes.")
 
-                    await self._start_monboxgit_runner()
+                success = await monboxgit.commit_new_tenants()
+
+                if not success:
+                    print(f'Error: One of the git commits was unsuccessful! Exiting early.')
+                    return
+
+                monboxgit.clear_added_tenants()
+                
+                await monboxgit.start_monboxgit_runner()
+                    
             finally:
                 await ams.close()
                 await webapi.close()
@@ -278,90 +285,3 @@ class Application:
             await webapi.close()
             await iam.close()
             await status_api.close()
-    
-    async def _add_new_tenant(self, monboxgit, webapi, ams, new_tenant_name, rest_api_tokens):
-        tenant_name_lower = new_tenant_name.lower()
-        restApiToken = rest_api_tokens[new_tenant_name]
-
-        if restApiToken is None:
-            print("Only MonboxGit | Error: there is no restapi_token for tenant with id: " + new_tenant_name)
-            return False
-
-        restApiToken = restApiToken["restapi"]
-
-        monbox_webapi_component = "monbox"
-        webapi_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
-        webapi_tokens = webapi_tokens[new_tenant_name]
-
-        if webapi_tokens is None:
-            print("Only MonboxGit | Error: there is no webapi_token for tenant with id: " + new_tenant_name)
-            return False
-
-        webapi_token = webapi_tokens[monbox_webapi_component]
-
-        if webapi_token is None:
-            print("Only MonboxGit | Error: there is no monbox webapi_token for tenant with id: " + new_tenant_name)
-            return False
-
-        monbox_ams_component = "argo-monbox"
-        ams_tokens = ams.load_tokens(self.settings.ams.tokens_spool)
-        ams_tokens = ams_tokens[new_tenant_name]
-
-        if ams_tokens is None:
-            print("Only MonboxGit | Error: there is no ams_token for tenant with id: " + new_tenant_name)
-            return False
-
-        ams_token = ams_tokens.get(monbox_ams_component)
-        if ams_token is None:
-            print("Only MonboxGit | Error: there is no argo-monbox ams_token for tenant with id: " + new_tenant_name)
-            return False
-
-        newAgentTenantInfo = NewTenantAgentInfo(tenant_name = tenant_name_lower,
-                                                tenant_poem_host= tenant_name_lower + ".poem.devel.mon.argo.grnet.gr",
-                                                tenant_poem_token = restApiToken)
-
-        newBackendTenantInfo = NewTenantBackendInfo(tenant_name = tenant_name_lower,
-                                                    ams_token = ams_token,
-                                                    webapi_token = webapi_token,
-                                                    poem_token = restApiToken)
-
-        success = await monboxgit.init_new_tenant(newBackendTenantInfo, newAgentTenantInfo)      
-
-        if not success:
-            print("Only Monbox | One of the git commits was unsuccessful! Exiting early.")
-            return False
-
-        return True
-    
-    async def _start_monboxgit_runner(self):
-        whoami_cmd = "whoami"
-        shell_script_cmd = "/usr/local/bin/run-puppet.sh"
-
-        kwargs = dict(
-            private_data_dir=self.settings.ansible_private_data_dir,
-            inventory="inventory/sensu.ini",
-            host_pattern="sensus",
-            module="shell",
-            quiet=True,
-            module_args=shell_script_cmd
-        )
-        
-        kwargs["inventory"] = self.settings.ansible.sensu_inventory
-
-        private_key = self.settings.ansible.ssh_private_key
-        if private_key:
-            kwargs["cmdline"] = "--private-key %s" % private_key
-
-        extravars = {}
-        if self.settings.ansible.user_sensu:
-            extravars["user_connector"] = self.settings.ansible.user_sensu
-        
-        extravars["ansible_become"] = "yes"
-
-        kwargs["extravars"] = extravars
-
-        r = await asyncio.to_thread(ansible_runner.run, **kwargs)
-
-        print(f'Runner finished (rc={r.rc})')
-
-        return r.rc

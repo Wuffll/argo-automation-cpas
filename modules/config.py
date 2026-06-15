@@ -105,7 +105,9 @@ class Settings:
             git_repo_name=monboxgit.get("git_repo_name",""),
             git_ssh_key_path=monboxgit.get("git_ssh_key_path", ""),
             git_branch_backend=monboxgit.get("git_branch_backend", ""),
-            git_branch_agent=monboxgit.get("git_branch_agent", "")
+            backend_config_file_path=monboxgit.get("backend_config_file_path", ""),
+            git_branch_agent=monboxgit.get("git_branch_agent", ""),
+            agent_config_file_path=monboxgit.get("agent_config_file_path", "")
         )
 
         defaults_file = ansible.get("defaults_file", "")
