@@ -24,5 +24,7 @@ docker/sshkey*
 # Ignore IDE cache
 .idea
 
+config/argo-cpas/keys/*
+
 config/argo-cpas.conf
 var/*

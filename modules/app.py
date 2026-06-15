@@ -9,7 +9,13 @@ from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
+from argo_automation_cpas.monboxgit import (
+    MonboxGit,
+    NewTenantAgentInfo,
+    NewTenantBackendInfo,
+)
 
+from argo_automation_cpas.restapi_tokens import RestAPITokens
 
 LOG = logging.getLogger(__name__)
 
@@ -17,18 +23,35 @@ LOG = logging.getLogger(__name__)
 def _event_playbook(settings, event):
     """Return (playbook, inventory) for an AMS event name, or (None, None)."""
     if event == "INIT_TOPOLOGY_CONNECTOR":
-        return settings.ansible.connectors_playbook, settings.ansible.connectors_inventory
+        return (
+            settings.ansible.connectors_playbook,
+            settings.ansible.connectors_inventory,
+        )
     if event == "INIT_POEM":
         return settings.ansible.poem_playbook, settings.ansible.poem_inventory
     return None, None
 
 
 class Application:
-    def __init__(self, only_ansible=None, only_ams=False, filter_events=False,
-                 only_webapi=False, only_iam=False, only_statusapi=None,
-                 update_status=None, event=None, message=None, inventory=None,
-                 show_artifacts=None, clean_artifacts=None,
-                 offset=None, add_tenants=None, remove_tenants=None):
+    def __init__(
+        self,
+        only_ansible=None,
+        only_ams=False,
+        filter_events=False,
+        only_webapi=False,
+        only_iam=False,
+        only_statusapi=None,
+        only_monbox_git=None,
+        update_status=None,
+        event=None,
+        message=None,
+        inventory=None,
+        show_artifacts=None,
+        clean_artifacts=None,
+        offset=None,
+        add_tenants=None,
+        remove_tenants=None,
+    ):
         self.settings = get_settings()
         self.only_ansible = only_ansible
         self.only_ams = only_ams
@@ -36,6 +59,7 @@ class Application:
         self.only_webapi = only_webapi
         self.only_iam = only_iam
         self.only_statusapi = only_statusapi
+        self.only_monbox_git = only_monbox_git
         self.update_status = update_status
         self.event = event
         self.message = message
@@ -48,13 +72,15 @@ class Application:
 
     async def run(self):
         if self.clean_artifacts is not None:
-            artifacts_dir = os.path.join(self.settings.ansible_private_data_dir, "artifacts")
+            artifacts_dir = os.path.join(
+                self.settings.ansible_private_data_dir, "artifacts"
+            )
             clean_artifacts(artifacts_dir, self.clean_artifacts)
             return
 
         if self.only_ansible is not None:
             ansible = Ansible()
-            (ok, extravars) = await ansible.run(
+            ok, extravars = await ansible.run(
                 self.only_ansible,
                 inventory=self.inventory,
                 add_tenants=self.add_tenants,
@@ -92,7 +118,10 @@ class Application:
                         kwargs["message"] = self.message
                     await status_api.update_job_status(
                         self.only_statusapi,
-                        self.event, self.update_status, token, **kwargs,
+                        self.event,
+                        self.update_status,
+                        token,
+                        **kwargs,
                     )
                 else:
                     await status_api.fetch_status(self.only_statusapi, token)
@@ -107,13 +136,63 @@ class Application:
                 await asyncio.to_thread(ams.move_offset, self.offset)
             await ams.pull_and_print(filter_events=self.filter_events)
 
-            print("Only AMS | Trying to get ams tokens!")
+            print("Only AMS | Refreshing AMS tokens!")
             try:
                 ams_component_tokens = await ams.refresh_tokens()
                 if any(ams_component_tokens.values()):
-                    ams.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
+                    ams.save_tokens(
+                        ams_component_tokens, self.settings.ams.tokens_spool
+                    )
             finally:
                 await ams.close()
+
+            return
+
+        if self.only_monbox_git:
+            print(
+                "Only MonboxGit | You are running the initialization of monbox-git only!"
+            )
+            monboxgit = MonboxGit()
+
+            tenant_names = self.settings.automation.tenants
+
+            if tenant_names is None:
+                print("Only MonboxGit | tenant_names is None!")
+                return
+
+            ams = await asyncio.to_thread(AMS().init)
+            webapi = WebAPI()
+
+            restapi_tokens_client = RestAPITokens()
+            restapi_tokens = restapi_tokens_client.load_tokens()
+
+            if restapi_tokens is None:
+                print("Only MonboxGit | Error: RestAPI tokens not found!")
+                return
+
+            try:
+                for tenant_name in tenant_names:
+                    await monboxgit.add_new_tenant(
+                        webapi, ams, tenant_name, restapi_tokens
+                    )
+
+                print("Only Monbox | Successfully commited file changes.")
+
+                success = await monboxgit.commit_new_tenants()
+
+                if not success:
+                    print(
+                        f"Error: One of the git commits was unsuccessful! Exiting early."
+                    )
+                    return
+
+                monboxgit.clear_added_tenants()
+
+                await monboxgit.start_monboxgit_runner()
+
+            finally:
+                await ams.close()
+                await webapi.close()
 
             return
 
@@ -130,6 +209,7 @@ class Application:
 
         try:
             token = await iam.fetch_token()
+
             component_tokens = await webapi.refresh_tokens()
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
@@ -143,15 +223,20 @@ class Application:
                 tenant_name = props["tenant_name"]
                 tenant_id = props["tenant_id"]
                 event = payload.get("name")
-                LOG.info("Processing tenant_name=%s tenant_id=%s name=%s",
-                         tenant_name, tenant_id, event)
+                LOG.info(
+                    "Processing tenant_name=%s tenant_id=%s name=%s",
+                    tenant_name,
+                    tenant_id,
+                    event,
+                )
 
                 playbook, event_inventory = _event_playbook(self.settings, event)
 
                 if not playbook:
                     LOG.info(
                         "Skipping tenant_name=%s event=%s: no playbook mapping",
-                        tenant_name, event,
+                        tenant_name,
+                        event,
                     )
                     continue
 
@@ -161,12 +246,17 @@ class Application:
                 if current_status != "INITIALISED":
                     LOG.info(
                         "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
-                        tenant_name, event, current_status,
+                        tenant_name,
+                        event,
+                        current_status,
                     )
                     continue
 
                 await status_api.update_job_status(
-                    tenant_id, event, "IN_PROGRESS", token,
+                    tenant_id,
+                    event,
+                    "IN_PROGRESS",
+                    token,
                 )
 
                 if playbook.startswith("connectors"):
@@ -174,7 +264,7 @@ class Application:
                     webapi_overrides = await webapi.fetch_topology_config(
                         self.settings.webapi.url_api_config, token=connector_token
                     )
-                    (ok, _) = await ansible.run(
+                    ok, _ = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
                         webapi_overrides=webapi_overrides,
@@ -185,7 +275,10 @@ class Application:
                     )
                     if ok:
                         await status_api.update_job_status(
-                            tenant_id, event, "COMPLETED", token,
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
                             message=(
                                 "Connector successfully configured for tenant %s "
                                 "by argo-automation-cpas" % tenant_name
@@ -194,10 +287,14 @@ class Application:
                     else:
                         LOG.warning(
                             "Ansible run failed for tenant_name=%s event=%s",
-                            tenant_name, event,
+                            tenant_name,
+                            event,
                         )
                         await status_api.update_job_status(
-                            tenant_id, event, "FAILED", token,
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
                             message=(
                                 "Connector configuration failed for tenant %s "
                                 "by argo-automation-cpas" % tenant_name
@@ -205,7 +302,7 @@ class Application:
                         )
 
                 elif playbook.startswith("poem"):
-                    (ok, extravars) = await ansible.run(
+                    ok, extravars = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
                         component_tokens=component_tokens,
@@ -215,7 +312,10 @@ class Application:
                     )
                     if ok:
                         await status_api.update_job_status(
-                            tenant_id, event, "COMPLETED", token,
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
                             message=(
                                 "POEM successfully configured for tenant %s "
                                 "by argo-automation-cpas" % tenant_name
@@ -224,10 +324,14 @@ class Application:
                     else:
                         LOG.warning(
                             "Ansible run failed for tenant_name=%s event=%s",
-                            tenant_name, event,
+                            tenant_name,
+                            event,
                         )
                         await status_api.update_job_status(
-                            tenant_id, event, "FAILED", token,
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
                             message=(
                                 "POEM configuration failed for tenant %s "
                                 "by argo-automation-cpas" % tenant_name
