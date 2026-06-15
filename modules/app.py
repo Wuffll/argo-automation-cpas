@@ -440,6 +440,8 @@ class Application:
                         token,
                     )
 
+                monboxgit.clear_added_tenants()
+
         finally:
             await ams.close()
             await webapi.close()
