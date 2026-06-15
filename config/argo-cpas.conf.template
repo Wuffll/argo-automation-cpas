@@ -28,7 +28,7 @@ components = argo-monbox, argo-archiver
 pullmsgs = 1
 ack = false
 return_immediately = true
-events = INIT_TOPOLOGY_CONNECTOR, INIT_POEM
+events = INIT_TOPOLOGY_CONNECTOR, INIT_POEM, INIT_MONITORING_BOX
 tokens_spool = %(VENV)svar/spool/ams_tokens.json
 
 [webapi]
@@ -69,6 +69,8 @@ git_repo_owner = ARGOeu
 git_repo_name = argo-mon-deployment
 git_ssh_key_path = path_to_repo_readwrite_ssh_key
 git_branch_backend = address_to_git_branch_backend
+backend_config_file_path = path/to/config/yaml_file
 git_branch_agent = address_to_git_branch_agent
+agent_config_file_path = path/to/config/yaml_file
 
 # vim: ft=conf
