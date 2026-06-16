@@ -450,7 +450,7 @@ class Application:
         print("Making sure monbox inits were successfull... (takes up to 25 mins)")
 
         monbox_init_check_counter = 5  # number of tries
-        monbox_init_check_interval = 10  # 5 * 60  # in seconds
+        monbox_init_check_interval = 5 * 60  # in seconds
 
         init_check_success = False
         all_tenants_inited = False
@@ -469,6 +469,9 @@ class Application:
 
             print(f"Waiting for monbox to successfully init on all tenants")
 
+        if not all_tenants_inited:
+            print(f"Warning: Some tenants weren't able to initialize monitoring box!")
+
         for payload in init_events:
             props = payload.get("properties", {})
             tenant_id = props["tenant_id"]
@@ -480,6 +483,14 @@ class Application:
                     event,
                     "COMPLETED",
                     token,
+                )
+            else:
+                await status_api.update_job_status(
+                    tenant_id,
+                    event,
+                    "FAILED",
+                    token,
+                    message=(f"Error: Unable to initialize monitoring box."),
                 )
 
         if not init_check_success:
