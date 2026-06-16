@@ -528,7 +528,7 @@ class MonboxGit:
                     tenant_name_lower = tenant_name.lower()
 
                     found_tenant = self._is_tenant_already_added(tenant_name_lower)
-                    if found_tenant is None:
+                    if not found_tenant:
                         continue
 
                     # get the published number
