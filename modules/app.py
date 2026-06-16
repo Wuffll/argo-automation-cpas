@@ -371,79 +371,121 @@ class Application:
             # processing monbox init events
             start_monbox_init = len(monbox_init_events) > 0
             if start_monbox_init:
-                for payload in monbox_init_events:
-                    props = payload.get("properties", {})
-                    tenant_name = props["tenant_name"]
-                    tenant_id = props["tenant_id"]
-                    event = payload.get("name")
-
-                    await status_api.update_job_status(
-                        tenant_id,
-                        event,
-                        "IN_PROGRESS",
-                        token,
-                    )
-
-                    print(f"Tenant {tenant_name} has status: {current_status}")
-
-                    await monboxgit.add_new_tenant(
-                        webapi, ams, tenant_name, restapi_tokens
-                    )
-
-                monboxgit_success = await monboxgit.commit_new_tenants()
-                if not monboxgit_success:
-                    for payload in monbox_init_events:
-                        props = payload.get("properties", {})
-                        tenant_id = props["tenant_id"]
-                        event = payload.get("name")
-                        await status_api.update_job_status(
-                            tenant_id,
-                            event,
-                            "FAILED",
-                            token,
-                            message=(
-                                f"Error: MonboxGit module was unable to successfully commit new changes for tenant {tenant_id}"
-                            ),
-                        )
-                    raise RuntimeError(
-                        "Error: Monbox new tenants commit was unsuccessful! Exiting early."
-                    )
-
-                runner_rc = await monboxgit.start_monboxgit_runner()
-
-                if runner_rc == 1:
-                    for payload in monbox_init_events:
-                        props = payload.get("properties", {})
-                        tenant_id = props["tenant_id"]
-                        event = payload.get("name")
-                        await status_api.update_job_status(
-                            tenant_id,
-                            event,
-                            "FAILED",
-                            token,
-                            message=(
-                                f"Error: Monbox init ansible run for tenant {tenant_id} was unsuccessful."
-                            ),
-                        )
-                    raise RuntimeError(
-                        "Error: Monbox init ansible run was unsuccessful! Exiting early."
-                    )
-
-                for payload in monbox_init_events:
-                    props = payload.get("properties", {})
-                    tenant_id = props["tenant_id"]
-                    event = payload.get("name")
-                    await status_api.update_job_status(
-                        tenant_id,
-                        event,
-                        "COMPLETED",
-                        token,
-                    )
-
-                monboxgit.clear_added_tenants()
+                await self._process_monbox_init_events(
+                    monbox_init_events,
+                    monboxgit,
+                    webapi,
+                    ams,
+                    status_api,
+                    token,
+                    restapi_tokens,
+                )
 
         finally:
             await ams.close()
             await webapi.close()
             await iam.close()
             await status_api.close()
+
+    async def _process_monbox_init_events(
+        self, init_events, monboxgit, webapi, ams, status_api, token, restapi_tokens
+    ):
+        # set tenants to IN-PROGRESS
+        for payload in init_events:
+            props = payload.get("properties", {})
+            tenant_name = props["tenant_name"]
+            tenant_id = props["tenant_id"]
+            event = payload.get("name")
+
+            await status_api.update_job_status(
+                tenant_id,
+                event,
+                "IN_PROGRESS",
+                token,
+            )
+
+            await monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+
+        # commit new tenant configs to git repo
+        monboxgit_success = await monboxgit.commit_new_tenants()
+        if not monboxgit_success:
+            for payload in init_events:
+                props = payload.get("properties", {})
+                tenant_id = props["tenant_id"]
+                event = payload.get("name")
+                await status_api.update_job_status(
+                    tenant_id,
+                    event,
+                    "FAILED",
+                    token,
+                    message=(
+                        f"Error: MonboxGit module was unable to successfully commit new changes for this tenant."
+                    ),
+                )
+            raise RuntimeError(
+                "Error: Monbox new tenants commit was unsuccessful! Exiting early."
+            )
+
+        # run puppet script on machines
+        runner_rc = await monboxgit.start_monboxgit_runner()
+        if runner_rc == 1:
+            for payload in init_events:
+                props = payload.get("properties", {})
+                tenant_id = props["tenant_id"]
+                event = payload.get("name")
+                await status_api.update_job_status(
+                    tenant_id,
+                    event,
+                    "FAILED",
+                    token,
+                    message=(
+                        f"Error: Monbox init ansible run for this tenant was unsuccessful."
+                    ),
+                )
+            raise RuntimeError(
+                "Error: Monbox init ansible run was unsuccessful! Exiting early."
+            )
+
+        # check if the monbox was initialized on tenants
+        print("Making sure monbox inits were successfull... (takes up to 25 mins)")
+
+        monbox_init_check_counter = 5  # number of tries
+        monbox_init_check_interval = 10  # 5 * 60  # in seconds
+
+        init_check_success = False
+        all_tenants_inited = False
+        inited_tenants = []
+        for i in range(monbox_init_check_counter):
+            await asyncio.sleep(monbox_init_check_interval)
+
+            print(f"Monbox init check #{i + 1}")
+
+            all_tenants_inited, inited_tenants = (
+                await monboxgit.start_monbox_init_check()
+            )
+            if all_tenants_inited:
+                init_check_success = True
+                break
+
+            print(f"Waiting for monbox to successfully init on all tenants")
+
+        for payload in init_events:
+            props = payload.get("properties", {})
+            tenant_id = props["tenant_id"]
+            tenant_name = props["tenant_name"]
+            event = payload.get("name")
+            if all_tenants_inited or tenant_name.lower() in inited_tenants:
+                await status_api.update_job_status(
+                    tenant_id,
+                    event,
+                    "COMPLETED",
+                    token,
+                )
+
+        if not init_check_success:
+            raise RuntimeError(
+                "Error: Monbox check init ansible run was unsuccessful! Exiting early."
+            )
+
+        # if monboxes are initialized properly, delete added tenants from to-be-added array
+        monboxgit.clear_added_tenants()
