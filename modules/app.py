@@ -371,15 +371,18 @@ class Application:
             # processing monbox init events
             start_monbox_init = len(monbox_init_events) > 0
             if start_monbox_init:
-                await self._process_monbox_init_events(
-                    monbox_init_events,
-                    monboxgit,
-                    webapi,
-                    ams,
-                    status_api,
-                    token,
-                    restapi_tokens,
-                )
+                try:
+                    await self._process_monbox_init_events(
+                        monbox_init_events,
+                        monboxgit,
+                        webapi,
+                        ams,
+                        status_api,
+                        token,
+                        restapi_tokens,
+                    )
+                except:
+                    pass
 
         finally:
             await ams.close()
