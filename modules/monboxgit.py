@@ -46,7 +46,7 @@ metricprofiles : default_metric
 publish        : 'true'
 secrets        : "/etc/sensu/secret_envs"
 publisher_queue: "/var/spool/ams-publisher/{tenant_name}_metrics/"
-namespace      : poc
+namespace      : auto
 """
 
 SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY = "argo::mon::poemtools::tenants_data"
