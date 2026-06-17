@@ -475,6 +475,9 @@ class Application:
         if not all_tenants_inited:
             print(f"Warning: Some tenants weren't able to initialize monitoring box!")
 
+        await monboxgit.update_packages_on_backend()
+        await monboxgit.update_packages_on_agent()
+
         for payload in init_events:
             props = payload.get("properties", {})
             tenant_id = props["tenant_id"]
