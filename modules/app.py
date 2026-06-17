@@ -450,9 +450,9 @@ class Application:
             )
 
         # check if the monbox was initialized on tenants
-        print("Making sure monbox inits were successfull... (takes up to 25 mins)")
+        print("Making sure monbox inits were successfull... (takes up to 40 mins)")
 
-        monbox_init_check_counter = 5  # number of tries
+        monbox_init_check_counter = 8  # number of tries
         monbox_init_check_interval = 5 * 60  # in seconds
 
         init_check_success = False
