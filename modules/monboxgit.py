@@ -453,7 +453,7 @@ class MonboxGit:
 
             repo.git.push("origin", f"HEAD:{branch}")
 
-        except e:
+        except Exception as e:
             print(str(e))
             success = False
         finally:
