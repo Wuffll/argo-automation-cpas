@@ -46,7 +46,7 @@ metricprofiles : default_metric
 publish        : 'true'
 secrets        : "/etc/sensu/secret_envs"
 publisher_queue: "/var/spool/ams-publisher/{tenant_name}_metrics/"
-namespace      : poc
+namespace      : auto
 """
 
 SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY = "argo::mon::poemtools::tenants_data"
@@ -85,6 +85,10 @@ class MonboxGit:
 
     async def add_new_tenant(self, webapi, ams, new_tenant_name, rest_api_tokens):
         tenant_name_lower = new_tenant_name.lower()
+
+        if self._is_tenant_already_added(tenant_name_lower):
+            return
+
         restApiToken = rest_api_tokens[new_tenant_name]
 
         if restApiToken is None:
@@ -168,6 +172,8 @@ class MonboxGit:
         return backend_commit_status and agent_commit_status
 
     async def start_monboxgit_runner(self):
+        print(f"MonboxGit | Starting run-puppet script on machines.")
+
         whoami_cmd = "whoami"
         shell_script_cmd = "/usr/local/bin/run-puppet.sh"
 
@@ -197,8 +203,103 @@ class MonboxGit:
 
         return r.rc
 
+    async def start_monbox_init_check(self):
+        print(f"MonboxGit | Starting monbox init check on backend machine(s).")
+
+        whoami_cmd = "whoami"
+        shell_script_cmd = "ams-publisherd -q"
+
+        kwargs = dict(
+            private_data_dir=self.settings.ansible_private_data_dir,
+            inventory=f"inventory/{self.settings.ansible.sensu_inventory}",
+            host_pattern="sensu-backend",
+            module="shell",
+            quiet=True,
+            module_args=shell_script_cmd,
+        )
+
+        kwargs["inventory"] = self.settings.ansible.sensu_inventory
+
+        private_key = self.settings.ansible.ssh_private_key
+        if private_key:
+            kwargs["cmdline"] = "--private-key %s" % private_key
+
+        extravars = {}
+        extravars["ansible_become"] = "yes"
+
+        kwargs["extravars"] = extravars
+
+        r = await asyncio.to_thread(ansible_runner.run, **kwargs)
+
+        print(f"Runner finished (rc={r.rc})")
+
+        all_tenants_inited, inited_tenants = await self._check_if_all_tenants_inited(
+            r.events
+        )
+
+        return all_tenants_inited, inited_tenants
+
+    async def update_packages_on_backend(self):
+        print(f"MonboxGit | Updating packages on backend machine(s).")
+
+        whoami_cmd = "whoami"
+        backend_cmd = "python /bin/argo-poem-packages.py && python /bin/scg-reload.py"
+
+        kwargs = dict(
+            private_data_dir=self.settings.ansible_private_data_dir,
+            inventory=f"inventory/{self.settings.ansible.sensu_inventory}",
+            host_pattern="sensu-backend",
+            module="shell",
+            quiet=True,
+            module_args=backend_cmd,
+        )
+
+        kwargs["inventory"] = self.settings.ansible.sensu_inventory
+
+        extravars = {}
+        extravars["ansible_become"] = "yes"
+
+        kwargs["extravars"] = extravars
+
+        r = await asyncio.to_thread(ansible_runner.run, **kwargs)
+
+        print(f"Runner finished (rc={r.rc})")
+
+    async def update_packages_on_agent(self):
+        print(f"MonboxGit | Updating packages on agent machine(s).")
+
+        whoami_cmd = "whoami"
+        agent_cmd = "python /bin/argo-poem-packages.py"
+
+        kwargs = dict(
+            private_data_dir=self.settings.ansible_private_data_dir,
+            inventory=f"inventory/{self.settings.ansible.sensu_inventory}",
+            host_pattern="sensu-backend",
+            module="shell",
+            quiet=True,
+            module_args=agent_cmd,
+        )
+
+        kwargs["inventory"] = self.settings.ansible.sensu_inventory
+
+        extravars = {}
+        extravars["ansible_become"] = "yes"
+
+        kwargs["extravars"] = extravars
+
+        r = await asyncio.to_thread(ansible_runner.run, **kwargs)
+
+        print(f"Runner finished (rc={r.rc})")
+
     def clear_added_tenants(self):
         self.new_tenant_entries.clear()
+
+    def _is_tenant_already_added(self, new_tenant_name):
+        for tenant in self.new_tenant_entries:
+            if tenant.tenant_agent_info.tenant_name.lower() == new_tenant_name.lower():
+                return True
+
+        return False
 
     def _add_tenant_to_array(self, new_tenant_entry: NewTenantEntryInfo):
         self.new_tenant_entries.append(new_tenant_entry)
@@ -309,6 +410,7 @@ class MonboxGit:
 
         temp_dir = tempfile.mkdtemp()
 
+        success = True
         try:
             repo = Repo.init(temp_dir)
             origin = repo.create_remote("origin", repo_ssh)
@@ -338,10 +440,9 @@ class MonboxGit:
                     f = open(full_target_path, "x")
                 except FileExistsError as e:
                     print(str(e))
-                    print(
+                    raise RuntimeError(
                         "Error: Unable to create file used for commiting to the repo!"
                     )
-                    return False
 
             f = open(full_target_path, "w")
             f.write(content)
@@ -352,13 +453,13 @@ class MonboxGit:
 
             repo.git.push("origin", f"HEAD:{branch}")
 
-            return True
-
-        except e:
+        except Exception as e:
             print(str(e))
-            return False
+            success = False
         finally:
             shutil.rmtree(temp_dir)
+
+        return success
 
     # returns agent yaml file with new tenant; ready for commit
     def _add_new_tenant_to_agent_yaml(self, yaml_data, new_tenant_info):
@@ -458,3 +559,38 @@ class MonboxGit:
                 file_data = f.read()
 
         return file_data
+
+    async def _check_if_all_tenants_inited(self, events):
+        line_prefix = "INFO - worker:metrics"
+        line_prefix_len = len(line_prefix)
+        inited_tenants = []
+
+        for event in events:
+            if event.get("event", "") == "runner_on_ok":
+                # this is the output of the run command
+                result = event["event_data"]["res"]["stdout"]
+                lines = result.split("\n")
+                for line in lines:
+                    if line.find("published") == -1:
+                        continue
+
+                    # get name of tenant
+                    first_reverse_whitespace = line.rfind(" ")
+                    tenant_name = line[line_prefix_len:first_reverse_whitespace]
+                    tenant_name_lower = tenant_name.lower()
+
+                    found_tenant = self._is_tenant_already_added(tenant_name_lower)
+                    if not found_tenant:
+                        continue
+
+                    # get the published number
+                    published_string = line[first_reverse_whitespace + 1 :]
+                    published_string_split = published_string.split(":")
+                    published_number = int(published_string_split[1])
+
+                    # confirm the monbox was initialized (published must be > 0)
+                    if published_number > 0:
+                        print(f"Tenant {tenant_name_lower} monbox init confirmed.")
+                        inited_tenants.append(tenant_name_lower)
+
+        return len(inited_tenants) == len(self.new_tenant_entries), inited_tenants
