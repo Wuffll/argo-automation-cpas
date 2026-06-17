@@ -453,8 +453,6 @@ class MonboxGit:
 
             repo.git.push("origin", f"HEAD:{branch}")
 
-            return True
-
         except e:
             print(str(e))
             success = False
