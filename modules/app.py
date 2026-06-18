@@ -232,6 +232,11 @@ class Application:
                 tenant_name = props["tenant_name"]
                 tenant_id = props["tenant_id"]
                 event = payload.get("name")
+
+                if self._check_if_tenant_filtered_out(tenant_name):
+                    print(f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out")
+                    continue
+
                 LOG.info(
                     "Processing tenant_name=%s tenant_id=%s name=%s",
                     tenant_name,
@@ -506,3 +511,12 @@ class Application:
 
         # if monboxes are initialized properly, delete added tenants from to-be-added array
         monboxgit.clear_added_tenants()
+
+    def _check_if_tenant_filtered_out(self, tenant_name: str):
+        if len(self.settings.automation.filter_tenants) != 0:
+            for prefix in self.settings.automation.filter_tenants:
+                if tenant_name.startswith(prefix):
+                    print(f"Info: Tenant {tenant_name} has prefix {prefix}")
+                    return True
+
+        return False
