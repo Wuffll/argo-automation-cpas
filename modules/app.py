@@ -218,11 +218,13 @@ class Application:
         try:
             token = await iam.fetch_token()
 
-            component_tokens = await webapi.refresh_tokens()
+            allowed_tenants = self._get_allowed_tenants(ams_events)
+
+            component_tokens = await webapi.refresh_tokens(allowed_tenants)
             if any(component_tokens.values()):
                 webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
 
-            ams_component_tokens = await ams.refresh_tokens()
+            ams_component_tokens = await ams.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
                 ams.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
 
@@ -346,7 +348,7 @@ class Application:
                                 ),
                             )
                 elif _is_event_init_monbox(event):
-                    print("Monbox initialization for tenant " + tenant_name)
+                    print("Monbox initialization candidate tenant: " + tenant_name)
 
                     current_status = await status_api.get_job_status(
                         tenant_id, event, token
@@ -516,7 +518,21 @@ class Application:
         if len(self.settings.automation.filter_tenants) != 0:
             for prefix in self.settings.automation.filter_tenants:
                 if tenant_name.startswith(prefix):
-                    print(f"Info: Tenant {tenant_name} has prefix {prefix}")
                     return True
 
         return False
+
+    def _get_allowed_tenants(self, ams_events):
+        allowed_tenants = []
+
+        for payload in ams_events:
+            props = payload.get("properties", {})
+            tenant_name = props["tenant_name"]
+            tenant_id = props["tenant_id"]
+
+            if self._check_if_tenant_filtered_out(tenant_name):
+                print(f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out")
+            else:
+                allowed_tenants.append(tenant_name)
+
+        return allowed_tenants
