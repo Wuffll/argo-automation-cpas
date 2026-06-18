@@ -19,7 +19,9 @@ DEFAULT_RETRIES = 3
 DEFAULT_RETRY_DELAY = 1.0
 DEFAULT_DAEMON_SLEEP = 60
 DEFAULT_ANSIBLE_PLAYBOOK = "init.yml"
-DEFAULT_POEM_RESTAPI_TOKEN = os.path.join(DEFAULT_VENV, "var", "spool", "restapi_tokens.json")
+DEFAULT_POEM_RESTAPI_TOKEN = os.path.join(
+    DEFAULT_VENV, "var", "spool", "restapi_tokens.json"
+)
 
 _SYSLOG_FACILITIES = {
     name.lower().removeprefix("log_"): getattr(logging.handlers.SysLogHandler, name)
@@ -50,6 +52,7 @@ class Settings:
 
         self.automation = Section(
             tenants=self._split_csv(automation.get("tenants", "")),
+            filter_tenants=self._split_csv(automation.get("filter_tenants", "")),
         )
         self.general = Section(
             loggers=self._split_csv(general.get("loggers", "")),
@@ -58,8 +61,12 @@ class Settings:
                 "log_file", os.path.join(self.venv, "var", "log", "argo-cpas.log")
             ),
             syslog_address=general.get("syslog_address", "/dev/log"),
-            syslog_facility=self._parse_syslog_facility(general.get("syslog_facility", "user")),
-            request_timeout=general.getfloat("request_timeout", DEFAULT_REQUEST_TIMEOUT),
+            syslog_facility=self._parse_syslog_facility(
+                general.get("syslog_facility", "user")
+            ),
+            request_timeout=general.getfloat(
+                "request_timeout", DEFAULT_REQUEST_TIMEOUT
+            ),
             verify_ssl=general.getboolean("verify_ssl", DEFAULT_VERIFY_SSL),
             retries=general.getint("retries", DEFAULT_RETRIES),
             retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
@@ -72,9 +79,9 @@ class Settings:
             url=self._normalize_url(ams.get("host", "")),
             subscription=ams.get("subscription", ""),
             token=ams.get("token", ""),
-            url_api_integrations = ams.get("url_api_integrations", ""),
-            token_component_admin = ams.get("token_component_admin", ""),
-            components = self._split_csv(ams.get("components", "")),
+            url_api_integrations=ams.get("url_api_integrations", ""),
+            token_component_admin=ams.get("token_component_admin", ""),
+            components=self._split_csv(ams.get("components", "")),
             pullmsgs=int(ams.get("pullmsgs", "1")),
             ack=ams.getboolean("ack", False),
             return_immediately=ams.getboolean("return_immediately", True),
@@ -96,18 +103,16 @@ class Settings:
             oidc_client_secret=iam.get("oidc_client_secret", ""),
             token_spool=iam.get("token_spool", ""),
         )
-        self.statusapi = Section(
-            api=statusapi.get("api", "")
-        )
+        self.statusapi = Section(api=statusapi.get("api", ""))
 
         self.monboxgit = Section(
             git_repo_owner=monboxgit.get("git_repo_owner", ""),
-            git_repo_name=monboxgit.get("git_repo_name",""),
+            git_repo_name=monboxgit.get("git_repo_name", ""),
             git_ssh_key_path=monboxgit.get("git_ssh_key_path", ""),
             git_branch_backend=monboxgit.get("git_branch_backend", ""),
             backend_config_file_path=monboxgit.get("backend_config_file_path", ""),
             git_branch_agent=monboxgit.get("git_branch_agent", ""),
-            agent_config_file_path=monboxgit.get("agent_config_file_path", "")
+            agent_config_file_path=monboxgit.get("agent_config_file_path", ""),
         )
 
         defaults_file = ansible.get("defaults_file", "")
@@ -118,7 +123,9 @@ class Settings:
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
-        poem_restapi_token = ansible.get("poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN)
+        poem_restapi_token = ansible.get(
+            "poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN
+        )
         if poem_restapi_token and not os.path.isabs(poem_restapi_token):
             poem_restapi_token = os.path.join(self.config_dir, poem_restapi_token)
 
@@ -138,7 +145,7 @@ class Settings:
             poem_restapi_token=poem_restapi_token,
             poem_superuserpassword=ansible.get("poem_superuserpassword", ""),
             user_sensu=ansible.get("user_sensu", ""),
-            sensu_inventory=ansible.get("sensu_inventory", "sensu.ini")
+            sensu_inventory=ansible.get("sensu_inventory", "sensu.ini"),
         )
 
         self.base_url = self.webapi.url
@@ -147,7 +154,9 @@ class Settings:
 
     def _get_section(self, parser, section_name):
         if not parser.has_section(section_name):
-            raise ValueError("Missing required section [%s] in %s" % (section_name, self.path))
+            raise ValueError(
+                "Missing required section [%s] in %s" % (section_name, self.path)
+            )
         return parser[section_name]
 
     def _normalize_url(self, value):
