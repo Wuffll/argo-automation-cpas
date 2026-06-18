@@ -22,9 +22,9 @@ SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY = (
     "argo::mon::amspublisher::publisher_queues_topics"
 )
 SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE = """
-Directory : &envrihub_publisher_queue '/var/spool/ams-publisher/{tenant_name}_metrics/'
+Directory : &envrihub_publisher_queue '/var/spool/ams-publisher/{tenant_name_lower}_metrics/'
 Rate      : '1'
-Host      : messaging_url
+Host      : api.devel.msg.argo.grnet.gr
 Key       : '{ams_token}'
 Project   : '{tenant_name}'
 Topic     : 'metric_data'
@@ -39,13 +39,13 @@ SleepRetry: '300'
 
 SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY = "argo::mon::scg::tenant_sections"
 SENSU_BACKEND_TENANT_SECTION_STRING_TEMPLATE = """
-poem_url       : https://{tenant_name}.poem.devel.mon.argo.grnet.gr
+poem_url       : https://{tenant_name_lower}.poem.devel.mon.argo.grnet.gr
 poem_token     : {poem_token}
 webapi_token   : {webapi_token}
 metricprofiles : default_metric
 publish        : 'true'
 secrets        : "/etc/sensu/secret_envs"
-publisher_queue: "/var/spool/ams-publisher/{tenant_name}_metrics/"
+publisher_queue: "/var/spool/ams-publisher/{tenant_name_lower}_metrics/"
 namespace      : auto
 """
 
@@ -60,6 +60,7 @@ profiles  : 'default_metric'
 class NewTenantAgentInfo:
     def __init__(self, tenant_name="", tenant_poem_host="", tenant_poem_token=""):
         self.tenant_name = tenant_name
+        self.tenant_name_lower = tenant_name.lower()
         self.poem_host = tenant_poem_host
         self.poem_token = tenant_poem_token
 
@@ -67,6 +68,7 @@ class NewTenantAgentInfo:
 class NewTenantBackendInfo:
     def __init__(self, tenant_name="", ams_token="", webapi_token="", poem_token=""):
         self.tenant_name = tenant_name
+        self.tenant_name_lower = tenant_name.lower()
         self.ams_token = ams_token
         self.webapi_token = webapi_token
         self.poem_token = poem_token
@@ -87,6 +89,7 @@ class MonboxGit:
         tenant_name_lower = new_tenant_name.lower()
 
         if self._is_tenant_already_added(tenant_name_lower):
+            print(f"Tenant {new_tenant_name} already added!")
             return
 
         restApiToken = rest_api_tokens[new_tenant_name]
@@ -143,13 +146,13 @@ class MonboxGit:
             return False
 
         new_tenant_agent_info = NewTenantAgentInfo(
-            tenant_name=tenant_name_lower,
+            tenant_name=new_tenant_name,
             tenant_poem_host=tenant_name_lower + ".poem.devel.mon.argo.grnet.gr",
             tenant_poem_token=restApiToken,
         )
 
         new_tenant_backend_info = NewTenantBackendInfo(
-            tenant_name=tenant_name_lower,
+            tenant_name=new_tenant_name,
             ams_token=ams_token,
             webapi_token=webapi_token,
             poem_token=restApiToken,
@@ -473,7 +476,7 @@ class MonboxGit:
         new_tenant_data = yaml.safe_load(new_tenant_agent_string)
 
         # add yaml tenant entry into tenants array
-        yaml_tenant_entry_key = new_tenant_info.tenant_name
+        yaml_tenant_entry_key = new_tenant_info.tenant_name_lower
         tenant_data_entries[yaml_tenant_entry_key] = new_tenant_data
 
         # replace old tenants array with new one
@@ -483,17 +486,18 @@ class MonboxGit:
 
     # returns backend yaml file with new tenant; ready for commit
     def _add_new_tenant_to_backend_yaml(self, yaml_data, new_tenant_info):
+
         # NEW TENANT SECTION DATA
         tenant_data_entries = yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
 
         new_tenant_backend_tenant_string = SENSU_BACKEND_TENANT_SECTION_STRING_TEMPLATE
         new_tenant_backend_tenant_string = new_tenant_backend_tenant_string.format(
-            tenant_name=new_tenant_info.tenant_name,
+            tenant_name_lower=new_tenant_info.tenant_name_lower,
             webapi_token=new_tenant_info.webapi_token,
             poem_token=new_tenant_info.poem_token,
         )
 
-        tenant_tenant_entry_key = new_tenant_info.tenant_name
+        tenant_tenant_entry_key = new_tenant_info.tenant_name_lower
         new_tenant_tenant_data = yaml.safe_load(new_tenant_backend_tenant_string)
         tenant_data_entries[tenant_tenant_entry_key] = new_tenant_tenant_data
 
@@ -505,12 +509,13 @@ class MonboxGit:
         new_tenant_backend_pub_queue_string = SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE
         new_tenant_backend_pub_queue_string = (
             new_tenant_backend_pub_queue_string.format(
+                tenant_name_lower=new_tenant_info.tenant_name_lower,
                 tenant_name=new_tenant_info.tenant_name,
                 ams_token=new_tenant_info.ams_token,
             )
         )
 
-        tenant_pub_queue_entry_key = "Metrics" + new_tenant_info.tenant_name
+        tenant_pub_queue_entry_key = "Metrics" + new_tenant_info.tenant_name_lower
         new_tenant_pub_queue_data = yaml.safe_load(new_tenant_backend_pub_queue_string)
         tenant_pub_queue_entries[tenant_pub_queue_entry_key] = new_tenant_pub_queue_data
 
