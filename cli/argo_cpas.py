@@ -101,7 +101,7 @@ def parse_args():
         metavar="MESSAGE",
         help=(
             "Used with --update-status. Override the default job message "
-            "(default: \"Event picked up by argo-automation-cpas\")."
+            '(default: "Event picked up by argo-automation-cpas").'
         ),
     )
     parser.add_argument(
@@ -129,6 +129,13 @@ def parse_args():
         action="store_true",
         default=False,
         help="Utilize the monitoring box. Upon completion, exit.",
+    )
+    parser.add_argument(
+        "--delete-tenant",
+        default=None,
+        type=str,
+        metavar="<tenant-name>",
+        help="Used with --only-monbox-git (for now). Allows for removal of tenant from monbox config files.",
     )
     parser.add_argument(
         "--tenant-id",
@@ -159,6 +166,7 @@ def main():
         only_iam=args.only_iam,
         only_statusapi=args.only_statusapi,
         only_monbox_git=args.only_monbox_git,
+        delete_tenant=args.delete_tenant,
         update_status=args.update_status,
         event=args.event,
         message=args.message,
