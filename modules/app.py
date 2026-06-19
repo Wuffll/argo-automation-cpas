@@ -175,7 +175,7 @@ class Application:
             if not self.delete_tenant is None:
                 print(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
                 await monboxgit.remove_tenant(self.delete_tenant)
-                # await monboxgit.start_monboxgit_runner()
+                await monboxgit.start_monboxgit_runner()
                 return
 
             ams = await asyncio.to_thread(AMS().init)
@@ -205,7 +205,7 @@ class Application:
 
                 monboxgit.clear_added_tenants()
 
-                # await monboxgit.start_monboxgit_runner()
+                await monboxgit.start_monboxgit_runner()
 
             finally:
                 await ams.close()
