@@ -111,6 +111,7 @@ poetry run argo-cpas --clean-artifacts connector
 | `--event EVENT`                 | Event name used with `--update-status` (e.g. `INIT_TOPOLOGY_CONNECTOR`).                                                          |
 | `--message MESSAGE`             | Used with `--update-status`. Override the default job message (`Event picked up by argo-automation-cpas`).                        |
 | `--only-monbox-git`             | Only run the monbox automation (applied only to tenants specified in automation.tenants section of argo-cpas.conf)                |
+| `--delete-tenant <tenant-name>`             | Deletes tenant specified by the tenant-name. To be used with --only-monbox-git option.                |
 
 ### CLI flags (`argo-cpasd`)
 
@@ -270,13 +271,16 @@ Configuration for the Ansible connector playbook runs.
 
 Configuration for the monbox automation.
 
-| Option               | Description                                                        | Default                                                   |
-|----------------------|--------------------------------------------------------------------|-----------------------------------------------------------|
-| `git_repo_owner`     | The name of the GitHub account where the repository is stored.     | `ARGOeu`                                                  |
-| `git_repo_name`      | The name of the repository where the git commits are to be pushed. | `argo-mon-deployment`                                     |
-| `git_ssh_key_path`   | Path to the SSH key used for git commits.                          | `/etc/argo-cpas/keys/{key_file_name}`                     |
-| `git_branch_backend` | Name of the branch for backend git commit changes.                 | `sensu_backend_auto_devel_mon_argo_grnet_gr`              |
-| `git_branch_agent`   | Name of the branch for agent git commit changes.                   | `sensu_agent_auto_devel_mon_argo_grnet_gr`                |
+| Option                     | Description                                                        | Default                                                |
+|----------------------------|--------------------------------------------------------------------|--------------------------------------------------------|
+| `git_repo_owner`           | The name of the GitHub account where the repository is stored.     | `ARGOeu`                                               |
+| `git_repo_name`            | The name of the repository where the git commits are to be pushed. | `argo-mon-deployment`                                  |
+| `git_ssh_key_path`         | Path to the SSH key used for git commits.                          | `/etc/argo-cpas/keys/{key_file_name}`                  |
+| `git_branch_backend`       | Name of the branch for backend git commit changes.                 | `sensu_backend_auto_devel_mon_argo_grnet_gr`           |
+| `git_branch_agent`         | Name of the branch for agent git commit changes.                   | `sensu_agent_auto_devel_mon_argo_grnet_gr`             |
+| `backend_config_file_path` | Path to backend config file in the repo                            | `data/default.yaml`                                    |
+| `agent_config_file_path`   | Path to agent config file in the repo                              | `data/default.yaml`                                       |
+
 
 ### Ansible roles-defaults file (`roles-defaults.yml`)
 
