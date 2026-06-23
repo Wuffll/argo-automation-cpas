@@ -219,7 +219,7 @@ class AMS:
                         tenant_name,
                     )
                     continue
-                url = url_template.format(component=component, project_name=tenant_name)
+                url = url_template.format(component=component, tenant_name=tenant_name)
                 LOG.info(
                     "Refreshing token: component=%s tenant=%s url=%s",
                     component,
