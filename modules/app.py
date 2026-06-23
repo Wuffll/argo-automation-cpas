@@ -560,17 +560,6 @@ class Application:
 
         return False
 
-    def _get_tenants_array(self, ams_events):
-        tenants = []
-
-        for payload in ams_events:
-            props = payload.get("properties", {})
-            tenant_name = props["tenant_name"]
-
-            tenants.append(tenant_name)
-
-        return tenants
-
     def _get_allowed_tenants_from_array(self, tenants_array):
         allowed_tenants = []
 
