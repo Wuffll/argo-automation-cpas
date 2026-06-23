@@ -64,7 +64,13 @@ class AMS:
         n = int(delta)
         new_offset = max(offsets["min"], min(offsets["max"], current + n))
         self._ams.modifyoffset_sub(sub, new_offset)
-        LOG.info("Moved subscription %s offset from %d to %d (%+d)", sub, current, new_offset, n)
+        LOG.info(
+            "Moved subscription %s offset from %d to %d (%+d)",
+            sub,
+            current,
+            new_offset,
+            n,
+        )
 
     def _decode_message(self, msg):
         if isinstance(msg, tuple):
@@ -80,7 +86,9 @@ class AMS:
         tenant_name = props.get("tenant_name")
         tenant_id = props.get("tenant_id")
         if not tenant_name or not tenant_id:
-            LOG.warning("AMS message missing properties.tenant_name/tenant_id: %s", payload)
+            LOG.warning(
+                "AMS message missing properties.tenant_name/tenant_id: %s", payload
+            )
             return False
         tenants = self.settings.automation.tenants
         if tenants and tenant_name not in tenants:
@@ -88,17 +96,29 @@ class AMS:
         events = self.settings.ams.events
         name = payload.get("name")
         if events and name not in events:
-            LOG.info("Skipping AMS message for tenant_name=%s name=%s (not in ams.events)",
-                     tenant_name, name)
+            LOG.info(
+                "Skipping AMS message for tenant_name=%s name=%s (not in ams.events)",
+                tenant_name,
+                name,
+            )
             return False
         return True
 
     async def pull_messages(self):
         subscription = self.settings.ams.subscription
         method = self._ams.pullack_sub if self.settings.ams.ack else self._ams.pull_sub
-        LOG.info("Pulling messages from AMS subscription %s (ack=%s)", subscription, self.settings.ams.ack)
+        LOG.info(
+            "Pulling messages from AMS subscription %s (ack=%s)",
+            subscription,
+            self.settings.ams.ack,
+        )
         try:
-            msgs = await asyncio.to_thread(method, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
+            msgs = await asyncio.to_thread(
+                method,
+                subscription,
+                num=self.settings.ams.pullmsgs,
+                return_immediately=self.settings.ams.return_immediately,
+            )
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
             return []
@@ -115,14 +135,23 @@ class AMS:
             if self._matches_filter(payload):
                 matched.append(payload)
 
-        LOG.info("Pulled %d message(s), %d matched tenant/event filter", len(msgs), len(matched))
+        LOG.info(
+            "Pulled %d message(s), %d matched tenant/event filter",
+            len(msgs),
+            len(matched),
+        )
         return matched
 
     async def pull_and_print(self, filter_events=False):
         subscription = self.settings.ams.subscription
         LOG.info("Pulling message from AMS subscription %s (no ack)", subscription)
         try:
-            msgs = await asyncio.to_thread(self._ams.pull_sub, subscription, num=self.settings.ams.pullmsgs, return_immediately=self.settings.ams.return_immediately)
+            msgs = await asyncio.to_thread(
+                self._ams.pull_sub,
+                subscription,
+                num=self.settings.ams.pullmsgs,
+                return_immediately=self.settings.ams.return_immediately,
+            )
         except AmsException as exc:
             LOG.error("Failed to pull from AMS subscription %s: %s", subscription, exc)
             return
@@ -147,7 +176,10 @@ class AMS:
             printed += 1
 
         if filter_events and printed == 0:
-            print("No messages matching tenant/event filter in AMS subscription %s" % subscription)
+            print(
+                "No messages matching tenant/event filter in AMS subscription %s"
+                % subscription
+            )
 
     # AMS token retrieval
 
@@ -166,7 +198,7 @@ class AMS:
             LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
         return {}
 
-    async def refresh_tokens(self):
+    async def refresh_tokens(self, tenants):
         url_template = self.settings.ams.url_api_integrations
 
         headers = {
@@ -175,25 +207,49 @@ class AMS:
         }
 
         tokens = self.load_tokens(self.settings.ams.tokens_spool)
-        for tenant_name in self.settings.automation.tenants:
+
+        config_filter_tenants = self.settings.automation.tenants
+
+        tenants_array = (
+            config_filter_tenants if len(config_filter_tenants) > 0 else tenants
+        )
+
+        for tenant_name in tenants_array:
             tokens.setdefault(tenant_name, {})
             for component in self.settings.ams.components:
                 existing = tokens[tenant_name].get(component)
                 if existing:
-                    LOG.info("Token already present: component=%s tenant=%s — skipping refresh",
-                             component, tenant_name)
+                    LOG.info(
+                        "Token already present: component=%s tenant=%s — skipping refresh",
+                        component,
+                        tenant_name,
+                    )
                     continue
                 url = url_template.format(component=component, project_name=tenant_name)
-                LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
+                LOG.info(
+                    "Refreshing token: component=%s tenant=%s url=%s",
+                    component,
+                    tenant_name,
+                    url,
+                )
                 try:
                     data = await self.session.http_post(url, headers=headers)
                     data = data.get("data", "")
                     token = data.get("api_key", "")
                     tokens[tenant_name][component] = token
-                    LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
+                    LOG.info(
+                        "Token refreshed: component=%s tenant=%s",
+                        component,
+                        tenant_name,
+                    )
                 except aiohttp.ClientError as exc:
-                    LOG.warning("Failed to refresh token for component=%s tenant=%s: %s",
-                                component, tenant_name, exc)
+                    LOG.warning(
+                        "Failed to refresh token for component=%s tenant=%s: %s",
+                        component,
+                        tenant_name,
+                        exc,
+                    )
+
         return tokens
 
     def save_tokens(self, tokens, path):
