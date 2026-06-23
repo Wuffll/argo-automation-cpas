@@ -46,6 +46,7 @@ class Application:
         only_iam=False,
         only_statusapi=None,
         only_monbox_git=None,
+        delete_tenant=None,
         update_status=None,
         event=None,
         message=None,
@@ -64,6 +65,7 @@ class Application:
         self.only_iam = only_iam
         self.only_statusapi = only_statusapi
         self.only_monbox_git = only_monbox_git
+        self.delete_tenant = delete_tenant
         self.update_status = update_status
         self.event = event
         self.message = message
@@ -153,15 +155,27 @@ class Application:
             return
 
         if self.only_monbox_git:
-            print(
-                "Only MonboxGit | You are running the initialization of monbox-git only!"
-            )
+            print("Running OnlyMonboxGit")
             monboxgit = MonboxGit()
 
             tenant_names = self.settings.automation.tenants
 
-            if tenant_names is None:
-                print("Only MonboxGit | tenant_names is None!")
+            if self.delete_tenant == "":
+                print(
+                    "OnlyMonboxGit | Error: Invalid tenant_name provided for delete_tenant. Exiting early."
+                )
+                return
+
+            if len(tenant_names) == 0:
+                print(
+                    "Error: Only MonboxGit | tenant_names array is empty. Exiting early."
+                )
+                return
+
+            if not self.delete_tenant is None:
+                print(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
+                await monboxgit.remove_tenant(self.delete_tenant)
+                await monboxgit.start_monboxgit_runner()
                 return
 
             ams = await asyncio.to_thread(AMS().init)
@@ -180,15 +194,14 @@ class Application:
                         webapi, ams, tenant_name, restapi_tokens
                     )
 
-                print("Only Monbox | Successfully commited file changes.")
-
                 success = await monboxgit.commit_new_tenants()
-
                 if not success:
                     print(
                         f"Error: One of the git commits was unsuccessful! Exiting early."
                     )
                     return
+
+                print("Only Monbox | Successfully commited file changes.")
 
                 monboxgit.clear_added_tenants()
 

@@ -162,12 +162,20 @@ class MonboxGit:
             NewTenantEntryInfo(new_tenant_agent_info, new_tenant_backend_info)
         )
 
-    async def commit_new_tenants(self):
-        commit_id = (
-            str(uuid.uuid4())
-            + " | "
-            + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
+    async def remove_tenant(self, tenant_name):
+        commit_id = self._generate_commit_id()
+
+        backend_commit_status = await self._remove_tenant_from_backend_config(
+            tenant_name, commit_id
         )
+        agent_commit_status = await self._remove_tenant_from_agent_config(
+            tenant_name, commit_id
+        )
+
+        return backend_commit_status and agent_commit_status
+
+    async def commit_new_tenants(self):
+        commit_id = self._generate_commit_id()
 
         backend_commit_status = await self._commit_sensu_backend_changes(commit_id)
         agent_commit_status = await self._commit_sensu_agent_changes(commit_id)
@@ -345,6 +353,8 @@ class MonboxGit:
                 yaml_data, agent_info.tenant_backend_info
             )
 
+        print("MonboxGit | Comitting changes.")
+
         file_path = self.settings.monboxgit.backend_config_file_path
 
         return await self._commit_file_to_git_repo(
@@ -384,7 +394,7 @@ class MonboxGit:
 
         file_data = await self._get_sensu_agent_config()
         if file_data == False:
-            print("Error: Unable to fetch sensu backend config. Exiting early.")
+            print("Error: Unable to fetch sensu agent config. Exiting early.")
             return False
 
         yaml_data = yaml.safe_load(file_data)
@@ -393,6 +403,8 @@ class MonboxGit:
             yaml_data = self._add_new_tenant_to_agent_yaml(
                 yaml_data, agent_info.tenant_agent_info
             )
+
+        print("MonboxGit | Comitting changes.")
 
         file_path = self.settings.monboxgit.agent_config_file_path
 
@@ -523,6 +535,57 @@ class MonboxGit:
 
         return yaml_data
 
+    def _check_tenant_exist_agent_yaml(self, yaml_data, tenant_name):
+        tenant_data_entries = yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY]
+
+        tenant_name_lower = tenant_name.lower()
+        yaml_tenant_entry_key = tenant_name_lower
+
+        return yaml_tenant_entry_key in tenant_data_entries
+
+    def _check_tenant_exist_backend_yaml(self, yaml_data, tenant_name):
+        tenant_data_entries = yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
+
+        tenant_name_lower = tenant_name.lower()
+        tenant_tenant_entry_key = tenant_name_lower
+
+        return tenant_tenant_entry_key in tenant_data_entries
+
+    def _remove_tenant_from_agent_yaml(self, yaml_data, tenant_name):
+        tenant_data_entries = yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY]
+
+        tenant_name_lower = tenant_name.lower()
+
+        # remove yaml tenant entry from tenants array
+        yaml_tenant_entry_key = tenant_name_lower
+        tenant_data_entries.pop(yaml_tenant_entry_key, None)
+
+        # replace old tenants array with new one
+        yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY] = tenant_data_entries
+
+        return yaml_data
+
+    def _remove_tenant_from_backend_yaml(self, yaml_data, tenant_name):
+        # REMOVE TENANT SECTION DATA
+        tenant_data_entries = yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
+
+        tenant_name_lower = tenant_name.lower()
+
+        tenant_tenant_entry_key = tenant_name_lower
+        tenant_data_entries.pop(tenant_tenant_entry_key, None)
+
+        yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY] = tenant_data_entries
+
+        # REMOVE TENANT PUB QUEUE DATA
+        tenant_pub_queue_entries = yaml_data.get(SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY)
+
+        tenant_pub_queue_entry_key = "Metrics" + tenant_name_lower
+        tenant_pub_queue_entries.pop(tenant_pub_queue_entry_key, None)
+
+        yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY] = tenant_pub_queue_entries
+
+        return yaml_data
+
     def _download_github_file_api(
         self,
         owner,
@@ -599,3 +662,72 @@ class MonboxGit:
                         inited_tenants.append(tenant_name_lower)
 
         return len(inited_tenants) == len(self.new_tenant_entries), inited_tenants
+
+    async def _remove_tenant_from_backend_config(self, tenant_name, commit_id):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_backend
+
+        file_data = await self._get_sensu_backend_config()
+        if file_data is False:
+            print("Error: Unable to fetch sensu backend config. Exiting early.")
+            return False
+
+        yaml_data = yaml.safe_load(file_data)
+
+        if not self._check_tenant_exist_backend_yaml(yaml_data, tenant_name):
+            print(f"MonboxGit | Tenant {tenant_name} not found in backend yaml.")
+            return False
+
+        yaml_data = self._remove_tenant_from_backend_yaml(yaml_data, tenant_name)
+
+        file_path = self.settings.monboxgit.backend_config_file_path
+
+        print("MonboxGit | Comitting changes.")
+
+        return await self._commit_file_to_git_repo(
+            owner=repo_owner,
+            repo=repo_name,
+            directory=file_path,
+            content=yaml.dump(yaml_data, sort_keys=False),
+            branch=commit_branch,
+            commit_id=commit_id,
+        )
+
+    async def _remove_tenant_from_agent_config(self, tenant_name, commit_id):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_agent
+
+        file_data = await self._get_sensu_agent_config()
+        if file_data == False:
+            print("Error: Unable to fetch sensu agent config. Exiting early.")
+            return False
+
+        yaml_data = yaml.safe_load(file_data)
+
+        if not self._check_tenant_exist_agent_yaml(yaml_data, tenant_name):
+            print(f"MonboxGit | Tenant {tenant_name} not found in agent yaml.")
+            return False
+
+        yaml_data = self._remove_tenant_from_agent_yaml(yaml_data, tenant_name)
+
+        file_path = self.settings.monboxgit.agent_config_file_path
+
+        print("MonboxGit | Comitting changes.")
+
+        return await self._commit_file_to_git_repo(
+            owner=repo_owner,
+            repo=repo_name,
+            directory=file_path,
+            branch=commit_branch,
+            content=yaml.dump(yaml_data, sort_keys=False),
+            commit_id=commit_id,
+        )
+
+    def _generate_commit_id(self):
+        return (
+            str(uuid.uuid4())
+            + " | "
+            + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
+        )
