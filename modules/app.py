@@ -97,7 +97,21 @@ class Application:
 
         if self.only_webapi:
             webapi = WebAPI()
-            await webapi.run()
+
+            config_filter_tenants = self.settings.automation.tenants
+
+            allowed_tenants = []
+            if len(config_filter_tenants) != 0:
+                allowed_tenants = self._get_allowed_tenants_from_array(
+                    config_filter_tenants
+                )
+            else:
+                ams = await asyncio.to_thread(AMS().init)
+                ams_events = await ams.pull_messages()
+                allowed_tenants = self._get_allowed_tenants(ams_events)
+
+            await webapi.run(allowed_tenants)
+
             return
 
         if self.only_iam:
