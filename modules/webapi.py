@@ -60,7 +60,7 @@ class WebAPI:
             LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
         return {}
 
-    async def refresh_tokens(self):
+    async def refresh_tokens(self, tenants):
         url_template = self.settings.webapi.url_api_integrations
         headers = {
             "x-api-key": self.settings.webapi.token_component_admin,
@@ -68,25 +68,48 @@ class WebAPI:
         }
 
         tokens = self.load_tokens(self.settings.webapi.tokens_spool)
-        for tenant_name in self.settings.automation.tenants:
+
+        config_filter_tenants = self.settings.automation.tenants
+
+        tenants_array = (
+            config_filter_tenants if len(config_filter_tenants) > 0 else tenants
+        )
+
+        for tenant_name in tenants_array:
             tokens.setdefault(tenant_name, {})
             for component in self.settings.webapi.components:
                 existing = tokens[tenant_name].get(component)
                 if existing:
-                    LOG.info("Token already present: component=%s tenant=%s — skipping refresh",
-                             component, tenant_name)
+                    LOG.info(
+                        "Token already present: component=%s tenant=%s — skipping refresh",
+                        component,
+                        tenant_name,
+                    )
                     continue
                 url = url_template.format(component=component, tenant_name=tenant_name)
-                LOG.info("Refreshing token: component=%s tenant=%s url=%s", component, tenant_name, url)
+                LOG.info(
+                    "Refreshing token: component=%s tenant=%s url=%s",
+                    component,
+                    tenant_name,
+                    url,
+                )
                 try:
                     data = await self.session.http_post(url, headers=headers)
                     data = data.get("data", "")
                     token = data.get("api_key", "")
                     tokens[tenant_name][component] = token
-                    LOG.info("Token refreshed: component=%s tenant=%s", component, tenant_name)
+                    LOG.info(
+                        "Token refreshed: component=%s tenant=%s",
+                        component,
+                        tenant_name,
+                    )
                 except aiohttp.ClientError as exc:
-                    LOG.warning("Failed to refresh token for component=%s tenant=%s: %s",
-                                component, tenant_name, exc)
+                    LOG.warning(
+                        "Failed to refresh token for component=%s tenant=%s: %s",
+                        component,
+                        tenant_name,
+                        exc,
+                    )
         return tokens
 
     def save_tokens(self, tokens, path):
@@ -97,7 +120,12 @@ class WebAPI:
 
     def find_connector_token(self, tokens):
         return next(
-            (t[component] for t in tokens.values() for component in t if "connector" in component),
+            (
+                t[component]
+                for t in tokens.values()
+                for component in t
+                if "connector" in component
+            ),
             None,
         )
 
@@ -109,6 +137,8 @@ class WebAPI:
 
             connector_token = self.find_connector_token(tokens)
             if connector_token:
-                await self.fetch_topology_config(self.settings.webapi.url_api_config, token=connector_token)
+                await self.fetch_topology_config(
+                    self.settings.webapi.url_api_config, token=connector_token
+                )
         finally:
             await self.close()
