@@ -97,7 +97,21 @@ class Application:
 
         if self.only_webapi:
             webapi = WebAPI()
-            await webapi.run()
+
+            config_filter_tenants = self.settings.automation.tenants
+
+            allowed_tenants = []
+            if len(config_filter_tenants) != 0:
+                allowed_tenants = self._get_allowed_tenants_from_array(
+                    config_filter_tenants
+                )
+            else:
+                ams = await asyncio.to_thread(AMS().init)
+                ams_events = await ams.pull_messages()
+                allowed_tenants = self._get_allowed_tenants(ams_events)
+
+            await webapi.run(allowed_tenants)
+
             return
 
         if self.only_iam:
@@ -142,9 +156,20 @@ class Application:
                 await asyncio.to_thread(ams.move_offset, self.offset)
             await ams.pull_and_print(filter_events=self.filter_events)
 
+            config_filter_tenants = self.settings.automation.tenants
+
+            allowed_tenants = []
+            if len(config_filter_tenants) != 0:
+                allowed_tenants = self._get_allowed_tenants_from_array(
+                    config_filter_tenants
+                )
+            else:
+                ams_events = await ams.pull_messages()
+                allowed_tenants = self._get_allowed_tenants(ams_events)
+
             print("Only AMS | Refreshing AMS tokens!")
             try:
-                ams_component_tokens = await ams.refresh_tokens()
+                ams_component_tokens = await ams.refresh_tokens(allowed_tenants)
                 if any(ams_component_tokens.values()):
                     ams.save_tokens(
                         ams_component_tokens, self.settings.ams.tokens_spool
@@ -534,6 +559,17 @@ class Application:
                     return True
 
         return False
+
+    def _get_allowed_tenants_from_array(self, tenants_array):
+        allowed_tenants = []
+
+        for tenant_name in tenants_array:
+            if self._check_if_tenant_filtered_out(tenant_name):
+                print(f"Info: Tenant {tenant_name} filtered out")
+            else:
+                allowed_tenants.append(tenant_name)
+
+        return allowed_tenants
 
     def _get_allowed_tenants(self, ams_events):
         allowed_tenants = []
