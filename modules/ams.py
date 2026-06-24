@@ -198,7 +198,7 @@ class AMS:
             LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
         return {}
 
-    async def refresh_tokens(self, tenants):
+    async def refresh_tokens(self, tenants_array):
         url_template = self.settings.ams.url_api_integrations
 
         headers = {
@@ -207,12 +207,6 @@ class AMS:
         }
 
         tokens = self.load_tokens(self.settings.ams.tokens_spool)
-
-        config_filter_tenants = self.settings.automation.tenants
-
-        tenants_array = (
-            config_filter_tenants if len(config_filter_tenants) > 0 else tenants
-        )
 
         for tenant_name in tenants_array:
             tokens.setdefault(tenant_name, {})
@@ -225,7 +219,7 @@ class AMS:
                         tenant_name,
                     )
                     continue
-                url = url_template.format(component=component, project_name=tenant_name)
+                url = url_template.format(component=component, tenant_name=tenant_name)
                 LOG.info(
                     "Refreshing token: component=%s tenant=%s url=%s",
                     component,

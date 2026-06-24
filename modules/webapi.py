@@ -60,7 +60,7 @@ class WebAPI:
             LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
         return {}
 
-    async def refresh_tokens(self, tenants):
+    async def refresh_tokens(self, tenants_array=[]):
         url_template = self.settings.webapi.url_api_integrations
         headers = {
             "x-api-key": self.settings.webapi.token_component_admin,
@@ -68,12 +68,6 @@ class WebAPI:
         }
 
         tokens = self.load_tokens(self.settings.webapi.tokens_spool)
-
-        config_filter_tenants = self.settings.automation.tenants
-
-        tenants_array = (
-            config_filter_tenants if len(config_filter_tenants) > 0 else tenants
-        )
 
         for tenant_name in tenants_array:
             tokens.setdefault(tenant_name, {})
@@ -129,9 +123,9 @@ class WebAPI:
             None,
         )
 
-    async def run(self):
+    async def run(self, allowed_tenants=[]):
         try:
-            tokens = await self.refresh_tokens()
+            tokens = await self.refresh_tokens(allowed_tenants)
             if any(tokens.values()):
                 self.save_tokens(tokens, self.settings.webapi.tokens_spool)
 
