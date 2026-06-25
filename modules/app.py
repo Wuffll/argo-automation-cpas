@@ -242,6 +242,7 @@ class Application:
 
         ams_events = await ams.pull_messages()
         if not ams_events:
+            await ams.close()
             return
 
         webapi = WebAPI()

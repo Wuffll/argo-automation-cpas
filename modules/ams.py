@@ -250,4 +250,4 @@ class AMS:
         os.makedirs(os.path.dirname(path), exist_ok=True)
         with open(path, "w") as fh:
             json.dump(tokens, fh, indent=2)
-        LOG.info("Webapi tokens saved to %s", path)
+        LOG.info("AMS tokens saved to %s", path)
