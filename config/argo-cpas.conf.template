@@ -16,6 +16,7 @@ daemon_sleep = 60
 
 [automation]
 tenants = AUTOMATION
+filter_tenants = TEST-
 
 [ams]
 project = ARGO-MON-AUTOMATION
@@ -72,5 +73,7 @@ git_branch_backend = address_to_git_branch_backend
 backend_config_file_path = path/to/config/yaml_file
 git_branch_agent = address_to_git_branch_agent
 agent_config_file_path = path/to/config/yaml_file
+init_check_count = 10
+init_check_interval = 150 # time in seconds
 
 # vim: ft=conf
