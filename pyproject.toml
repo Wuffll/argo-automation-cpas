@@ -96,9 +96,6 @@ argo_automation_cpas = "modules/"
 "ansible/roles/poem/defaults" = [
 	"ansible/roles/poem/defaults/main.yml",
 ]
-"ansible/roles/poem/handlers" = [
-	"ansible/roles/poem/handlers/main.yml",
-]
 "ansible/roles/poem/tasks" = [
 	"ansible/roles/poem/tasks/main.yml",
 	"ansible/roles/poem/tasks/remove-tenants.yml",
