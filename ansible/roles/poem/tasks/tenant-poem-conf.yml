@@ -36,7 +36,6 @@
     owner: "{{ poem_owner }}"
     group: "{{ poem_group }}"
     mode: "0644"
-  notify: Restart apache
 
 
 - name: Append GENERAL section to poem.auto.conf - {{ item.tenant_name }}
@@ -61,7 +60,6 @@
     group: "{{ poem_group }}"
     mode: "0644"
   when: not poem_general_section_exists
-  notify: Restart apache
 
 
 - name: Add tenant FQDN to auto_fqdns - {{ item.tenant_name }}
@@ -75,7 +73,6 @@
   when:
     - item.tenant_fqdn is defined
     - item.tenant_fqdn | length > 0
-  notify: Restart apache
 
 
 - name: Append SUPERUSER section to poem.auto.conf - {{ item.tenant_name }}
@@ -94,4 +91,3 @@
     group: "{{ poem_group }}"
     mode: "0644"
   when: not poem_superuser_section_exists
-  notify: Restart apache
