@@ -113,8 +113,8 @@ class Settings:
             backend_config_file_path=monboxgit.get("backend_config_file_path", ""),
             git_branch_agent=monboxgit.get("git_branch_agent", ""),
             agent_config_file_path=monboxgit.get("agent_config_file_path", ""),
-            init_check_count=monboxgit.get("init_check_count", 10),
-            init_check_interval=monboxgit.get("init_check_interval", 150),
+            init_check_count=monboxgit.getint("init_check_count", 10),
+            init_check_interval=monboxgit.getint("init_check_interval", 150),
         )
 
         defaults_file = ansible.get("defaults_file", "")
