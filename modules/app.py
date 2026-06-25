@@ -167,7 +167,7 @@ class Application:
                 ams_events = await ams.pull_messages()
                 allowed_tenants = self._get_allowed_tenants(ams_events)
 
-            print("Only AMS | Refreshing AMS tokens!")
+            LOG.info("Only AMS | Refreshing AMS tokens!")
             try:
                 ams_component_tokens = await ams.refresh_tokens(allowed_tenants)
                 if any(ams_component_tokens.values()):
@@ -180,25 +180,25 @@ class Application:
             return
 
         if self.only_monbox_git:
-            print("Running OnlyMonboxGit")
+            LOG.info("Running OnlyMonboxGit")
             monboxgit = MonboxGit()
 
             tenant_names = self.settings.automation.tenants
 
             if self.delete_tenant == "":
-                print(
+                LOG.info(
                     "OnlyMonboxGit | Error: Invalid tenant_name provided for delete_tenant. Exiting early."
                 )
                 return
 
             if len(tenant_names) == 0:
-                print(
-                    "Error: Only MonboxGit | tenant_names array is empty. Exiting early."
+                LOG.info(
+                    "Only MonboxGit | Error: tenant_names array is empty. Exiting early."
                 )
                 return
 
             if not self.delete_tenant is None:
-                print(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
+                LOG.info(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
                 await monboxgit.remove_tenant(self.delete_tenant)
                 await monboxgit.start_monboxgit_runner()
                 return
@@ -210,7 +210,7 @@ class Application:
             restapi_tokens = restapi_tokens_client.load_tokens()
 
             if restapi_tokens is None:
-                print("Only MonboxGit | Error: RestAPI tokens not found!")
+                LOG.info("Only MonboxGit | Error: RestAPI tokens not found!")
                 return
 
             try:
@@ -221,12 +221,12 @@ class Application:
 
                 success = await monboxgit.commit_new_tenants()
                 if not success:
-                    print(
+                    LOG.info(
                         f"Error: One of the git commits was unsuccessful! Exiting early."
                     )
                     return
 
-                print("Only Monbox | Successfully commited file changes.")
+                LOG.info("Only Monbox | Successfully commited file changes.")
 
                 monboxgit.clear_added_tenants()
 
@@ -241,6 +241,7 @@ class Application:
         ams = await asyncio.to_thread(AMS().init)
 
         ams_events = await ams.pull_messages()
+
         if not ams_events:
             await ams.close()
             return
@@ -275,7 +276,9 @@ class Application:
                 event = payload.get("name")
 
                 if self._check_if_tenant_filtered_out(tenant_name):
-                    print(f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out")
+                    LOG.info(
+                        f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out"
+                    )
                     continue
 
                 LOG.info(
@@ -387,13 +390,13 @@ class Application:
                                 ),
                             )
                 elif _is_event_init_monbox(event):
-                    print("Monbox initialization candidate tenant: " + tenant_name)
+                    LOG.info("Monbox initialization candidate tenant: " + tenant_name)
 
                     current_status = await status_api.get_job_status(
                         tenant_id, event, token
                     )
 
-                    print(f"Tenant {tenant_name} has status: {current_status}")
+                    LOG.info(f"Tenant {tenant_name} has status: {current_status}")
 
                     if current_status != "INITIALISED":
                         LOG.info(
@@ -423,6 +426,7 @@ class Application:
                         monboxgit,
                         webapi,
                         ams,
+                        iam,
                         status_api,
                         token,
                         restapi_tokens,
@@ -437,7 +441,15 @@ class Application:
             await status_api.close()
 
     async def _process_monbox_init_events(
-        self, init_events, monboxgit, webapi, ams, status_api, token, restapi_tokens
+        self,
+        init_events,
+        monboxgit,
+        webapi,
+        ams,
+        iam,
+        status_api,
+        token,
+        restapi_tokens,
     ):
         # set tenants to IN-PROGRESS
         for payload in init_events:
@@ -496,10 +508,15 @@ class Application:
             )
 
         # check if the monbox was initialized on tenants
-        print("Making sure monbox inits were successfull... (takes up to 40 mins)")
-
-        monbox_init_check_counter = 8  # number of tries
-        monbox_init_check_interval = 5 * 60  # in seconds
+        monbox_init_check_counter = self.settings.monboxgit.init_check_count
+        monbox_init_check_interval = self.settings.monboxigt.init_check_interval
+        monbox_init_check_max_time = (
+            monbox_init_check_counter * monbox_init_check_interval
+        ) / 60.0
+        monbox_init_check_max_time = round(monbox_init_check_max_time, 2)
+        LOG.info(
+            f"Making sure monbox inits were successful... (takes up to {monbox_init_check_max_time} mins)"
+        )
 
         init_check_success = False
         all_tenants_inited = False
@@ -507,7 +524,7 @@ class Application:
         for i in range(monbox_init_check_counter):
             await asyncio.sleep(monbox_init_check_interval)
 
-            print(f"Monbox init check #{i + 1}")
+            LOG.info(f"Monbox init check #{i + 1}")
 
             all_tenants_inited, inited_tenants = (
                 await monboxgit.start_monbox_init_check()
@@ -516,13 +533,17 @@ class Application:
                 init_check_success = True
                 break
 
-            print(f"Waiting for monbox to successfully init on all tenants")
+            LOG.info(f"Waiting for monbox to successfully init on all tenants")
 
         if not all_tenants_inited:
-            print(f"Warning: Some tenants weren't able to initialize monitoring box!")
+            LOG.info(
+                f"Warning: Some tenants weren't able to initialize monitoring box!"
+            )
 
         await monboxgit.update_packages_on_backend()
         await monboxgit.update_packages_on_agent()
+
+        token = await iam.fetch_token()
 
         for payload in init_events:
             props = payload.get("properties", {})
@@ -566,7 +587,7 @@ class Application:
 
         for tenant_name in tenants_array:
             if self._check_if_tenant_filtered_out(tenant_name):
-                print(f"Info: Tenant {tenant_name} filtered out")
+                LOG.info(f"Tenant {tenant_name} filtered out")
             else:
                 allowed_tenants.append(tenant_name)
 
@@ -581,7 +602,7 @@ class Application:
             tenant_id = props["tenant_id"]
 
             if self._check_if_tenant_filtered_out(tenant_name):
-                print(f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out")
+                LOG.info(f"Tenant {tenant_name} (id: {tenant_id}) filtered out")
             else:
                 allowed_tenants.append(tenant_name)
 
