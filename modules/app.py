@@ -183,24 +183,27 @@ class Application:
             LOG.info("Running OnlyMonboxGit")
             monboxgit = MonboxGit()
 
-            tenant_names = self.settings.automation.tenants
+            run_delete_tenant = not self.delete_tenant is None
+            valid_delete_tenant = self.delete_tenant != ""
 
-            if self.delete_tenant == "":
-                LOG.info(
-                    "OnlyMonboxGit | Error: Invalid tenant_name provided for delete_tenant. Exiting early."
-                )
+            if run_delete_tenant:
+                if valid_delete_tenant:
+                    LOG.info(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
+                    await monboxgit.remove_tenant(self.delete_tenant)
+                    await monboxgit.start_monboxgit_runner()
+                else:
+                    LOG.info(
+                        "OnlyMonboxGit | Error: Invalid tenant_name provided for delete_tenant. Exiting early."
+                    )
+
                 return
+
+            tenant_names = self.settings.automation.tenants
 
             if len(tenant_names) == 0:
                 LOG.info(
                     "Only MonboxGit | Error: tenant_names array is empty. Exiting early."
                 )
-                return
-
-            if not self.delete_tenant is None:
-                LOG.info(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
-                await monboxgit.remove_tenant(self.delete_tenant)
-                await monboxgit.start_monboxgit_runner()
                 return
 
             ams = await asyncio.to_thread(AMS().init)
