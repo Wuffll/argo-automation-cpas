@@ -89,7 +89,7 @@ class MonboxGit:
         tenant_name_lower = new_tenant_name.lower()
 
         if self._is_tenant_already_added(tenant_name_lower):
-            LOG.info(f"Tenant {new_tenant_name} already added!")
+            LOG.info(f"Tenant {new_tenant_name} already queued to be added!")
             return
 
         restApiToken = rest_api_tokens[new_tenant_name]
