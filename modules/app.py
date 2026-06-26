@@ -512,7 +512,7 @@ class Application:
 
         # check if the monbox was initialized on tenants
         monbox_init_check_counter = self.settings.monboxgit.init_check_count
-        monbox_init_check_interval = self.settings.monboxigt.init_check_interval
+        monbox_init_check_interval = self.settings.monboxgit.init_check_interval
         monbox_init_check_max_time = (
             monbox_init_check_counter * monbox_init_check_interval
         ) / 60.0
