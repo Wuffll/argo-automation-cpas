@@ -2,12 +2,17 @@ import sys
 import unittest
 import pytest
 import asyncio
+
 from argo_automation_cpas.monboxgit import *
+from argo_automation_cpas.ams import *
+from argo_automation_cpas.webapi import *
+from argo_automation_cpas.restapi_tokens import *
 
 _EMPTY_STRING = ""
 _INVALID_TEST_TENANT_NAME = "TEST_ABCD1234_FFFFFFFF_INVALID"
 _VALID_TEST_TENANT_NAME = "TEST_VALID_AUTOMATION_TENANT_YES"
 
+_VALID_ARGO_TEST_TENANT_NAME = "AUTOMATION"
 
 @pytest.mark.asyncio
 async def test_delete_invalid_tenant_1():
@@ -44,6 +49,36 @@ async def test_delete_valid_tenant():
     tenant_removed = await monbox.remove_tenant(_VALID_TEST_TENANT_NAME)
 
     assert tenant_removed
+
+@pytest.mark.asyncio
+async def test_add_valid_tenant():
+    monbox = MonboxGit()
+    new_tenant_name = _VALID_ARGO_TEST_TENANT_NAME
+
+    ams = await asyncio.to_thread(AMS().init)
+    webapi = WebAPI()
+
+    restapi_tokens_client = RestAPITokens()
+    restapi_tokens = restapi_tokens_client.load_tokens()
+
+    assert restapi_tokens is not None
+
+    try:
+        await monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
+
+        success = await monbox.commit_new_tenants()
+        assert success
+
+        monbox.clear_added_tenants()
+
+        # IMPORTANT: Run w/o runner! We don't have a test machine to test out ansible runs.
+        # Current start_monboxgit_runner() runs on prod machines; we don't want to test on prod machines.
+        # That being said, the added tenant has correct tokens, so it is ready to be tested if we ever choose to do so.
+        # await monboxgit.start_monboxgit_runner()
+
+    finally:
+        await ams.close()
+        await webapi.close()
 
 
 async def _helper_add_new_tenant(
