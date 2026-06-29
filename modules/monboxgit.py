@@ -163,14 +163,28 @@ class MonboxGit:
         )
 
     async def remove_tenant(self, tenant_name):
+
+        if not isinstance(tenant_name, str):
+            raise ValueError(f"Variable tenant_name should be a string")
+
+        if tenant_name == "":
+            raise ValueError(f"Variable tenant_name mustn't be empty")
+
         commit_id = self._generate_commit_id()
 
         backend_commit_status = await self._remove_tenant_from_backend_config(
             tenant_name, commit_id
         )
+
+        if backend_commit_status == False:
+            raise RuntimeError(f"Github backend commit unsuccessful")
+
         agent_commit_status = await self._remove_tenant_from_agent_config(
             tenant_name, commit_id
         )
+
+        if backend_commit_status == False:
+            raise RuntimeError(f"Github backend commit unsuccessful")
 
         return backend_commit_status and agent_commit_status
 

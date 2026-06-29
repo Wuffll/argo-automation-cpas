@@ -31,3 +31,6 @@ clean:
 
 
 .PHONY: clean wheel-devel wheel-prod
+
+test:
+	poetry run pytest -v

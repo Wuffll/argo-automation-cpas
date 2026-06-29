@@ -14,7 +14,9 @@ dependencies = [
 	"argo-ams-library",
 	"pyyaml",
 	"ansible (>=13.5.0,<14.0.0)",
-	"gitpython"
+	"gitpython",
+	"pytest (>=9.1.1,<10.0.0)",
+	"pytest-asyncio (>=1.4.0,<2.0.0)"
 ]
 requires-python = ">=3.12"
 
@@ -36,6 +38,8 @@ argo-ams-library = "*"
 ruff = "^0.11.0"
 build = "*"
 pdbpp = "*"
+setuptools = "^82.0.1"
+pytest = "*"
 
 [project.scripts]
 argo-cpas = "argo_automation_cpas.cli.argo_cpas:main"
@@ -107,3 +111,6 @@ argo_automation_cpas = "modules/"
 
 [tool.setuptools.dynamic]
 version = { attr = "version.vernum" }
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
