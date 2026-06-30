@@ -9,11 +9,7 @@ from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
-from argo_automation_cpas.monboxgit import (
-    MonboxGit,
-    NewTenantAgentInfo,
-    NewTenantBackendInfo,
-)
+from argo_automation_cpas.monboxgit import MonboxGit
 
 from argo_automation_cpas.restapi_tokens import RestAPITokens
 
@@ -189,7 +185,7 @@ class Application:
             if run_delete_tenant:
                 if valid_delete_tenant:
                     LOG.info(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
-                    await monboxgit.remove_tenant(self.delete_tenant)
+                    monboxgit.remove_tenant(self.delete_tenant)
                     await monboxgit.start_monboxgit_runner()
                 else:
                     LOG.info(
@@ -218,11 +214,9 @@ class Application:
 
             try:
                 for tenant_name in tenant_names:
-                    await monboxgit.add_new_tenant(
-                        webapi, ams, tenant_name, restapi_tokens
-                    )
+                    monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
 
-                success = await monboxgit.commit_new_tenants()
+                success = monboxgit.commit_new_tenants()
                 if not success:
                     LOG.info(
                         f"Error: One of the git commits was unsuccessful! Exiting early."
@@ -445,8 +439,8 @@ class Application:
 
     async def _process_monbox_init_events(
         self,
-        init_events,
-        monboxgit,
+        init_events: list,
+        monboxgit: MonboxGit,
         webapi,
         ams,
         iam,
@@ -468,10 +462,10 @@ class Application:
                 token,
             )
 
-            await monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+            monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
 
         # commit new tenant configs to git repo
-        monboxgit_success = await monboxgit.commit_new_tenants()
+        monboxgit_success = monboxgit.commit_new_tenants()
         if not monboxgit_success:
             for payload in init_events:
                 props = payload.get("properties", {})

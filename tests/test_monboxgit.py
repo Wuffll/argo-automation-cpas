@@ -14,41 +14,102 @@ _VALID_TEST_TENANT_NAME = "TEST_VALID_AUTOMATION_TENANT_YES"
 
 _VALID_ARGO_TEST_TENANT_NAME = "AUTOMATION"
 
-@pytest.mark.asyncio
-async def test_delete_invalid_tenant_1():
+
+def test_add_tenant_to_yaml():
+    monbox = MonboxGit()
+
+    entry_info = _helper_create_dummy_tenant_entry_info()
+
+    yaml_data = monbox._get_sensu_agent_config_yaml()
+    yaml_data = monbox._add_new_tenant_to_agent_yaml(
+        yaml_data, entry_info.tenant_agent_info
+    )
+
+    entry_key = entry_info.tenant_agent_info.tenant_name_lower
+    assert entry_key in yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY]
+
+    yaml_data = monbox._get_sensu_backend_config_yaml()
+    yaml_data = monbox._add_new_tenant_to_backend_yaml(
+        yaml_data, entry_info.tenant_backend_info
+    )
+
+    entry_key = entry_info.tenant_backend_info.tenant_name_lower
+    assert entry_key in yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
+
+    entry_key = monbox._get_tenant_pub_queue_entry_key(
+        entry_info.tenant_backend_info.tenant_name
+    )
+    assert entry_key in yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY]
+
+
+def test_remove_tenant_from_yaml():
+    monbox = MonboxGit()
+
+    # First: add new test tenant to yaml
+    entry_info = _helper_create_dummy_tenant_entry_info()
+
+    yaml_data = monbox._get_sensu_agent_config_yaml()
+    yaml_data = monbox._add_new_tenant_to_agent_yaml(
+        yaml_data, entry_info.tenant_agent_info
+    )
+
+    yaml_data = monbox._get_sensu_backend_config_yaml()
+    yaml_data = monbox._add_new_tenant_to_backend_yaml(
+        yaml_data, entry_info.tenant_backend_info
+    )
+
+    yaml_data = monbox._remove_tenant_from_agent_yaml(
+        yaml_data, entry_info.tenant_agent_info.tenant_name_lower
+    )
+
+    entry_key = entry_info.tenant_agent_info.tenant_name_lower
+    assert entry_key not in yaml_data[SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY]
+
+    yaml_data = monbox._remove_tenant_from_backend_yaml(
+        yaml_data, entry_info.tenant_backend_info.tenant_name_lower
+    )
+
+    entry_key = entry_info.tenant_backend_info.tenant_name_lower
+    assert entry_key not in yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY]
+
+    entry_key = monbox._get_tenant_pub_queue_entry_key(
+        entry_info.tenant_backend_info.tenant_name
+    )
+    assert entry_key not in yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
+
+
+def test_delete_invalid_tenant_1():
     monbox = MonboxGit()
 
     with pytest.raises(ValueError):
-        await monbox.remove_tenant(1234)
+        monbox.remove_tenant(1234)
 
 
-@pytest.mark.asyncio
-async def test_delete_invalid_tenant_2():
+def test_delete_invalid_tenant_2():
     monbox = MonboxGit()
 
     with pytest.raises(ValueError):
-        await monbox.remove_tenant(_EMPTY_STRING)
+        monbox.remove_tenant(_EMPTY_STRING)
 
 
-@pytest.mark.asyncio
-async def test_delete_invalid_tenant_3():
+def test_delete_invalid_tenant_3():
     monbox = MonboxGit()
 
     with pytest.raises(RuntimeError):
-        await monbox.remove_tenant(_INVALID_TEST_TENANT_NAME)
+        monbox.remove_tenant(_INVALID_TEST_TENANT_NAME)
 
 
-@pytest.mark.asyncio
-async def test_delete_valid_tenant():
+def test_delete_valid_tenant():
     monbox = MonboxGit()
 
     # make sure there is a valid test tenant available
-    await _helper_add_new_tenant(monbox, _VALID_TEST_TENANT_NAME)
+    _helper_add_new_tenant(monbox, _VALID_TEST_TENANT_NAME)
 
     # delete said test tenant
-    tenant_removed = await monbox.remove_tenant(_VALID_TEST_TENANT_NAME)
+    tenant_removed = monbox.remove_tenant(_VALID_TEST_TENANT_NAME)
 
     assert tenant_removed
+
 
 @pytest.mark.asyncio
 async def test_add_valid_tenant():
@@ -64,9 +125,9 @@ async def test_add_valid_tenant():
     assert restapi_tokens is not None
 
     try:
-        await monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
+        monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
 
-        success = await monbox.commit_new_tenants()
+        success = monbox.commit_new_tenants()
         assert success
 
         monbox.clear_added_tenants()
@@ -81,7 +142,31 @@ async def test_add_valid_tenant():
         await webapi.close()
 
 
-async def _helper_add_new_tenant(
+def _helper_create_dummy_tenant_entry_info() -> NewTenantEntryInfo:
+    new_tenant_name = _VALID_TEST_TENANT_NAME
+    tenant_name_lower = new_tenant_name.lower()
+    restApiToken = "test-restapi-token"
+
+    new_tenant_agent_info = NewTenantAgentInfo(
+        tenant_name=new_tenant_name,
+        tenant_poem_host=tenant_name_lower + ".poem.devel.mon.argo.grnet.gr",
+        tenant_poem_token=restApiToken,
+    )
+
+    ams_token = "test-ams-token"
+    webapi_token = "test-webapi-token"
+
+    new_tenant_backend_info = NewTenantBackendInfo(
+        tenant_name=new_tenant_name,
+        ams_token=ams_token,
+        webapi_token=webapi_token,
+        poem_token=restApiToken,
+    )
+
+    return NewTenantEntryInfo(new_tenant_agent_info, new_tenant_backend_info)
+
+
+def _helper_add_new_tenant(
     monbox: MonboxGit,
     new_tenant_name: str,
     restApiToken: str = "test-rest-api-token",
@@ -106,4 +191,4 @@ async def _helper_add_new_tenant(
         NewTenantEntryInfo(new_tenant_agent_info, new_tenant_backend_info)
     )
 
-    await monbox.commit_new_tenants()
+    monbox.commit_new_tenants()
