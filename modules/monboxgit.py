@@ -99,8 +99,8 @@ class MonboxGit:
         restApiToken = rest_api_tokens[new_tenant_name]
 
         if restApiToken is None:
-            LOG.info(
-                "Error: there is no restapi_token for tenant with id: "
+            LOG.error(
+                "There is no restapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -113,8 +113,8 @@ class MonboxGit:
         webapi_tokens = webapi_tokens[new_tenant_name]
 
         if webapi_tokens is None:
-            LOG.info(
-                "Error: there is no webapi_token for tenant with id: "
+            LOG.error(
+                "There is no webapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -123,8 +123,8 @@ class MonboxGit:
         webapi_token = webapi_tokens[monbox_webapi_component]
 
         if webapi_token is None:
-            LOG.info(
-                "Error: there is no monbox webapi_token for tenant with id: "
+            LOG.error(
+                "There is no monbox webapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -135,8 +135,8 @@ class MonboxGit:
         ams_tokens = ams_tokens[new_tenant_name]
 
         if ams_tokens is None:
-            LOG.info(
-                "Error: there is no ams_token for tenant with id: "
+            LOG.error(
+                "There is no ams_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -144,8 +144,8 @@ class MonboxGit:
 
         ams_token = ams_tokens.get(monbox_ams_component)
         if ams_token is None:
-            LOG.info(
-                f"Error: there is no argo-monbox ams_token for tenant with id: {new_tenant_name}; Exiting early."
+            LOG.error(
+                f"There is no argo-monbox ams_token for tenant with id: {new_tenant_name}; Exiting early."
             )
             return False
 
@@ -352,7 +352,7 @@ class MonboxGit:
         file_data = self._get_sensu_backend_config()
 
         if file_data is False:
-            LOG.info("Error: Unable to fetch sensu backend config. Exiting early.")
+            LOG.error("Unable to fetch sensu backend config. Exiting early.")
             return None
 
         yaml_data = yaml.safe_load(file_data)
@@ -413,7 +413,7 @@ class MonboxGit:
     def _get_sensu_agent_config_yaml(self):
         file_data = self._get_sensu_agent_config()
         if file_data == False:
-            LOG.info("Error: Unable to fetch sensu agent config. Exiting early.")
+            LOG.error("Unable to fetch sensu agent config. Exiting early.")
             return None
 
         yaml_data = yaml.safe_load(file_data)
@@ -491,9 +491,9 @@ class MonboxGit:
                 try:
                     f = open(full_target_path, "x")
                 except FileExistsError as e:
-                    LOG.info(str(e))
+                    LOG.error(str(e))
                     raise RuntimeError(
-                        "Error: Unable to create file used for commiting to the repo!"
+                        "Unable to create file used for commiting to the repo!"
                     )
 
             f = open(full_target_path, "w")
@@ -742,7 +742,7 @@ class MonboxGit:
 
         file_data = self._get_sensu_agent_config()
         if file_data == False:
-            LOG.info("Error: Unable to fetch sensu agent config. Exiting early.")
+            LOG.error("Unable to fetch sensu agent config. Exiting early.")
             return False
 
         yaml_data = yaml.safe_load(file_data)
