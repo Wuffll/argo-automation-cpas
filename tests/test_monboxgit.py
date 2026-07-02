@@ -1,5 +1,6 @@
 import sys
 import unittest
+from unittest.mock import MagicMock, patch
 import pytest
 import asyncio
 
@@ -7,6 +8,7 @@ from argo_automation_cpas.monboxgit import *
 from argo_automation_cpas.ams import *
 from argo_automation_cpas.webapi import *
 from argo_automation_cpas.restapi_tokens import *
+from argo_automation_cpas.config import get_settings
 
 _EMPTY_STRING = ""
 _INVALID_TEST_TENANT_NAME = "TEST_ABCD1234_FFFFFFFF_INVALID"
@@ -100,20 +102,55 @@ def test_delete_invalid_tenant_3():
 
 
 def test_delete_valid_tenant():
-    monbox = MonboxGit()
+    config = get_settings()
 
-    # make sure there is a valid test tenant available
-    _helper_add_new_tenant(monbox, _VALID_TEST_TENANT_NAME)
+    # Delete added test tenant
+    with patch(
+        "argo_automation_cpas.monboxgit.MonboxGit._commit_file_to_git_repo"
+    ) as mock_func:
+        mock_func.return_value = True
 
-    # delete said test tenant
-    tenant_removed = monbox.remove_tenant(_VALID_TEST_TENANT_NAME)
+        monbox = MonboxGit()
 
-    assert tenant_removed
+        # Delete said test tenant
+        monbox.remove_tenant(_VALID_ARGO_TEST_TENANT_NAME)
+
+        assert len(mock_func.mock_calls) == 2
+
+        # ordering in the following two arrays matter!
+        branch_array: list[str] = [
+            config.monboxgit.git_branch_backend,
+            config.monboxgit.git_branch_agent,
+        ]
+        directory_array: list[str] = [
+            config.monboxgit.backend_config_file_path,
+            config.monboxgit.agent_config_file_path,
+        ]
+
+        for call in mock_func.mock_calls:
+            commit_index = -1
+
+            kwargs = call.kwargs
+            assert kwargs["owner"] == config.monboxgit.git_repo_owner
+            assert kwargs["repo"] == config.monboxgit.git_repo_name
+
+            # make sure the directory kwarg is set properly
+            found_branch_index = branch_array.index(kwargs.get("branch", -1))
+            assert found_branch_index != -1
+
+            commit_index = found_branch_index
+
+            # make sure git branch and file path for that branch match
+            assert kwargs.get("directory", "") == directory_array[commit_index]
+
+            del branch_array[commit_index]
+            del directory_array[commit_index]
 
 
 @pytest.mark.asyncio
 async def test_add_valid_tenant():
-    monbox = MonboxGit()
+    config = get_settings()
+
     new_tenant_name = _VALID_ARGO_TEST_TENANT_NAME
 
     ams = await asyncio.to_thread(AMS().init)
@@ -124,22 +161,62 @@ async def test_add_valid_tenant():
 
     assert restapi_tokens is not None
 
-    try:
-        monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
+    with patch(
+        "argo_automation_cpas.monboxgit.MonboxGit._commit_file_to_git_repo"
+    ) as mock_func:
+        monbox = MonboxGit()
 
-        success = monbox.commit_new_tenants()
-        assert success
+        mock_func.return_value = True
 
-        monbox.clear_added_tenants()
+        try:
+            monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
 
-        # IMPORTANT: Run w/o runner! We don't have a test machine to test out ansible runs.
-        # Current start_monboxgit_runner() runs on prod machines; we don't want to test on prod machines.
-        # That being said, the added tenant has correct tokens, so it is ready to be tested if we ever choose to do so.
-        # await monboxgit.start_monboxgit_runner()
+            success = monbox.commit_new_tenants()
+            assert success
 
-    finally:
-        await ams.close()
-        await webapi.close()
+            monbox.clear_added_tenants()
+
+            # IMPORTANT: Run w/o runner! We don't have a test machine to test out ansible runs.
+            # Current start_monboxgit_runner() runs on prod machines; we don't want to test on prod machines.
+            # That being said, the added tenant has correct tokens, so it is ready to be tested if we ever choose to do so.
+            # await monboxgit.start_monboxgit_runner()
+
+        finally:
+            await ams.close()
+            await webapi.close()
+
+        assert len(mock_func.mock_calls) == 2
+
+        # ordering in the following two arrays matter!
+        branch_array: list[str] = [
+            config.monboxgit.git_branch_backend,
+            config.monboxgit.git_branch_agent,
+        ]
+        directory_array: list[str] = [
+            config.monboxgit.backend_config_file_path,
+            config.monboxgit.agent_config_file_path,
+        ]
+
+        for call in mock_func.mock_calls:
+            commit_index = -1
+
+            kwargs = call.kwargs
+            assert kwargs["owner"] == config.monboxgit.git_repo_owner
+            assert kwargs["repo"] == config.monboxgit.git_repo_name
+
+            # make sure the directory kwarg is set properly
+            found_branch_index = branch_array.index(
+                kwargs.get("branch", -1),
+            )
+            assert found_branch_index != -1
+
+            commit_index = found_branch_index
+
+            # make sure git branch and file path for that branch match
+            assert kwargs.get("directory", "") == directory_array[commit_index]
+
+            del branch_array[commit_index]
+            del directory_array[commit_index]
 
 
 def _helper_create_dummy_tenant_entry_info() -> NewTenantEntryInfo:
