@@ -535,7 +535,7 @@ class MonboxGit:
     def _generate_commit_message(self, commit_id):
         commit_msg = ""
 
-        commit_title = "Updated config via script; Tenants: "
+        commit_title = "Updated configu via argo-cpas; Tenants: "
         commit_desc = "Commit tag: " + str(commit_id) + "\n\nTenants affected:\n"
         for tenant in self.updated_tenants:
             commit_title += tenant.tenant_name
