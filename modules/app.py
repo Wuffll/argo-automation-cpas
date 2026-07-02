@@ -453,14 +453,18 @@ class Application:
             tenant_id = props["tenant_id"]
             event = payload.get("name")
 
+            added = monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+
+            # if there is an error or the status api has already been set; skip
+            if not added:
+                continue
+
             await status_api.update_job_status(
                 tenant_id,
                 event,
                 "IN_PROGRESS",
                 token,
             )
-
-            monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
 
         # commit new tenant configs to git repo
         monboxgit_success = monboxgit.commit_new_tenants()
