@@ -9,11 +9,7 @@ from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.statusapi import StatusAPI
 from argo_automation_cpas.webapi import WebAPI
-from argo_automation_cpas.monboxgit import (
-    MonboxGit,
-    NewTenantAgentInfo,
-    NewTenantBackendInfo,
-)
+from argo_automation_cpas.monboxgit import MonboxGit
 
 from argo_automation_cpas.restapi_tokens import RestAPITokens
 
@@ -189,11 +185,11 @@ class Application:
             if run_delete_tenant:
                 if valid_delete_tenant:
                     LOG.info(f"OnlyMonboxGit | Removing tenant {self.delete_tenant}")
-                    await monboxgit.remove_tenant(self.delete_tenant)
+                    monboxgit.remove_tenant(self.delete_tenant)
                     await monboxgit.start_monboxgit_runner()
                 else:
-                    LOG.info(
-                        "OnlyMonboxGit | Error: Invalid tenant_name provided for delete_tenant. Exiting early."
+                    LOG.error(
+                        "OnlyMonboxGit | Invalid tenant_name provided for delete_tenant. Exiting early."
                     )
 
                 return
@@ -201,8 +197,8 @@ class Application:
             tenant_names = self.settings.automation.tenants
 
             if len(tenant_names) == 0:
-                LOG.info(
-                    "Only MonboxGit | Error: tenant_names array is empty. Exiting early."
+                LOG.error(
+                    "Only MonboxGit | tenant_names array is empty. Exiting early."
                 )
                 return
 
@@ -213,20 +209,16 @@ class Application:
             restapi_tokens = restapi_tokens_client.load_tokens()
 
             if restapi_tokens is None:
-                LOG.info("Only MonboxGit | Error: RestAPI tokens not found!")
+                LOG.error("Only MonboxGit | RestAPI tokens not found!")
                 return
 
             try:
                 for tenant_name in tenant_names:
-                    await monboxgit.add_new_tenant(
-                        webapi, ams, tenant_name, restapi_tokens
-                    )
+                    monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
 
-                success = await monboxgit.commit_new_tenants()
+                success = monboxgit.commit_new_tenants()
                 if not success:
-                    LOG.info(
-                        f"Error: One of the git commits was unsuccessful! Exiting early."
-                    )
+                    LOG.error("One of the git commits was unsuccessful! Exiting early.")
                     return
 
                 LOG.info("Only Monbox | Successfully commited file changes.")
@@ -445,8 +437,8 @@ class Application:
 
     async def _process_monbox_init_events(
         self,
-        init_events,
-        monboxgit,
+        init_events: list,
+        monboxgit: MonboxGit,
         webapi,
         ams,
         iam,
@@ -461,6 +453,12 @@ class Application:
             tenant_id = props["tenant_id"]
             event = payload.get("name")
 
+            added = monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+
+            # if there is an error or the status api has already been set; skip
+            if not added:
+                continue
+
             await status_api.update_job_status(
                 tenant_id,
                 event,
@@ -468,10 +466,8 @@ class Application:
                 token,
             )
 
-            await monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
-
         # commit new tenant configs to git repo
-        monboxgit_success = await monboxgit.commit_new_tenants()
+        monboxgit_success = monboxgit.commit_new_tenants()
         if not monboxgit_success:
             for payload in init_events:
                 props = payload.get("properties", {})
@@ -487,7 +483,7 @@ class Application:
                     ),
                 )
             raise RuntimeError(
-                "Error: Monbox new tenants commit was unsuccessful! Exiting early."
+                "Monbox new tenants commit was unsuccessful! Exiting early."
             )
 
         # run puppet script on machines
@@ -507,7 +503,7 @@ class Application:
                     ),
                 )
             raise RuntimeError(
-                "Error: Monbox init ansible run was unsuccessful! Exiting early."
+                "Monbox init ansible run was unsuccessful! Exiting early."
             )
 
         # check if the monbox was initialized on tenants
@@ -571,7 +567,7 @@ class Application:
 
         if not init_check_success:
             raise RuntimeError(
-                "Error: Monbox check init ansible run was unsuccessful! Exiting early."
+                "Monbox check init ansible run was unsuccessful! Exiting early."
             )
 
         # if monboxes are initialized properly, delete added tenants from to-be-added array

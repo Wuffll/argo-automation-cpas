@@ -75,28 +75,39 @@ class NewTenantBackendInfo:
 
 
 class NewTenantEntryInfo:
-    def __init__(self, tenant_agent_info, tenant_backend_info):
+    def __init__(
+        self,
+        tenant_agent_info: NewTenantAgentInfo,
+        tenant_backend_info: NewTenantBackendInfo,
+    ):
         self.tenant_agent_info = tenant_agent_info
         self.tenant_backend_info = tenant_backend_info
+
+
+class TenantActionInfo:
+    def __init__(self, tenant_name, action="NONE"):
+        self.tenant_name = tenant_name
+        self.action = action
 
 
 class MonboxGit:
     def __init__(self):
         self.settings = get_settings()
         self.new_tenant_entries: list[NewTenantEntryInfo] = []
+        self.updated_tenants: list[TenantActionInfo] = []
 
-    async def add_new_tenant(self, webapi, ams, new_tenant_name, rest_api_tokens):
+    def add_new_tenant(self, webapi, ams, new_tenant_name, rest_api_tokens):
         tenant_name_lower = new_tenant_name.lower()
 
-        if self._is_tenant_already_added(tenant_name_lower):
+        if self._is_tenant_already_added(new_tenant_name):
             LOG.info(f"Tenant {new_tenant_name} already queued to be added!")
-            return
+            return False
 
         restApiToken = rest_api_tokens[new_tenant_name]
 
         if restApiToken is None:
-            LOG.info(
-                "Error: there is no restapi_token for tenant with id: "
+            LOG.error(
+                "There is no restapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -109,8 +120,8 @@ class MonboxGit:
         webapi_tokens = webapi_tokens[new_tenant_name]
 
         if webapi_tokens is None:
-            LOG.info(
-                "Error: there is no webapi_token for tenant with id: "
+            LOG.error(
+                "There is no webapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -119,8 +130,8 @@ class MonboxGit:
         webapi_token = webapi_tokens[monbox_webapi_component]
 
         if webapi_token is None:
-            LOG.info(
-                "Error: there is no monbox webapi_token for tenant with id: "
+            LOG.error(
+                "There is no monbox webapi_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -131,8 +142,8 @@ class MonboxGit:
         ams_tokens = ams_tokens[new_tenant_name]
 
         if ams_tokens is None:
-            LOG.info(
-                "Error: there is no ams_token for tenant with id: "
+            LOG.error(
+                "There is no ams_token for tenant with id: "
                 + new_tenant_name
                 + "; Exiting early."
             )
@@ -140,8 +151,8 @@ class MonboxGit:
 
         ams_token = ams_tokens.get(monbox_ams_component)
         if ams_token is None:
-            LOG.info(
-                f"Error: there is no argo-monbox ams_token for tenant with id: {new_tenant_name}; Exiting early."
+            LOG.error(
+                f"There is no argo-monbox ams_token for tenant with id: {new_tenant_name}; Exiting early."
             )
             return False
 
@@ -162,25 +173,45 @@ class MonboxGit:
             NewTenantEntryInfo(new_tenant_agent_info, new_tenant_backend_info)
         )
 
-    async def remove_tenant(self, tenant_name):
+        return True
+
+    def remove_tenant(self, tenant_name):
+        if not isinstance(tenant_name, str):
+            raise ValueError(f"Variable tenant_name should be a string")
+
+        if tenant_name == "":
+            raise ValueError(f"Variable tenant_name mustn't be empty")
+
+        self.updated_tenants.append(TenantActionInfo(tenant_name, "Removed"))
+
         commit_id = self._generate_commit_id()
 
-        backend_commit_status = await self._remove_tenant_from_backend_config(
-            tenant_name, commit_id
-        )
-        agent_commit_status = await self._remove_tenant_from_agent_config(
+        backend_commit_status = self._remove_tenant_from_backend_config(
             tenant_name, commit_id
         )
 
-        return backend_commit_status and agent_commit_status
+        if backend_commit_status == False:
+            raise RuntimeError(f"Github backend commit unsuccessful")
 
-    async def commit_new_tenants(self):
+        agent_commit_status = self._remove_tenant_from_agent_config(
+            tenant_name, commit_id
+        )
+
+        if agent_commit_status == False:
+            raise RuntimeError(f"Github agent commit unsuccessful")
+
+        success = backend_commit_status and agent_commit_status
+
+        return success
+
+    def commit_new_tenants(self):
         commit_id = self._generate_commit_id()
 
-        backend_commit_status = await self._commit_sensu_backend_changes(commit_id)
-        agent_commit_status = await self._commit_sensu_agent_changes(commit_id)
+        backend_commit_status = self._commit_sensu_backend_changes(commit_id)
+        agent_commit_status = self._commit_sensu_agent_changes(commit_id)
 
-        return backend_commit_status and agent_commit_status
+        success = backend_commit_status and agent_commit_status
+        return success
 
     async def start_monboxgit_runner(self):
         LOG.info(f"MonboxGit | Starting run-puppet script on machines.")
@@ -244,9 +275,7 @@ class MonboxGit:
 
         LOG.info(f"Runner finished (rc={r.rc})")
 
-        all_tenants_inited, inited_tenants = await self._check_if_all_tenants_inited(
-            r.events
-        )
+        all_tenants_inited, inited_tenants = self._check_if_all_tenants_inited(r.events)
 
         return all_tenants_inited, inited_tenants
 
@@ -314,8 +343,11 @@ class MonboxGit:
 
     def _add_tenant_to_array(self, new_tenant_entry: NewTenantEntryInfo):
         self.new_tenant_entries.append(new_tenant_entry)
+        self.updated_tenants.append(
+            TenantActionInfo(new_tenant_entry.tenant_agent_info.tenant_name, "Added")
+        )
 
-    async def _get_sensu_backend_config(self):
+    def _get_sensu_backend_config(self):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
         retrieve_branch = self.settings.monboxgit.git_branch_backend
@@ -331,33 +363,44 @@ class MonboxGit:
             ssh_key=ssh_key,
         )
 
-        if file_data == False:
-            return False
-
         return file_data
 
-    async def _commit_sensu_backend_changes(self, commit_id=""):
-        repo_owner = self.settings.monboxgit.git_repo_owner
-        repo_name = self.settings.monboxgit.git_repo_name
-        commit_branch = self.settings.monboxgit.git_branch_backend
+    def _get_sensu_backend_config_yaml(self):
+        file_data = self._get_sensu_backend_config()
 
-        file_data = await self._get_sensu_backend_config()
         if file_data is False:
-            LOG.info("Error: Unable to fetch sensu backend config. Exiting early.")
-            return False
+            LOG.error("Unable to fetch sensu backend config. Exiting early.")
+            return None
 
         yaml_data = yaml.safe_load(file_data)
 
+        return yaml_data
+
+    def _add_new_tenants_backend_config_yaml(self):
+        yaml_data = self._get_sensu_backend_config_yaml()
+        if yaml_data is None:
+            return None
+
+        # add new tenants to yaml
         for agent_info in self.new_tenant_entries:
             yaml_data = self._add_new_tenant_to_backend_yaml(
                 yaml_data, agent_info.tenant_backend_info
             )
 
-        LOG.info("MonboxGit | Comitting changes.")
+        return yaml_data
+
+    def _commit_sensu_backend_changes(self, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_backend
+
+        yaml_data = self._add_new_tenants_backend_config_yaml()
+        if yaml_data is None:
+            return False
 
         file_path = self.settings.monboxgit.backend_config_file_path
 
-        return await self._commit_file_to_git_repo(
+        return self._commit_file_to_git_repo(
             owner=repo_owner,
             repo=repo_name,
             directory=file_path,
@@ -366,7 +409,7 @@ class MonboxGit:
             commit_id=commit_id,
         )
 
-    async def _get_sensu_agent_config(self):
+    def _get_sensu_agent_config(self):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
         retrieve_branch = self.settings.monboxgit.git_branch_agent
@@ -382,33 +425,44 @@ class MonboxGit:
             ssh_key=ssh_key,
         )
 
-        if file_data == False:
-            return False
-
         return file_data
 
-    async def _commit_sensu_agent_changes(self, commit_id=""):
-        repo_owner = self.settings.monboxgit.git_repo_owner
-        repo_name = self.settings.monboxgit.git_repo_name
-        commit_branch = self.settings.monboxgit.git_branch_agent
-
-        file_data = await self._get_sensu_agent_config()
+    def _get_sensu_agent_config_yaml(self):
+        file_data = self._get_sensu_agent_config()
         if file_data == False:
-            LOG.info("Error: Unable to fetch sensu agent config. Exiting early.")
-            return False
+            LOG.error("Unable to fetch sensu agent config. Exiting early.")
+            return None
 
         yaml_data = yaml.safe_load(file_data)
+
+        return yaml_data
+
+    def _add_new_tenants_to_agent_config_yaml(self):
+        yaml_data = self._get_sensu_agent_config_yaml()
+        if yaml_data is None:
+            return None
 
         for agent_info in self.new_tenant_entries:
             yaml_data = self._add_new_tenant_to_agent_yaml(
                 yaml_data, agent_info.tenant_agent_info
             )
 
+        return yaml_data
+
+    def _commit_sensu_agent_changes(self, commit_id=""):
+        repo_owner = self.settings.monboxgit.git_repo_owner
+        repo_name = self.settings.monboxgit.git_repo_name
+        commit_branch = self.settings.monboxgit.git_branch_agent
+
+        yaml_data = self._add_new_tenants_to_agent_config_yaml()
+        if yaml_data is None:
+            return False
+
         LOG.info("MonboxGit | Comitting changes.")
 
         file_path = self.settings.monboxgit.agent_config_file_path
 
-        return await self._commit_file_to_git_repo(
+        return self._commit_file_to_git_repo(
             owner=repo_owner,
             repo=repo_name,
             directory=file_path,
@@ -417,7 +471,7 @@ class MonboxGit:
             commit_id=commit_id,
         )
 
-    async def _commit_file_to_git_repo(
+    def _commit_file_to_git_repo(
         self, owner, repo, directory, branch, content="", commit_id=""
     ):
 
@@ -454,17 +508,19 @@ class MonboxGit:
                 try:
                     f = open(full_target_path, "x")
                 except FileExistsError as e:
-                    LOG.info(str(e))
+                    LOG.error(str(e))
                     raise RuntimeError(
-                        "Error: Unable to create file used for commiting to the repo!"
+                        "Unable to create file used for commiting to the repo!"
                     )
 
             f = open(full_target_path, "w")
             f.write(content)
             f.close()
 
+            commit_msg = self._generate_commit_message(commit_id)
+
             repo.git.add(all=True)
-            repo.index.commit("Upload via Python script\n\nCommit Tag: " + commit_id)
+            repo.index.commit(commit_msg)
 
             repo.git.push("origin", f"HEAD:{branch}")
 
@@ -475,6 +531,24 @@ class MonboxGit:
             shutil.rmtree(temp_dir)
 
         return success
+
+    def _generate_commit_message(self, commit_id):
+        commit_msg = ""
+
+        commit_title = "Updated config via argo-cpas; Tenants: "
+        commit_desc = "Commit tag: " + str(commit_id) + "\n\nTenants affected:\n"
+        for tenant in self.updated_tenants:
+            commit_title += tenant.tenant_name
+            commit_desc += f"   {tenant.tenant_name} (Action: {tenant.action})"
+            if tenant != self.updated_tenants[-1]:
+                commit_title += ", "
+                commit_desc += "\n"
+
+        commit_msg += commit_title
+        commit_msg += "\n\n"
+        commit_msg += commit_desc
+
+        return commit_msg
 
     # returns agent yaml file with new tenant; ready for commit
     def _add_new_tenant_to_agent_yaml(self, yaml_data, new_tenant_info):
@@ -566,6 +640,10 @@ class MonboxGit:
         return yaml_data
 
     def _remove_tenant_from_backend_yaml(self, yaml_data, tenant_name):
+        if not self._check_tenant_exist_backend_yaml(yaml_data, tenant_name):
+            LOG.warning(f"MonboxGit | Tenant {tenant_name} not found in backend yaml.")
+            return None
+
         # REMOVE TENANT SECTION DATA
         tenant_data_entries = yaml_data[SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY]
 
@@ -579,12 +657,17 @@ class MonboxGit:
         # REMOVE TENANT PUB QUEUE DATA
         tenant_pub_queue_entries = yaml_data.get(SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY)
 
-        tenant_pub_queue_entry_key = "Metrics" + tenant_name_lower
+        tenant_pub_queue_entry_key = self._get_tenant_pub_queue_entry_key(
+            tenant_name_lower
+        )
         tenant_pub_queue_entries.pop(tenant_pub_queue_entry_key, None)
 
         yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY] = tenant_pub_queue_entries
 
         return yaml_data
+
+    def _get_tenant_pub_queue_entry_key(self, tenant_name: str):
+        return "Metrics" + tenant_name.lower()
 
     def _download_github_file_api(
         self,
@@ -628,7 +711,7 @@ class MonboxGit:
 
         return file_data
 
-    async def _check_if_all_tenants_inited(self, events):
+    def _check_if_all_tenants_inited(self, events):
         line_prefix = "INFO - worker:metrics"
         line_prefix_len = len(line_prefix)
         inited_tenants = []
@@ -647,7 +730,7 @@ class MonboxGit:
                     tenant_name = line[line_prefix_len:first_reverse_whitespace]
                     tenant_name_lower = tenant_name.lower()
 
-                    found_tenant = self._is_tenant_already_added(tenant_name_lower)
+                    found_tenant = self._is_tenant_already_added(tenant_name)
                     if not found_tenant:
                         continue
 
@@ -663,29 +746,24 @@ class MonboxGit:
 
         return len(inited_tenants) == len(self.new_tenant_entries), inited_tenants
 
-    async def _remove_tenant_from_backend_config(self, tenant_name, commit_id):
+    def _remove_tenant_from_backend_config(self, tenant_name, commit_id):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
         commit_branch = self.settings.monboxgit.git_branch_backend
 
-        file_data = await self._get_sensu_backend_config()
-        if file_data is False:
-            LOG.info("Error: Unable to fetch sensu backend config. Exiting early.")
-            return False
-
-        yaml_data = yaml.safe_load(file_data)
-
-        if not self._check_tenant_exist_backend_yaml(yaml_data, tenant_name):
-            LOG.info(f"MonboxGit | Tenant {tenant_name} not found in backend yaml.")
+        yaml_data = self._get_sensu_backend_config_yaml()
+        if yaml_data is None:
             return False
 
         yaml_data = self._remove_tenant_from_backend_yaml(yaml_data, tenant_name)
+        if yaml_data is None:
+            return False
 
         file_path = self.settings.monboxgit.backend_config_file_path
 
         LOG.info("MonboxGit | Comitting changes.")
 
-        return await self._commit_file_to_git_repo(
+        return self._commit_file_to_git_repo(
             owner=repo_owner,
             repo=repo_name,
             directory=file_path,
@@ -694,14 +772,14 @@ class MonboxGit:
             commit_id=commit_id,
         )
 
-    async def _remove_tenant_from_agent_config(self, tenant_name, commit_id):
+    def _remove_tenant_from_agent_config(self, tenant_name, commit_id):
         repo_owner = self.settings.monboxgit.git_repo_owner
         repo_name = self.settings.monboxgit.git_repo_name
         commit_branch = self.settings.monboxgit.git_branch_agent
 
-        file_data = await self._get_sensu_agent_config()
+        file_data = self._get_sensu_agent_config()
         if file_data == False:
-            LOG.info("Error: Unable to fetch sensu agent config. Exiting early.")
+            LOG.error("Unable to fetch sensu agent config. Exiting early.")
             return False
 
         yaml_data = yaml.safe_load(file_data)
@@ -716,7 +794,7 @@ class MonboxGit:
 
         LOG.info("MonboxGit | Comitting changes.")
 
-        return await self._commit_file_to_git_repo(
+        return self._commit_file_to_git_repo(
             owner=repo_owner,
             repo=repo_name,
             directory=file_path,

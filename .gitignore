@@ -24,7 +24,12 @@ docker/sshkey*
 # Ignore IDE cache
 .idea
 
+# Config secrets
 config/argo-cpas/keys/*
-
 config/argo-cpas.conf
+
+# Generated files
 var/*
+
+# symlink
+argo_automation_cpas/*
