@@ -197,8 +197,8 @@ class MonboxGit:
             tenant_name, commit_id
         )
 
-        if backend_commit_status == False:
-            raise RuntimeError(f"Github backend commit unsuccessful")
+        if agent_commit_status == False:
+            raise RuntimeError(f"Github agent commit unsuccessful")
 
         success = backend_commit_status and agent_commit_status
 
