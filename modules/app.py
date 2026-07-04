@@ -147,10 +147,10 @@ class Application:
             return
 
         if self.only_ams:
-            ams = await asyncio.to_thread(AMS().init)
+            ams = AMS()
             if self.offset is not None:
-                await asyncio.to_thread(ams.move_offset, self.offset)
-            await ams.pull_and_print(filter_events=self.filter_events)
+                ams.move_offset(self.offset)
+            ams.pull_and_print(filter_events=self.filter_events)
 
             config_filter_tenants = self.settings.automation.tenants
 
@@ -160,7 +160,7 @@ class Application:
                     config_filter_tenants
                 )
             else:
-                ams_events = await ams.pull_messages()
+                ams_events = ams.pull_messages()
                 allowed_tenants = self._get_allowed_tenants(ams_events)
 
             LOG.info("Only AMS | Refreshing AMS tokens!")
@@ -171,7 +171,7 @@ class Application:
                         ams_component_tokens, self.settings.ams.tokens_spool
                     )
             finally:
-                await ams.close()
+                ams.close()
 
             return
 

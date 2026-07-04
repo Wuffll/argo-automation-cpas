@@ -18,7 +18,6 @@ class AMS:
         self.settings = get_settings()
         self.session = SessionWithRetry(base_url=self.settings.ams.url)
 
-    def init(self):
         ams = ArgoMessagingService(
             endpoint=self.settings.ams.host,
             token=self.settings.ams.token,
@@ -55,7 +54,6 @@ class AMS:
         LOG.info("Subscription %r confirmed", self.settings.ams.subscription)
 
         self._ams = ams
-        return self
 
     def move_offset(self, delta):
         sub = self.settings.ams.subscription
@@ -104,7 +102,7 @@ class AMS:
             return False
         return True
 
-    async def pull_messages(self):
+    def pull_messages(self):
         subscription = self.settings.ams.subscription
         method = self._ams.pullack_sub if self.settings.ams.ack else self._ams.pull_sub
         LOG.info(
@@ -113,8 +111,7 @@ class AMS:
             self.settings.ams.ack,
         )
         try:
-            msgs = await asyncio.to_thread(
-                method,
+            msgs = method(
                 subscription,
                 num=self.settings.ams.pullmsgs,
                 return_immediately=self.settings.ams.return_immediately,
@@ -142,12 +139,11 @@ class AMS:
         )
         return matched
 
-    async def pull_and_print(self, filter_events=False):
+    def pull_and_print(self, filter_events=False):
         subscription = self.settings.ams.subscription
         LOG.info("Pulling message from AMS subscription %s (no ack)", subscription)
         try:
-            msgs = await asyncio.to_thread(
-                self._ams.pull_sub,
+            msgs = self._ams.pull_sub(
                 subscription,
                 num=self.settings.ams.pullmsgs,
                 return_immediately=self.settings.ams.return_immediately,
@@ -182,7 +178,6 @@ class AMS:
             )
 
     # AMS token retrieval
-
     async def close(self):
         await self.session.close()
 
