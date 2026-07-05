@@ -6,13 +6,18 @@ import os
 from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.http import SessionWithRetry
 
+from typing import Literal
+
+TokenTypes = Literal["ams", "webapi"]
+
 LOG = logging.getLogger(__name__)
 
 
-class Tokens:
-    def __init__(self):
-        self.settings = get_settings()
-        self.session = SessionWithRetry(base_url=self.settings.ams.url)
+class ComponentTokens:
+    def __init__(self, type_tok: TokenTypes):
+        self.target_settings = getattr(get_settings(), type_tok.lower())
+        self.type_tok = type_tok
+        self.any_refresh = False
 
     def load_tokens(self, path):
         if not os.path.exists(path):
@@ -27,18 +32,18 @@ class Tokens:
         return {}
 
     async def refresh_tokens(self, tenants_array):
-        url_template = self.settings.ams.url_api_integrations
+        url_template = self.target_settings.url_api_integrations
 
         headers = {
-            "x-api-key": self.settings.ams.token_component_admin,
+            "x-api-key": self.target_settings.token_component_admin,
             "Accept": "application/json",
         }
 
-        tokens = self.load_tokens(self.settings.ams.tokens_spool)
+        tokens = self.load_tokens(self.target_settings.tokens_spool)
 
         for tenant_name in tenants_array:
             tokens.setdefault(tenant_name, {})
-            for component in self.settings.ams.components:
+            for component in self.target_settings.components:
                 existing = tokens[tenant_name].get(component)
                 if existing:
                     LOG.info(
@@ -55,15 +60,17 @@ class Tokens:
                     url,
                 )
                 try:
-                    data = await self.session.http_post(url, headers=headers)
-                    data = data.get("data", "")
-                    token = data.get("api_key", "")
-                    tokens[tenant_name][component] = token
-                    LOG.info(
-                        "Token refreshed: component=%s tenant=%s",
-                        component,
-                        tenant_name,
-                    )
+                    async with SessionWithRetry(base_url=self.target_settings.url) as session:
+                        data = await session.http_post(url, headers=headers)
+                        data = data.get("data", "")
+                        token = data.get("api_key", "")
+                        self.any_refresh = True
+                        tokens[tenant_name][component] = token
+                        LOG.info(
+                            "Token refreshed: component=%s tenant=%s",
+                            component,
+                            tenant_name,
+                        )
                 except aiohttp.ClientError as exc:
                     LOG.warning(
                         "Failed to refresh token for component=%s tenant=%s: %s",
@@ -75,10 +82,8 @@ class Tokens:
         return tokens
 
     def save_tokens(self, tokens, path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            json.dump(tokens, fh, indent=2)
-        LOG.info("AMS tokens saved to %s", path)
-
-    async def close(self):
-        await self.session.close()
+        if self.any_refresh:
+            os.makedirs(os.path.dirname(path), exist_ok=True)
+            with open(path, "w") as fh:
+                json.dump(tokens, fh, indent=2)
+            LOG.info(f"{self.type_tok.upper()} tokens saved to %s", path)
