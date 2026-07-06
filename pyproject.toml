@@ -40,6 +40,7 @@ build = "*"
 pdbpp = "*"
 setuptools = "^82.0.1"
 pytest = "*"
+pytest-mock = "*"
 
 [project.scripts]
 argo-cpas = "argo_automation_cpas.cli.argo_cpas:main"
