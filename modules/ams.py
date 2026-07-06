@@ -5,7 +5,6 @@ from argo_ams_library import ArgoMessagingService
 from argo_ams_library.amsexceptions import AmsException, AmsServiceException
 
 from argo_automation_cpas.config import get_settings
-from argo_automation_cpas.http import SessionWithRetry
 from argo_automation_cpas.tokens import ComponentTokens
 
 LOG = logging.getLogger(__name__)
