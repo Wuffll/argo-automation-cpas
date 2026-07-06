@@ -2,6 +2,7 @@ import pytest
 import asyncio
 
 from argo_automation_cpas.app import Application
+from argo_automation_cpas.config import load_config
 
 mocked_ams_events = [
     {
@@ -39,9 +40,18 @@ mocked_ams_events = [
 ]
 
 
+def cpas_test_settings(mocker):
+    settings = load_config("tests/argo-cpas-tests.conf")
+    mocker.patch('argo_automation_cpas.config._settings', new=settings)
+
+
 def test_main_flow(mocker):
-    app = Application()
+    cpas_test_settings(mocker)
 
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
     ams_pull_messages.return_value = mocked_ams_events
+    ams_has_sub = mocker.patch('argo_automation_cpas.ams.ArgoMessagingService.has_sub')
+    ams_has_sub.return_value = True
+
+    app = Application()
     asyncio.run(app.run())
