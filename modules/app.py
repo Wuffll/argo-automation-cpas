@@ -230,7 +230,7 @@ class Application:
         return allowed_tenants
 
     def _get_allowed_tenants(self, ams_events):
-        allowed_tenants = []
+        allowed_tenants = set()
 
         for payload in ams_events:
             props = payload.get("properties", {})
@@ -240,7 +240,7 @@ class Application:
             if self._check_if_tenant_filtered_out(tenant_name):
                 LOG.info(f"Tenant {tenant_name} (id: {tenant_id}) filtered out")
             else:
-                allowed_tenants.append(tenant_name)
+                allowed_tenants.add(tenant_name)
 
         return allowed_tenants
 
