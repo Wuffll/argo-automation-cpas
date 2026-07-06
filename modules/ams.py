@@ -2,7 +2,7 @@ import json
 import logging
 
 from argo_ams_library import ArgoMessagingService
-from argo_ams_library.amsexceptions import AmsException, AmsServiceException
+from argo_ams_library.amsexceptions import AmsException, AmsConnectionException, AmsServiceException
 
 from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.tokens import ComponentTokens
@@ -37,6 +37,14 @@ class AMS:
                 self.settings.ams.host,
                 exc.msg,
                 exc.code,
+            )
+            raise SystemExit(1)
+        except AmsConnectionException as exc:
+            LOG.error(
+                "AMS connection failed for project=%s host=%s: %s",
+                self.settings.ams.project,
+                self.settings.ams.host,
+                exc.msg,
             )
             raise SystemExit(1)
 
