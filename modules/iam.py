@@ -14,10 +14,6 @@ LOG = logging.getLogger(__name__)
 class IAM:
     def __init__(self):
         self.settings = get_settings()
-        self.session = SessionWithRetry()
-
-    async def close(self):
-        await self.session.close()
 
     def load_cached_token(self):
         path = self.settings.iam.token_spool
@@ -55,12 +51,16 @@ class IAM:
         }
 
         try:
-            data = await self.session.http_post(self.settings.iam.api, data=payload)
-            token = data["access_token"]
-            expires_in = data.get("expires_in", 3600)
-            LOG.info("IAM token obtained (expires_in=%s)", expires_in)
-            self.save_token(token, expires_in)
-            return token
+            async with SessionWithRetry() as session:
+                data = await session.http_post(self.settings.iam.api, data=payload)
+                token = data["access_token"]
+                expires_in = data.get("expires_in", 3600)
+
+                LOG.info("IAM token obtained (expires_in=%s)", expires_in)
+                self.save_token(token, expires_in)
+
+                return token
+
         except aiohttp.ClientError as exc:
             LOG.warning("IAM token request failed: %s", exc)
             return None

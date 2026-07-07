@@ -284,12 +284,9 @@ class Application:
 
         if self.only_iam:
             iam = IAM()
-            try:
-                token = await iam.fetch_token()
-                if token:
-                    print(token)
-            finally:
-                await iam.close()
+            token = await iam.fetch_token()
+            if token:
+                print(token)
             return
 
         if self.only_statusapi is not None:
@@ -314,7 +311,6 @@ class Application:
                 else:
                     await status_api.fetch_status(self.only_statusapi, token)
             finally:
-                await iam.close()
                 await status_api.close()
             return
 
@@ -420,15 +416,16 @@ class Application:
 
             allowed_tenants = self._get_allowed_tenants(ams_events)
 
-            component_tokens = await webapi.refresh_tokens(allowed_tenants)
+            component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
             if any(component_tokens.values()):
-                webapi.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
+                webapi.tokens.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
 
-            ams_component_tokens = await ams.refresh_tokens(allowed_tenants)
+            ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
-                ams.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
+                ams.tokens.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
 
             monbox_init_events = []
+
             for payload in ams_events:
                 props = payload.get("properties", {})
                 tenant_name = props["tenant_name"]
@@ -595,6 +592,4 @@ class Application:
                     pass
 
         finally:
-            await webapi.close()
-            await iam.close()
             await status_api.close()
