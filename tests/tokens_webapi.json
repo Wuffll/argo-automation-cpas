@@ -1,0 +1,14 @@
+{
+  "AUTOMATION": {
+    "connector": "AUTOMATION-CONNECTOR",
+    "poem-viewer": "AUTOMATION-POEMVIEWER",
+    "poem-admin": "AUTOMATION-POEMADMIN",
+    "monbox": "AUTOMATION-MONBOX"
+  },
+  "SRCE": {
+    "connector": "SRCE-CONNECTOR",
+    "poem-viewer": "SRCE-POEMVIEWER",
+    "poem-admin": "SRCE-POEMADMIN",
+    "monbox": "SRCE-MONBOX"
+  }
+}
