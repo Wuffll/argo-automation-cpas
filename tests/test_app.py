@@ -7,30 +7,6 @@ from argo_automation_cpas.config import load_config
 mocked_iam_token = 'IAM_TOKEN'
 mocked_ams_events = [
     {
-        "name": "INIT_MONGO",
-        "properties": {
-            "tenant_id": "184da7ca-5a64-4810-aa39-18cfaddbd44b",
-            "tenant_name": "AUTOMATION"
-        },
-        "created_at": "2026-04-04T09:05:15.436443207Z"
-    },
-    {
-        "name": "INIT_AMS",
-        "properties": {
-            "tenant_id": "184da7ca-5a64-4810-aa39-18cfaddbd44b",
-            "tenant_name": "AUTOMATION"
-        },
-        "created_at": "2026-04-04T09:05:15.436443207Z"
-    },
-    {
-        "name": "INIT_COMPUTE_ENGINE",
-        "properties": {
-            "tenant_id": "184da7ca-5a64-4810-aa39-18cfaddbd44b",
-            "tenant_name": "AUTOMATION"
-        },
-        "created_at": "2026-04-04T09:05:15.436443207Z"
-    },
-    {
         "name": "INIT_TOPOLOGY_CONNECTOR",
         "properties": {
             "tenant_id": "184da7ca-5a64-4810-aa39-18cfaddbd44b",
@@ -46,44 +22,8 @@ mocked_statusapi_jobs = {
     {
         "jobs": [
             {
-                "name": "CHECK_READINESS",
-                "status": "UNKNOWN",
-                "start": None,
-                "end": None,
-                "message": None,
-                "mode": "AUTO"
-            },
-            {
-                "name": "CREATE_DOMAIN_NAMES",
-                "status": "UNKNOWN",
-                "start": None,
-                "end": None,
-                "message": "Waiting for manual administrator action",
-                "mode": "MANUAL"
-            },
-            {
                 "name": "INIT_TOPOLOGY_CONNECTOR",
                 "status": "INITIALISED",
-                "start": "2026-04-04T09:05:28Z",
-                "end": None,
-                "message": "Event notification: INIT_TOPOLOGY_CONNECTOR is initialised to Messaging Service for publishing",
-                "mode": "AUTO",
-                "properties": {
-                    "tenant_id": "184da7ca-5a64-4810-aa39-18cfaddbd44b",
-                    "tenant_name": "AUTOMATION"
-                }
-            },
-            {
-                "name": "INIT_MONITORING_BOX",
-                "status": "UNKNOWN",
-                "start": None,
-                "end": None,
-                "message": "Waiting for manual administrator action",
-                "mode": "MANUAL"
-            },
-            {
-                "name": "INIT_POEM",
-                "status": "UNKNOWN",
                 "start": None,
                 "end": None,
                 "message": "Waiting for manual administrator action",
@@ -94,13 +34,25 @@ mocked_statusapi_jobs = {
     "readiness": None
 }
 
+mocked_webapi_topoconfig = {
+    "type": "CSV",
+    "feed_url": """https://docs.google.com/spreadsheets/d/
+                 1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/
+                 export?gid=0&format=csv""",
+    "paginated": "false",
+    "fetch_type": [
+        "ServiceGroups"
+    ],
+    "uid_endpoints": ""
+}
+
 
 def cpas_test_settings(mocker):
     settings = load_config("tests/argo-cpas-tests.conf")
     mocker.patch('argo_automation_cpas.config._settings', new=settings)
 
 
-def test_main_flow(mocker):
+def test_connector_init(mocker):
     cpas_test_settings(mocker)
 
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
@@ -113,5 +65,26 @@ def test_main_flow(mocker):
     iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
     iam_fetchtoken.return_value = mocked_iam_token
 
+    statusapi_httpget = mocker.patch('argo_automation_cpas.statusapi.SessionWithRetry.http_get')
+    statusapi_httpget.return_value = mocked_statusapi_jobs
+
+    statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
+    webapi_fetchtopologyconfig = mocker.patch('argo_automation_cpas.webapi.WebAPI.fetch_topology_config')
+    webapi_fetchtopologyconfig.return_value = mocked_webapi_topoconfig
+
+    ansible_runner = mocker.patch('argo_automation_cpas.ansible.ansible_runner')
+
     app = Application()
     asyncio.run(app.run())
+
+    statusapi_httpget.assert_called_with(
+        'FOO'
+    )
+
+    statusapi_updatejobstatus.assert_called_with(
+        'FOO'
+    )
+
+    webapi_fetchtopologyconfig.assert_called_with(
+        'FOO'
+    )
