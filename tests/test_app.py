@@ -72,10 +72,14 @@ def test_connector_init(mocker):
     webapi_fetchtopologyconfig = mocker.patch('argo_automation_cpas.webapi.WebAPI.fetch_topology_config')
     webapi_fetchtopologyconfig.return_value = mocked_webapi_topoconfig
 
-    ansible_runner = mocker.patch('argo_automation_cpas.ansible.ansible_runner')
+    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
 
     app = Application()
     asyncio.run(app.run())
+
+    ansible_runner_run.assert_called_with(
+        'FOO'
+    )
 
     statusapi_httpget.assert_called_with(
         'FOO'
