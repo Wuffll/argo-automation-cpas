@@ -3,6 +3,7 @@ import aiohttp
 
 from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.tokens import ComponentTokens
+from argo_automation_cpas.http import SessionWithRetry
 
 LOG = logging.getLogger(__name__)
 
@@ -18,7 +19,8 @@ class WebAPI:
         if token:
             headers["x-api-key"] = token
         try:
-            body = await self.session.http_get(url, headers=headers)
+            async with SessionWithRetry() as session:
+                body = await session.http_get(url, headers=headers)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to fetch topology config from webapi: %s", exc)
             return {}
@@ -54,15 +56,12 @@ class WebAPI:
         )
 
     async def run(self, allowed_tenants=[]):
-        try:
-            tokens = await self.tokens.refresh_tokens(allowed_tenants)
-            if any(tokens.values()):
-                self.tokens.save_tokens(tokens, self.settings.webapi.tokens_spool)
+        tokens = await self.tokens.refresh_tokens(allowed_tenants)
+        if any(tokens.values()):
+            self.tokens.save_tokens(tokens, self.settings.webapi.tokens_spool)
 
-            connector_token = self.find_connector_token(tokens)
-            if connector_token:
-                await self.fetch_topology_config(
-                    self.settings.webapi.url_api_config, token=connector_token
-                )
-        finally:
-            await self.close()
+        connector_token = self.find_connector_token(tokens)
+        if connector_token:
+            await self.fetch_topology_config(
+                self.settings.webapi.url_api_config, token=connector_token
+            )
