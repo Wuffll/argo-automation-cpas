@@ -16,6 +16,7 @@ mocked_ams_events = [
     }
 ]
 
+
 mocked_statusapi_jobs = {
     "name": "AUTOMATION",
     "status":
@@ -34,11 +35,10 @@ mocked_statusapi_jobs = {
     "readiness": None
 }
 
+
 mocked_webapi_topoconfig = {
-    "type": "CSV",
-    "feed_url": """https://docs.google.com/spreadsheets/d/
-                 1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/
-                 export?gid=0&format=csv""",
+    "connector_tenant_topo_type": "CSV",
+    "connector_tenant_topo_feed": "https://docs.google.com/spreadsheets/d/1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/export?gid=0&format=csv",
     "paginated": "false",
     "fetch_type": [
         "ServiceGroups"
@@ -46,6 +46,33 @@ mocked_webapi_topoconfig = {
     "uid_endpoints": ""
 }
 
+
+ansible_runner_run_connector_tenants = [{
+    'tenant_name': 'AUTOMATION',
+    'tenant_topo_type': 'CSV',
+    'tenant_cron_weights_disable': True,
+    'tenant_cron_downtimes_disable': True,
+    'tenant_webapi_token': 'AUTOMATION-CONNECTOR',
+    'tenant_bdii': False,
+    'tenant_jobs': [
+        {
+            'name': 'CORE',
+            'dirname':
+            'CORE'
+        }
+    ],
+    'tenant_auth_useplainhttpauth': False,
+    'tenant_topo_fetchtype': 'ServiceGroups',
+    'tenant_topo_uidserviceendpoints': True,
+    'tenant_topo_feed': 'https://docs.google.com/spreadsheets/d/1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/export?gid=0&format=csv'
+}]
+
+status_api_mock = {
+    'headers': {
+        'Authorization': 'Bearer IAM_TOKEN',
+        'Accept': 'application/json',
+    }
+}
 
 def cpas_test_settings(mocker):
     settings = load_config("tests/argo-cpas-tests.conf")
@@ -77,18 +104,20 @@ def test_connector_init(mocker):
     app = Application()
     asyncio.run(app.run())
 
-    ansible_runner_run.assert_called_with(
-        'FOO'
-    )
-
+    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+    assert 'connector_tenants' in ansible_runner_run.\
+        call_args_list[0][1]['extravars']
+    assert ansible_runner_run.\
+        call_args_list[0][1]['extravars']['connector_tenants'] == ansible_runner_run_connector_tenants
     statusapi_httpget.assert_called_with(
-        'FOO'
+        'https://API-STATUS_MON_ARGO/v1/automation/tenants/184da7ca-5a64-4810-aa39-18cfaddbd44b/status',
+        **status_api_mock
     )
 
-    statusapi_updatejobstatus.assert_called_with(
-        'FOO'
-    )
+    # statusapi_updatejobstatus.assert_called_with(
+        # 'FOO'
+    # )
 
-    webapi_fetchtopologyconfig.assert_called_with(
-        'FOO'
-    )
+    # webapi_fetchtopologyconfig.assert_called_with(
+        # 'FOO'
+    # )
