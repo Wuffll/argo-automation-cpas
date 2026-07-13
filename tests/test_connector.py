@@ -128,6 +128,7 @@ def test_connector_init(mocker, cpas_test_settings, connector_init_data, ansible
         message='Connector successfully configured for tenant AUTOMATION by argo-automation-cpas'
     )
 
-    # webapi_fetchtopologyconfig.assert_called_with(
-        # 'FOO'
-    # )
+    webapi_fetchtopologyconfig.assert_called_with(
+        '/api/v2/feeds/topology',
+        token='AUTOMATION-CONNECTOR'
+    )
