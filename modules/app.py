@@ -418,11 +418,15 @@ class Application:
 
             component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
             if any(component_tokens.values()):
-                webapi.tokens.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
+                webapi.tokens.save_tokens(
+                    component_tokens, self.settings.webapi.tokens_spool
+                )
 
             ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
-                ams.tokens.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
+                ams.tokens.save_tokens(
+                    ams_component_tokens, self.settings.ams.tokens_spool
+                )
 
             monbox_init_events = []
 

@@ -127,7 +127,9 @@ class Ansible:
         if component_tokens is None:
             webapi = WebAPI()
             try:
-                component_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+                component_tokens = webapi.tokens.load_tokens(
+                    self.settings.webapi.tokens_spool
+                )
             finally:
                 await webapi.close()
             if component_tokens:
