@@ -4,7 +4,7 @@
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-token webapi -t {{ item.tenant_name }} \
+      poem-token webapi -t {{ item.tenant_schema_name }} \
       -ko {{ item.tokens.webapi_ro }} \
       -kw {{ item.tokens.webapi_rw }}
     chdir:
@@ -15,7 +15,7 @@
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-token restapi -t {{ item.tenant_name }} \
+      poem-token restapi -t {{ item.tenant_schema_name }} \
       -k {{ item.tokens.restapi }}
     chdir:
       "{{ poem_virtenv_path }}"
