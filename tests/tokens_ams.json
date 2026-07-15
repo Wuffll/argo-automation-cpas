@@ -6,5 +6,9 @@
   "AUTOMATION": {
     "argo-monbox": "AUTOMATION-ARGOMONBOX",
     "argo-archiver": "AUTOMATION-ARGOARCHIVER"
+  },
+  "INSTRUCT-ERIC": {
+    "argo-monbox": "INSTRUCT-ERIC-ARGOMONBOX",
+    "argo-archiver": "INSTRUCT-ERIC-ARGOARCHIVER"
   }
 }

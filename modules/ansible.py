@@ -40,6 +40,9 @@ class Ansible:
 
             for t in add_tenants:
                 entry = {"tenant_name": t}
+                # remove hyphen and underscore for PostgreSQL schema creation
+                schema_name = t.replace('-', '').replace('_', '').lower()
+                entry.update(tenant_schema_name=schema_name)
                 tokens = (component_tokens or {}).get(t) or {}
                 poem_tokens = {
                     "webapi_ro": tokens.get("poem-viewer"),
