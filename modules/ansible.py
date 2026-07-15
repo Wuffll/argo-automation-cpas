@@ -5,7 +5,7 @@ import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
 from argo_automation_cpas.config import get_settings
-from argo_automation_cpas.restapi_tokens import RestAPITokens
+from argo_automation_cpas.tokens import RestAPITokens
 from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)

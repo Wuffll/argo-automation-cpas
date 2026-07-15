@@ -7,11 +7,10 @@ from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
 from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.iam import IAM
-from argo_automation_cpas.statusapi import StatusAPI
-from argo_automation_cpas.webapi import WebAPI
 from argo_automation_cpas.monboxgit import MonboxGit
-
-from argo_automation_cpas.restapi_tokens import RestAPITokens
+from argo_automation_cpas.statusapi import StatusAPI
+from argo_automation_cpas.tokens import RestAPITokens
+from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)
 
