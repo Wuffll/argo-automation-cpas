@@ -34,8 +34,7 @@ class Ansible:
 
         if add_tenants is not None:
             restapi_tokens = self.restapi_tokens.ensure_tokens(
-                add_tenants,
-                self.settings.ansible.poem_restapi_token,
+                add_tenants
             )
             entries = []
             for t in add_tenants:
