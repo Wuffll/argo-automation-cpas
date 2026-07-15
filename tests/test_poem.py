@@ -64,25 +64,21 @@ def poem_init_data():
         },
         expected_poem_tenants=[
             {
-                "tenant_name": "AUTOMATION",
-                "tenant_topo_type": "CSV",
-                "tenant_cron_weights_disable": True,
-                "tenant_cron_downtimes_disable": True,
-                "tenant_webapi_token": "AUTOMATION-CONNECTOR",
-                "tenant_bdii": False,
-                "tenant_jobs": [
-                    {
-                        "name": "CORE",
-                        "dirname": "CORE",
-                    }
-                ],
-                "tenant_auth_useplainhttpauth": False,
-                "tenant_topo_fetchtype": "ServiceGroups",
-                "tenant_topo_uidserviceendpoints": True,
-                "tenant_topo_feed": (
-                    "https://docs.google.com/spreadsheets/d/"
-                    "1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/export?gid=0&format=csv"
-                ),
+                'tenant_fqdn': 'automation.POEM-DEVEL-MON-ARGO',
+                'tenant_name': 'AUTOMATION',
+                'tenant_namespace': 'CH.CERN.SAM',
+                'tenant_privacypolicies': 'https://argo.egi.eu/egi/Critical/policies/',
+                'tenant_samlloginstring': 'Login using EGI CHECK-IN',
+                'tenant_samlservicename': 'ARGO POEM EGI-CheckIN',
+                'tenant_superuser_email': 'argo-ggus-support@grnet.gr',
+                'tenant_superuser_name': 'poem',
+                'tenant_superuser_password': 'POEM_SUPERUSER_SECRET',
+                'tenant_termsofuse': 'https://argo.egi.eu/egi/Critical/termsofUse',
+                'tokens': {
+                    'restapi': 'AUTOMATION-RESTAPI',
+                    'webapi_ro': 'AUTOMATION-POEMVIEWER',
+                    'webapi_rw': 'AUTOMATION-POEMADMIN'
+                }
             }
         ],
         status_api_mock={
@@ -128,10 +124,10 @@ def test_poem_init(mocker, poem_init_data, ansible_runner_ok):
     )
 
     assert 'extravars' in ansible_runner_run.call_args_list[0][1]
-    assert 'connector_tenants' in ansible_runner_run.\
+    assert 'poem_tenants' in ansible_runner_run.\
         call_args_list[0][1]['extravars']
     assert ansible_runner_run.\
-        call_args_list[0][1]['extravars']['connector_tenants'] == poem_init_data.expected_poem_tenants
+        call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data.expected_poem_tenants
 
     assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
         poem_init_data.tenant_id,
