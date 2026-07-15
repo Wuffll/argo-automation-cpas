@@ -116,12 +116,10 @@ class Application:
                     "FAILED",
                     token,
                     message=(
-                        f"Error: MonboxGit module was unable to successfully commit new changes for this tenant."
+                        "Error: MonboxGit module was unable to successfully commit new changes for this tenant."
                     ),
                 )
-            raise RuntimeError(
-                "Monbox new tenants commit was unsuccessful! Exiting early."
-            )
+            raise RuntimeError("Monbox new tenants commit was unsuccessful! Exiting early.")
 
         # run puppet script on machines
         runner_rc = await monboxgit.start_monboxgit_runner()
@@ -135,20 +133,14 @@ class Application:
                     event,
                     "FAILED",
                     token,
-                    message=(
-                        f"Error: Monbox init ansible run for this tenant was unsuccessful."
-                    ),
+                    message=("Error: Monbox init ansible run for this tenant was unsuccessful."),
                 )
-            raise RuntimeError(
-                "Monbox init ansible run was unsuccessful! Exiting early."
-            )
+            raise RuntimeError("Monbox init ansible run was unsuccessful! Exiting early.")
 
         # check if the monbox was initialized on tenants
         monbox_init_check_counter = self.settings.monboxgit.init_check_count
         monbox_init_check_interval = self.settings.monboxgit.init_check_interval
-        monbox_init_check_max_time = (
-            monbox_init_check_counter * monbox_init_check_interval
-        ) / 60.0
+        monbox_init_check_max_time = (monbox_init_check_counter * monbox_init_check_interval) / 60.0
         monbox_init_check_max_time = round(monbox_init_check_max_time, 2)
         LOG.info(
             f"Making sure monbox inits were successful... (takes up to {monbox_init_check_max_time} mins)"
@@ -162,19 +154,15 @@ class Application:
 
             LOG.info(f"Monbox init check #{i + 1}")
 
-            all_tenants_inited, inited_tenants = (
-                await monboxgit.start_monbox_init_check()
-            )
+            all_tenants_inited, inited_tenants = await monboxgit.start_monbox_init_check()
             if all_tenants_inited:
                 init_check_success = True
                 break
 
-            LOG.info(f"Waiting for monbox to successfully init on all tenants")
+            LOG.info("Waiting for monbox to successfully init on all tenants")
 
         if not all_tenants_inited:
-            LOG.info(
-                f"Warning: Some tenants weren't able to initialize monitoring box!"
-            )
+            LOG.warning("Some tenants weren't able to initialize monitoring box!")
 
         await monboxgit.update_packages_on_backend()
         await monboxgit.update_packages_on_agent()
@@ -199,13 +187,11 @@ class Application:
                     event,
                     "FAILED",
                     token,
-                    message=(f"Error: Unable to initialize monitoring box."),
+                    message=("Error: Unable to initialize monitoring box."),
                 )
 
         if not init_check_success:
-            raise RuntimeError(
-                "Monbox check init ansible run was unsuccessful! Exiting early."
-            )
+            raise RuntimeError("Monbox check init ansible run was unsuccessful! Exiting early.")
 
         # if monboxes are initialized properly, delete added tenants from to-be-added array
         monboxgit.clear_added_tenants()
@@ -246,9 +232,7 @@ class Application:
 
     async def run(self):
         if self.clean_artifacts is not None:
-            artifacts_dir = os.path.join(
-                self.settings.ansible_private_data_dir, "artifacts"
-            )
+            artifacts_dir = os.path.join(self.settings.ansible_private_data_dir, "artifacts")
             clean_artifacts(artifacts_dir, self.clean_artifacts)
             return
 
@@ -270,9 +254,7 @@ class Application:
 
             allowed_tenants = []
             if len(config_filter_tenants) != 0:
-                allowed_tenants = self._get_allowed_tenants_from_array(
-                    config_filter_tenants
-                )
+                allowed_tenants = self._get_allowed_tenants_from_array(config_filter_tenants)
             else:
                 ams = AMS()
                 ams_events = ams.pull_messages()
@@ -324,9 +306,7 @@ class Application:
 
             allowed_tenants = []
             if len(config_filter_tenants) != 0:
-                allowed_tenants = self._get_allowed_tenants_from_array(
-                    config_filter_tenants
-                )
+                allowed_tenants = self._get_allowed_tenants_from_array(config_filter_tenants)
             else:
                 ams_events = ams.pull_messages()
                 allowed_tenants = self._get_allowed_tenants(ams_events)
@@ -334,9 +314,7 @@ class Application:
             LOG.info("Only AMS | Refreshing AMS tokens!")
             ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
-                ams.tokens.save_tokens(
-                    ams_component_tokens, self.settings.ams.tokens_spool
-                )
+                ams.tokens.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
             return
 
         if self.only_monbox_git:
@@ -361,9 +339,7 @@ class Application:
             tenant_names = self.settings.automation.tenants
 
             if len(tenant_names) == 0:
-                LOG.error(
-                    "Only MonboxGit | tenant_names array is empty. Exiting early."
-                )
+                LOG.error("Only MonboxGit | tenant_names array is empty. Exiting early.")
                 return
 
             ams = AMS()
@@ -376,23 +352,19 @@ class Application:
                 LOG.error("Only MonboxGit | RestAPI tokens not found!")
                 return
 
-            try:
-                for tenant_name in tenant_names:
-                    monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+            for tenant_name in tenant_names:
+                monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
 
-                success = monboxgit.commit_new_tenants()
-                if not success:
-                    LOG.error("One of the git commits was unsuccessful! Exiting early.")
-                    return
+            success = monboxgit.commit_new_tenants()
+            if not success:
+                LOG.error("One of the git commits was unsuccessful! Exiting early.")
+                return
 
-                LOG.info("Only Monbox | Successfully commited file changes.")
+            LOG.info("Only Monbox | Successfully commited file changes.")
 
-                monboxgit.clear_added_tenants()
+            monboxgit.clear_added_tenants()
 
-                await monboxgit.start_monboxgit_runner()
-
-            finally:
-                await webapi.close()
+            await monboxgit.start_monboxgit_runner()
 
             return
 
@@ -418,15 +390,11 @@ class Application:
 
             component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
             if any(component_tokens.values()):
-                webapi.tokens.save_tokens(
-                    component_tokens, self.settings.webapi.tokens_spool
-                )
+                webapi.tokens.save_tokens(component_tokens, self.settings.webapi.tokens_spool)
 
             ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
-                ams.tokens.save_tokens(
-                    ams_component_tokens, self.settings.ams.tokens_spool
-                )
+                ams.tokens.save_tokens(ams_component_tokens, self.settings.ams.tokens_spool)
 
             monbox_init_events = []
 
@@ -437,9 +405,7 @@ class Application:
                 event = payload.get("name")
 
                 if self._check_if_tenant_filtered_out(tenant_name):
-                    LOG.info(
-                        f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out"
-                    )
+                    LOG.info(f"Tenant {tenant_name} (id: {tenant_id}) filtered out")
                     continue
 
                 LOG.info(
@@ -451,9 +417,7 @@ class Application:
 
                 playbook, event_inventory = _event_playbook(self.settings, event)
 
-                current_status = await status_api.get_job_status(
-                    tenant_id, event, token
-                )
+                current_status = await status_api.get_job_status(tenant_id, event, token)
 
                 if playbook:
                     if current_status != "INITIALISED":
@@ -553,9 +517,7 @@ class Application:
                 elif _is_event_init_monbox(event):
                     LOG.info("Monbox initialization candidate tenant: " + tenant_name)
 
-                    current_status = await status_api.get_job_status(
-                        tenant_id, event, token
-                    )
+                    current_status = await status_api.get_job_status(tenant_id, event, token)
 
                     LOG.info(f"Tenant {tenant_name} has status: {current_status}")
 
