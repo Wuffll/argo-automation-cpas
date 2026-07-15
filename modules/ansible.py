@@ -37,6 +37,7 @@ class Ansible:
                 add_tenants
             )
             entries = []
+
             for t in add_tenants:
                 entry = {"tenant_name": t}
                 tokens = (component_tokens or {}).get(t) or {}
@@ -125,12 +126,9 @@ class Ansible:
 
         if component_tokens is None:
             webapi = WebAPI()
-            try:
-                component_tokens = webapi.tokens.load_tokens(
-                    self.settings.webapi.tokens_spool
-                )
-            finally:
-                await webapi.close()
+            component_tokens = webapi.tokens.load_tokens(
+                self.settings.webapi.tokens_spool
+            )
             if component_tokens:
                 LOG.info(
                     "Loaded tokens from spool %s for tenants: %s",
