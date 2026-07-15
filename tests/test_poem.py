@@ -213,7 +213,7 @@ def poem_init_data_2():
     )
 
 
-def test_poem_init_2(mocker, poem_init_data_2, ansible_runner_ok):
+def test_poem_init_2(mocker, ansiblerun, poem_init_data_2, ansible_runner_ok):
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
     ams_pull_messages.return_value = poem_init_data_2.ams_events
 
@@ -228,10 +228,14 @@ def test_poem_init_2(mocker, poem_init_data_2, ansible_runner_ok):
 
     statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
 
-    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
-    ansible_runner_run.return_value = ansible_runner_ok
+    if ansiblerun:
+        ansible_runner_run = None
+        app = Application(show_artifacts=True)
+    else:
+        ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+        ansible_runner_run.return_value = ansible_runner_ok
+        app = Application()
 
-    app = Application()
     asyncio.run(app.run())
 
     assert statusapi_httpget.call_args_list[0] == mocker.call(
@@ -246,13 +250,12 @@ def test_poem_init_2(mocker, poem_init_data_2, ansible_runner_ok):
         poem_init_data_2.iam_token,
     )
 
-    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
-    import pdb; pdb.set_trace()
-
-    assert 'poem_tenants' in ansible_runner_run.\
-        call_args_list[0][1]['extravars']
-    assert ansible_runner_run.\
-        call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data_2.expected_poem_tenants
+    if not ansiblerun:
+        assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+        assert 'poem_tenants' in ansible_runner_run.\
+            call_args_list[0][1]['extravars']
+        assert ansible_runner_run.\
+            call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data_2.expected_poem_tenants
 
     assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
         poem_init_data_2.tenant_id,
