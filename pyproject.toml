@@ -16,7 +16,8 @@ dependencies = [
 	"ansible (>=13.5.0,<14.0.0)",
 	"gitpython",
 	"pytest (>=9.1.1,<10.0.0)",
-	"pytest-asyncio (>=1.4.0,<2.0.0)"
+	"pytest-asyncio (>=1.4.0,<2.0.0)",
+    "pytest-mock"
 ]
 requires-python = ">=3.12"
 
