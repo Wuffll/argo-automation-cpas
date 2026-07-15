@@ -1,0 +1,10 @@
+{
+  "SRCE": {
+    "argo-monbox": "SRCE-ARGOMONBOX",
+    "argo-archiver": "SRCE-ARGOARCHIVER"
+  },
+  "AUTOMATION": {
+    "argo-monbox": "AUTOMATION-ARGOMONBOX",
+    "argo-archiver": "AUTOMATION-ARGOARCHIVER"
+  }
+}

@@ -18,12 +18,12 @@ class Ansible:
     def __init__(self):
         self.settings = get_settings()
         self.connector_tenant_defaults = {
-            k[len(self.PREFIX):]: v
+            k[len(self.PREFIX) :]: v
             for k, v in self.settings.ansible.defaults.items()
             if k.startswith(self.PREFIX + "tenant_")
         }
         self.poem_tenant_defaults = {
-            k[len(self.PREFIX2):]: v
+            k[len(self.PREFIX2) :]: v
             for k, v in self.settings.ansible.defaults.items()
             if k.startswith(self.PREFIX2 + "tenant_")
         }
@@ -42,17 +42,19 @@ class Ansible:
                 entry = {"tenant_name": t}
                 tokens = (component_tokens or {}).get(t) or {}
                 poem_tokens = {
-                    'webapi_ro': tokens.get('poem-viewer'),
-                    'webapi_rw': tokens.get('poem-admin'),
-                    'restapi': restapi_tokens[t].get('restapi')
+                    "webapi_ro": tokens.get("poem-viewer"),
+                    "webapi_rw": tokens.get("poem-admin"),
+                    "restapi": restapi_tokens[t].get("restapi"),
                 }
                 entry["tokens"] = poem_tokens
-                poem_fqdn = f'{t.lower()}.{self.settings.ansible.poem_fqdn_suffix}'
+                poem_fqdn = f"{t.lower()}.{self.settings.ansible.poem_fqdn_suffix}"
                 if poem_fqdn:
                     LOG.info("Set POEM FQDN=%s", poem_fqdn)
                     entry["tenant_fqdn"] = poem_fqdn
                 if self.settings.ansible.poem_superuserpassword:
-                    self.poem_tenant_defaults['tenant_superuser_password'] = self.settings.ansible.poem_superuserpassword
+                    self.poem_tenant_defaults["tenant_superuser_password"] = (
+                        self.settings.ansible.poem_superuserpassword
+                    )
                 entries.append({**entry, **self.poem_tenant_defaults})
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
@@ -60,12 +62,18 @@ class Ansible:
 
         return extravars
 
-    def _connector_extravars(self, webapi_overrides, component_tokens, add_tenants, remove_tenants):
+    def _connector_extravars(
+        self, webapi_overrides, component_tokens, add_tenants, remove_tenants
+    ):
         for k, v in (webapi_overrides or {}).items():
             if k.startswith(self.PREFIX + "tenant_"):
-                self.connector_tenant_defaults[k[len(self.PREFIX):]] = v
+                self.connector_tenant_defaults[k[len(self.PREFIX) :]] = v
 
-        extravars = {k: v for k, v in self.settings.ansible.defaults.items() if not k.startswith(self.PREFIX + "tenant_")}
+        extravars = {
+            k: v
+            for k, v in self.settings.ansible.defaults.items()
+            if not k.startswith(self.PREFIX + "tenant_")
+        }
         if self.settings.ansible.user_connector:
             extravars["user_connector"] = self.settings.ansible.user_connector
         if self.settings.ansible.group_connector:
@@ -86,7 +94,10 @@ class Ansible:
                 entry = {"tenant_name": key, **self.connector_tenant_defaults}
                 if key in webapi_token_by_tenant:
                     entry["tenant_webapi_token"] = webapi_token_by_tenant[key]
-                    LOG.info("Set tenant_webapi_token for tenant=%s from component_tokens", key)
+                    LOG.info(
+                        "Set tenant_webapi_token for tenant=%s from component_tokens",
+                        key,
+                    )
                 entries.append(entry)
             extravars["connector_tenants"] = entries
         if remove_tenants is not None:
@@ -94,8 +105,16 @@ class Ansible:
 
         return extravars
 
-    async def run(self, playbook, inventory=None, webapi_overrides=None, component_tokens=None,
-                  add_tenants=None, remove_tenants=None, show_artifacts=None):
+    async def run(
+        self,
+        playbook,
+        inventory=None,
+        webapi_overrides=None,
+        component_tokens=None,
+        add_tenants=None,
+        remove_tenants=None,
+        show_artifacts=None,
+    ):
         private_key = self.settings.ansible.ssh_private_key
         LOG.info(
             "Starting ansible-runner with private_data_dir=%s playbook=%s inventory=%s private_key=%s",
@@ -108,18 +127,27 @@ class Ansible:
         if component_tokens is None:
             webapi = WebAPI()
             try:
-                component_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+                component_tokens = webapi.tokens.load_tokens(
+                    self.settings.webapi.tokens_spool
+                )
             finally:
                 await webapi.close()
             if component_tokens:
-                LOG.info("Loaded tokens from spool %s for tenants: %s",
-                         self.settings.webapi.tokens_spool,
-                         ", ".join(sorted(component_tokens.keys())))
+                LOG.info(
+                    "Loaded tokens from spool %s for tenants: %s",
+                    self.settings.webapi.tokens_spool,
+                    ", ".join(sorted(component_tokens.keys())),
+                )
 
+        extravars = None
         if playbook.startswith("connectors"):
-            extravars = self._connector_extravars(webapi_overrides, component_tokens, add_tenants, remove_tenants)
+            extravars = self._connector_extravars(
+                webapi_overrides, component_tokens, add_tenants, remove_tenants
+            )
         if playbook.startswith("poem"):
-            extravars = self._poem_extravars(component_tokens, add_tenants, remove_tenants)
+            extravars = self._poem_extravars(
+                component_tokens, add_tenants, remove_tenants
+            )
 
         envvars = {}
         if self.settings.general.strip_ansi:

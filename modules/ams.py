@@ -1,14 +1,11 @@
-import asyncio
 import json
 import logging
-import os
-import aiohttp
 
 from argo_ams_library import ArgoMessagingService
-from argo_ams_library.amsexceptions import AmsException, AmsServiceException
+from argo_ams_library.amsexceptions import AmsException, AmsConnectionException, AmsServiceException
 
 from argo_automation_cpas.config import get_settings
-from argo_automation_cpas.http import SessionWithRetry
+from argo_automation_cpas.tokens import ComponentTokens
 
 LOG = logging.getLogger(__name__)
 
@@ -16,9 +13,8 @@ LOG = logging.getLogger(__name__)
 class AMS:
     def __init__(self):
         self.settings = get_settings()
-        self.session = SessionWithRetry(base_url=self.settings.ams.url)
+        self.tokens = ComponentTokens("ams")
 
-    def init(self):
         ams = ArgoMessagingService(
             endpoint=self.settings.ams.host,
             token=self.settings.ams.token,
@@ -43,6 +39,14 @@ class AMS:
                 exc.code,
             )
             raise SystemExit(1)
+        except AmsConnectionException as exc:
+            LOG.error(
+                "AMS connection failed for project=%s host=%s: %s",
+                self.settings.ams.project,
+                self.settings.ams.host,
+                exc.msg,
+            )
+            raise SystemExit(1)
 
         if not sub_exists:
             LOG.error(
@@ -55,7 +59,6 @@ class AMS:
         LOG.info("Subscription %r confirmed", self.settings.ams.subscription)
 
         self._ams = ams
-        return self
 
     def move_offset(self, delta):
         sub = self.settings.ams.subscription
@@ -104,7 +107,7 @@ class AMS:
             return False
         return True
 
-    async def pull_messages(self):
+    def pull_messages(self):
         subscription = self.settings.ams.subscription
         method = self._ams.pullack_sub if self.settings.ams.ack else self._ams.pull_sub
         LOG.info(
@@ -113,8 +116,7 @@ class AMS:
             self.settings.ams.ack,
         )
         try:
-            msgs = await asyncio.to_thread(
-                method,
+            msgs = method(
                 subscription,
                 num=self.settings.ams.pullmsgs,
                 return_immediately=self.settings.ams.return_immediately,
@@ -142,12 +144,11 @@ class AMS:
         )
         return matched
 
-    async def pull_and_print(self, filter_events=False):
+    def pull_and_print(self, filter_events=False):
         subscription = self.settings.ams.subscription
         LOG.info("Pulling message from AMS subscription %s (no ack)", subscription)
         try:
-            msgs = await asyncio.to_thread(
-                self._ams.pull_sub,
+            msgs = self._ams.pull_sub(
                 subscription,
                 num=self.settings.ams.pullmsgs,
                 return_immediately=self.settings.ams.return_immediately,
@@ -180,74 +181,3 @@ class AMS:
                 "No messages matching tenant/event filter in AMS subscription %s"
                 % subscription
             )
-
-    # AMS token retrieval
-
-    async def close(self):
-        await self.session.close()
-
-    def load_tokens(self, path):
-        if not os.path.exists(path):
-            return {}
-        try:
-            with open(path) as fh:
-                data = json.load(fh)
-            if isinstance(data, dict):
-                return data
-        except (OSError, json.JSONDecodeError) as exc:
-            LOG.warning("Failed to load cached tokens from %s: %s", path, exc)
-        return {}
-
-    async def refresh_tokens(self, tenants_array):
-        url_template = self.settings.ams.url_api_integrations
-
-        headers = {
-            "x-api-key": self.settings.ams.token_component_admin,
-            "Accept": "application/json",
-        }
-
-        tokens = self.load_tokens(self.settings.ams.tokens_spool)
-
-        for tenant_name in tenants_array:
-            tokens.setdefault(tenant_name, {})
-            for component in self.settings.ams.components:
-                existing = tokens[tenant_name].get(component)
-                if existing:
-                    LOG.info(
-                        "Token already present: component=%s tenant=%s — skipping refresh",
-                        component,
-                        tenant_name,
-                    )
-                    continue
-                url = url_template.format(component=component, tenant_name=tenant_name)
-                LOG.info(
-                    "Refreshing token: component=%s tenant=%s url=%s",
-                    component,
-                    tenant_name,
-                    url,
-                )
-                try:
-                    data = await self.session.http_post(url, headers=headers)
-                    data = data.get("data", "")
-                    token = data.get("api_key", "")
-                    tokens[tenant_name][component] = token
-                    LOG.info(
-                        "Token refreshed: component=%s tenant=%s",
-                        component,
-                        tenant_name,
-                    )
-                except aiohttp.ClientError as exc:
-                    LOG.warning(
-                        "Failed to refresh token for component=%s tenant=%s: %s",
-                        component,
-                        tenant_name,
-                        exc,
-                    )
-
-        return tokens
-
-    def save_tokens(self, tokens, path):
-        os.makedirs(os.path.dirname(path), exist_ok=True)
-        with open(path, "w") as fh:
-            json.dump(tokens, fh, indent=2)
-        LOG.info("AMS tokens saved to %s", path)

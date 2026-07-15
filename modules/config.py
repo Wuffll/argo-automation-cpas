@@ -4,6 +4,7 @@ import logging.handlers
 import os
 
 import yaml
+from types import SimpleNamespace
 
 LOG = logging.getLogger(__name__)
 
@@ -30,12 +31,12 @@ _SYSLOG_FACILITIES = {
 }
 
 
-class Section:
+class Section(SimpleNamespace):
     def __init__(self, **values):
         self.__dict__.update(values)
 
 
-class Settings:
+class Settings(SimpleNamespace):
     def __init__(self, path, parser):
         self.path = os.path.abspath(path)
         self.config_dir = os.path.dirname(self.path)
