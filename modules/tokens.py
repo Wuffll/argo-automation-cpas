@@ -139,6 +139,6 @@ class RestAPITokens:
                 LOG.info("Generated REST-API token for tenant=%s", tenant_name)
 
         if changed:
-            self.save_tokens(tokens, self.token_spool)
+            self.save_tokens(tokens)
 
         return tokens

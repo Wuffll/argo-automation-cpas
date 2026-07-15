@@ -129,8 +129,6 @@ class Settings(SimpleNamespace):
         poem_restapi_token = ansible.get(
             "poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN
         )
-        if poem_restapi_token and not os.path.isabs(poem_restapi_token):
-            poem_restapi_token = os.path.join(self.config_dir, poem_restapi_token)
 
         self.ansible = Section(
             user_connector=ansible.get("user_connector", ""),

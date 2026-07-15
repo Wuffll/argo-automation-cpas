@@ -1,0 +1,8 @@
+{
+  "AUTOMATION": {
+    "restapi": "AUTOMATION-RESTAPI"
+  },
+  "SRCE": {
+    "restapi": "SRCE-RESTAPI"
+  }
+}
