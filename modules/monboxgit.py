@@ -103,7 +103,7 @@ class MonboxGit:
             LOG.info(f"Tenant {new_tenant_name} already queued to be added!")
             return False
 
-        restApiToken = rest_api_tokens[new_tenant_name]
+        restApiToken = rest_api_tokens.get(new_tenant_name)
 
         if restApiToken is None:
             LOG.error(
@@ -113,11 +113,12 @@ class MonboxGit:
             )
             return False
 
-        restApiToken = restApiToken["restapi"]
+        restApiToken = restApiToken.get("restapi")
 
         monbox_webapi_component = "monbox"
-        webapi_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
-        webapi_tokens = webapi_tokens[new_tenant_name]
+        webapi_tokens = webapi.tokens.load_tokens(
+            self.settings.webapi.tokens_spool
+        ).get(new_tenant_name)
 
         if webapi_tokens is None:
             LOG.error(
@@ -127,7 +128,7 @@ class MonboxGit:
             )
             return False
 
-        webapi_token = webapi_tokens[monbox_webapi_component]
+        webapi_token = webapi_tokens.get(monbox_webapi_component)
 
         if webapi_token is None:
             LOG.error(
@@ -138,8 +139,9 @@ class MonboxGit:
             return False
 
         monbox_ams_component = "argo-monbox"
-        ams_tokens = ams.load_tokens(self.settings.ams.tokens_spool)
-        ams_tokens = ams_tokens[new_tenant_name]
+        ams_tokens = ams.tokens.load_tokens(
+            self.settings.ams.tokens_spool
+        ).get(new_tenant_name)
 
         if ams_tokens is None:
             LOG.error(

@@ -1,14 +1,11 @@
-import sys
-import unittest
-from unittest.mock import MagicMock, patch
 import pytest
-import asyncio
 
-from argo_automation_cpas.monboxgit import *
-from argo_automation_cpas.ams import *
-from argo_automation_cpas.webapi import *
-from argo_automation_cpas.restapi_tokens import *
+from argo_automation_cpas.monboxgit import (MonboxGit, NewTenantEntryInfo,
+                                            NewTenantAgentInfo, NewTenantBackendInfo,
+                                            SENSU_AGENT_TENANT_DATA_YAML_ENTRY_KEY, SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY,
+                                            SENSU_BACKEND_TENANT_SECTION_YAML_ENTRY_KEY)
 from argo_automation_cpas.config import get_settings
+from argo_automation_cpas.config import load_config
 
 __TEST_AGENT_CONFIG_YAML = """
 argo::mon::caupdate::script_source: puppet:///modules/argo/mon/caupdate/update_ca_bundle_sensu
@@ -126,7 +123,25 @@ _VALID_TEST_TENANT_NAME = "TEST_VALID_AUTOMATION_TENANT_YES"
 _VALID_ARGO_TEST_TENANT_NAME = "AUTOMATION"
 
 
-def test_add_tenant_to_yaml():
+@pytest.fixture(autouse=True)
+def cpas_test_settings(mocker):
+    settings = load_config("tests/argo-cpas-tests.conf")
+    mocker.patch("argo_automation_cpas.config._settings", new=settings)
+    return settings
+
+
+def test_add_tenant_to_yaml(mocker):
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_agent_config",
+        return_value=__TEST_AGENT_CONFIG_YAML,
+    )
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_backend_config",
+        return_value=__TEST_BACKEND_CONFIG_YAML,
+    )
+
     monbox = MonboxGit()
 
     entry_info = _helper_create_dummy_tenant_entry_info()
@@ -153,7 +168,18 @@ def test_add_tenant_to_yaml():
     assert entry_key in yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY]
 
 
-def test_remove_tenant_from_yaml():
+def test_remove_tenant_from_yaml(mocker):
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_agent_config",
+        return_value=__TEST_AGENT_CONFIG_YAML,
+    )
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_backend_config",
+        return_value=__TEST_BACKEND_CONFIG_YAML,
+    )
+
     monbox = MonboxGit()
 
     # First: add new test tenant to yaml
@@ -203,38 +229,38 @@ def test_delete_invalid_tenant_empty_string_input():
         monbox.remove_tenant(_EMPTY_STRING)
 
 
-def test_delete_invalid_tenant_nonexistant_tenant(monkeypatch: pytest.MonkeyPatch):
+def test_delete_invalid_tenant_nonexistant_tenant(mocker):
     monbox = MonboxGit()
 
-    backend_mock_func = MagicMock()
+    backend_mock_func = mocker.Mock()
     backend_mock_func.return_value = __TEST_BACKEND_CONFIG_YAML
 
-    agent_mock_func = MagicMock()
+    agent_mock_func = mocker.Mock()
     agent_mock_func.return_value = __TEST_AGENT_CONFIG_YAML
 
-    monkeypatch.setattr(MonboxGit, "_get_sensu_backend_config", backend_mock_func)
-    monkeypatch.setattr(MonboxGit, "_get_sensu_agent_config", agent_mock_func)
+    mocker.patch.object(MonboxGit, "_get_sensu_backend_config", backend_mock_func)
+    mocker.patch.object(MonboxGit, "_get_sensu_agent_config", agent_mock_func)
 
     with pytest.raises(RuntimeError):
         monbox.remove_tenant(_INVALID_TEST_TENANT_NAME)
 
 
-def test_delete_valid_tenant(monkeypatch: pytest.MonkeyPatch):
+def test_delete_valid_tenant(mocker):
     config = get_settings()
 
     # setup mock function
-    commit_mock_func = MagicMock()
+    commit_mock_func = mocker.Mock()
     commit_mock_func.return_value = True
 
-    backend_mock_func = MagicMock()
+    backend_mock_func = mocker.Mock()
     backend_mock_func.return_value = __TEST_BACKEND_CONFIG_YAML
 
-    agent_mock_func = MagicMock()
+    agent_mock_func = mocker.Mock()
     agent_mock_func.return_value = __TEST_AGENT_CONFIG_YAML
 
-    monkeypatch.setattr(MonboxGit, "_commit_file_to_git_repo", commit_mock_func)
-    monkeypatch.setattr(MonboxGit, "_get_sensu_backend_config", backend_mock_func)
-    monkeypatch.setattr(MonboxGit, "_get_sensu_agent_config", agent_mock_func)
+    mocker.patch.object(MonboxGit, "_commit_file_to_git_repo", commit_mock_func)
+    mocker.patch.object(MonboxGit, "_get_sensu_backend_config", backend_mock_func)
+    mocker.patch.object(MonboxGit, "_get_sensu_agent_config", agent_mock_func)
 
     monbox = MonboxGit()
 
@@ -308,39 +334,54 @@ def test_delete_valid_tenant(monkeypatch: pytest.MonkeyPatch):
 
 
 @pytest.mark.asyncio
-async def test_add_valid_tenant(monkeypatch: pytest.MonkeyPatch):
+async def test_add_valid_tenant(mocker):
     config = get_settings()
 
     new_tenant_name = _VALID_ARGO_TEST_TENANT_NAME
 
-    ams = await asyncio.to_thread(AMS().init)
-    webapi = WebAPI()
+    ams = mocker.Mock()
+    ams.tokens.load_tokens.return_value = {
+        new_tenant_name: {
+            "argo-monbox": "AUTOMATION-ARGOMONBOX",
+        }
+    }
+    webapi = mocker.Mock()
+    webapi.tokens.load_tokens.return_value = {
+        new_tenant_name: {
+            "monbox": "AUTOMATION-MONBOX",
+        }
+    }
+    restapi_tokens = {
+        new_tenant_name: {
+            "restapi": "AUTOMATION-RESTAPI",
+        }
+    }
 
-    restapi_tokens_client = RestAPITokens()
-    restapi_tokens = restapi_tokens_client.load_tokens()
-
-    assert restapi_tokens is not None, "Unable to load restapi_tokens"
-
-    mock_func = MagicMock()
+    mock_func = mocker.Mock()
     mock_func.return_value = True
 
-    monkeypatch.setattr(MonboxGit, "_commit_file_to_git_repo", mock_func)
+    mocker.patch.object(MonboxGit, "_commit_file_to_git_repo", mock_func)
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_agent_config",
+        return_value=__TEST_AGENT_CONFIG_YAML,
+    )
+    mocker.patch.object(
+        MonboxGit,
+        "_get_sensu_backend_config",
+        return_value=__TEST_BACKEND_CONFIG_YAML,
+    )
 
     monbox = MonboxGit()
 
-    try:
-        monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
-        monbox.commit_new_tenants()
-        monbox.clear_added_tenants()
+    monbox.add_new_tenant(webapi, ams, new_tenant_name, restapi_tokens)
+    monbox.commit_new_tenants()
+    monbox.clear_added_tenants()
 
-        # IMPORTANT: Run w/o runner! We don't have a test machine to test out ansible runs.
-        # Current start_monboxgit_runner() runs on prod machines; we don't want to test on prod machines.
-        # That being said, the added tenant has correct tokens, so it is ready to be tested if we ever choose to do so.
-        # await monboxgit.start_monboxgit_runner()
-
-    finally:
-        await ams.close()
-        await webapi.close()
+    # IMPORTANT: Run w/o runner! We don't have a test machine to test out ansible runs.
+    # Current start_monboxgit_runner() runs on prod machines; we don't want to test on prod machines.
+    # That being said, the added tenant has correct tokens, so it is ready to be tested if we ever choose to do so.
+    # await monboxgit.start_monboxgit_runner()
 
     assert (
         len(mock_func.mock_calls) == 2
