@@ -18,9 +18,7 @@ from argo_automation_cpas.config import get_settings
 
 LOG = logging.getLogger(__name__)
 
-SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY = (
-    "argo::mon::amspublisher::publisher_queues_topics"
-)
+SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY = "argo::mon::amspublisher::publisher_queues_topics"
 SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE = """
 Directory : &envrihub_publisher_queue '/var/spool/ams-publisher/{tenant_name_lower}_metrics/'
 Rate      : '1'
@@ -103,7 +101,7 @@ class MonboxGit:
             LOG.info(f"Tenant {new_tenant_name} already queued to be added!")
             return False
 
-        restApiToken = rest_api_tokens.get(new_tenant_name)
+        restApiToken = rest_api_tokens[new_tenant_name]
 
         if restApiToken is None:
             LOG.error(
@@ -113,12 +111,11 @@ class MonboxGit:
             )
             return False
 
-        restApiToken = restApiToken.get("restapi")
+        restApiToken = restApiToken["restapi"]
 
         monbox_webapi_component = "monbox"
-        webapi_tokens = webapi.tokens.load_tokens(
-            self.settings.webapi.tokens_spool
-        ).get(new_tenant_name)
+        webapi_tokens = webapi.load_tokens(self.settings.webapi.tokens_spool)
+        webapi_tokens = webapi_tokens[new_tenant_name]
 
         if webapi_tokens is None:
             LOG.error(
@@ -128,7 +125,7 @@ class MonboxGit:
             )
             return False
 
-        webapi_token = webapi_tokens.get(monbox_webapi_component)
+        webapi_token = webapi_tokens[monbox_webapi_component]
 
         if webapi_token is None:
             LOG.error(
@@ -139,15 +136,12 @@ class MonboxGit:
             return False
 
         monbox_ams_component = "argo-monbox"
-        ams_tokens = ams.tokens.load_tokens(
-            self.settings.ams.tokens_spool
-        ).get(new_tenant_name)
+        ams_tokens = ams.load_tokens(self.settings.ams.tokens_spool)
+        ams_tokens = ams_tokens[new_tenant_name]
 
         if ams_tokens is None:
             LOG.error(
-                "There is no ams_token for tenant with id: "
-                + new_tenant_name
-                + "; Exiting early."
+                "There is no ams_token for tenant with id: " + new_tenant_name + "; Exiting early."
             )
             return False
 
@@ -188,16 +182,12 @@ class MonboxGit:
 
         commit_id = self._generate_commit_id()
 
-        backend_commit_status = self._remove_tenant_from_backend_config(
-            tenant_name, commit_id
-        )
+        backend_commit_status = self._remove_tenant_from_backend_config(tenant_name, commit_id)
 
         if backend_commit_status == False:
             raise RuntimeError(f"Github backend commit unsuccessful")
 
-        agent_commit_status = self._remove_tenant_from_agent_config(
-            tenant_name, commit_id
-        )
+        agent_commit_status = self._remove_tenant_from_agent_config(tenant_name, commit_id)
 
         if agent_commit_status == False:
             raise RuntimeError(f"Github agent commit unsuccessful")
@@ -285,7 +275,7 @@ class MonboxGit:
         LOG.info(f"MonboxGit | Updating packages on backend machine(s).")
 
         whoami_cmd = "whoami"
-        backend_cmd = "python /bin/argo-poem-packages.py && python /bin/scg-reload.py"
+        backend_cmd = "python /bin/argo-poem-packages.py ; python /bin/scg-reload.py"
 
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
@@ -445,9 +435,7 @@ class MonboxGit:
             return None
 
         for agent_info in self.new_tenant_entries:
-            yaml_data = self._add_new_tenant_to_agent_yaml(
-                yaml_data, agent_info.tenant_agent_info
-            )
+            yaml_data = self._add_new_tenant_to_agent_yaml(yaml_data, agent_info.tenant_agent_info)
 
         return yaml_data
 
@@ -473,9 +461,7 @@ class MonboxGit:
             commit_id=commit_id,
         )
 
-    def _commit_file_to_git_repo(
-        self, owner, repo, directory, branch, content="", commit_id=""
-    ):
+    def _commit_file_to_git_repo(self, owner, repo, directory, branch, content="", commit_id=""):
 
         repo_ssh = f"git@github.com:{owner}/{repo}.git"
 
@@ -489,31 +475,23 @@ class MonboxGit:
             git_ssh_key_path = self.settings.monboxgit.git_ssh_key_path
 
             # Force Git to use custom SSH key
-            os.environ["GIT_SSH_COMMAND"] = (
-                f"ssh -i {git_ssh_key_path} -o IdentitiesOnly=yes"
-            )
+            os.environ["GIT_SSH_COMMAND"] = f"ssh -i {git_ssh_key_path} -o IdentitiesOnly=yes"
 
             origin.fetch(branch)
             repo.git.checkout("-b", branch, f"origin/{branch}")
 
             last_slash_index = directory.rfind("/")
-            path_to_file = (
-                directory[: (last_slash_index + 1)] if last_slash_index != -1 else ""
-            )
+            path_to_file = directory[: (last_slash_index + 1)] if last_slash_index != -1 else ""
 
             full_target_path = os.path.join(temp_dir, directory)
-            os.makedirs(
-                os.path.dirname(os.path.join(temp_dir, path_to_file)), exist_ok=True
-            )
+            os.makedirs(os.path.dirname(os.path.join(temp_dir, path_to_file)), exist_ok=True)
 
             if not os.path.isfile(full_target_path):
                 try:
                     f = open(full_target_path, "x")
                 except FileExistsError as e:
                     LOG.error(str(e))
-                    raise RuntimeError(
-                        "Unable to create file used for commiting to the repo!"
-                    )
+                    raise RuntimeError("Unable to create file used for commiting to the repo!")
 
             f = open(full_target_path, "w")
             f.write(content)
@@ -595,12 +573,10 @@ class MonboxGit:
         tenant_pub_queue_entries = yaml_data.get(SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY)
 
         new_tenant_backend_pub_queue_string = SENSU_BACKEND_PUB_QUEUE_STRING_TEMPLATE
-        new_tenant_backend_pub_queue_string = (
-            new_tenant_backend_pub_queue_string.format(
-                tenant_name_lower=new_tenant_info.tenant_name_lower,
-                tenant_name=new_tenant_info.tenant_name,
-                ams_token=new_tenant_info.ams_token,
-            )
+        new_tenant_backend_pub_queue_string = new_tenant_backend_pub_queue_string.format(
+            tenant_name_lower=new_tenant_info.tenant_name_lower,
+            tenant_name=new_tenant_info.tenant_name,
+            ams_token=new_tenant_info.ams_token,
         )
 
         tenant_pub_queue_entry_key = "Metrics" + new_tenant_info.tenant_name_lower
@@ -659,9 +635,7 @@ class MonboxGit:
         # REMOVE TENANT PUB QUEUE DATA
         tenant_pub_queue_entries = yaml_data.get(SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY)
 
-        tenant_pub_queue_entry_key = self._get_tenant_pub_queue_entry_key(
-            tenant_name_lower
-        )
+        tenant_pub_queue_entry_key = self._get_tenant_pub_queue_entry_key(tenant_name_lower)
         tenant_pub_queue_entries.pop(tenant_pub_queue_entry_key, None)
 
         yaml_data[SENSU_BACKEND_PUB_QUEUE_YAML_ENTRY_KEY] = tenant_pub_queue_entries
@@ -806,8 +780,4 @@ class MonboxGit:
         )
 
     def _generate_commit_id(self):
-        return (
-            str(uuid.uuid4())
-            + " | "
-            + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
-        )
+        return str(uuid.uuid4()) + " | " + datetime.datetime.now().strftime("%Y/%m/%d %H:%M:%S UTC")
