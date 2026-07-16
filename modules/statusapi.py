@@ -15,10 +15,6 @@ JOB_PICKED_UP_MESSAGE = "Event picked up by argo-automation-cpas"
 class StatusAPI:
     def __init__(self):
         self.settings = get_settings()
-        self.session = SessionWithRetry()
-
-    async def close(self):
-        await self.session.close()
 
     def _url(self, tenant_id):
         return self.settings.statusapi.api.format(tenant_id=tenant_id)
@@ -31,8 +27,9 @@ class StatusAPI:
         LOG.info("Reporting status=%s for tenant_id=%s to %s", status, tenant_id, url)
         headers = self._auth_headers(token)
         try:
-            await self.session.http_patch(url, json={"status": status}, headers=headers)
-            LOG.info("Status reported: tenant_id=%s status=%s", tenant_id, status)
+            async with SessionWithRetry() as session:
+                await session.http_patch(url, json={"status": status}, headers=headers)
+                LOG.info("Status reported: tenant_id=%s status=%s", tenant_id, status)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to report status to statusapi: %s", exc)
 
@@ -57,9 +54,10 @@ class StatusAPI:
         headers.update({"Content-Type": "application/json"})
 
         try:
-            await self.session.http_patch(url, json=body, headers=headers)
-            LOG.info("Job status updated: tenant_id=%s event=%s status=%s",
-                     tenant_id, event, status)
+            async with SessionWithRetry() as session:
+                await session.http_patch(url, json=body, headers=headers)
+                LOG.info("Job status updated: tenant_id=%s event=%s status=%s",
+                         tenant_id, event, status)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to update job status: %s", exc)
 
@@ -67,8 +65,10 @@ class StatusAPI:
         url = self._url(tenant_id)
         headers = self._auth_headers(token)
         headers.update({"Accept": "application/json"})
+
         try:
-            body = await self.session.http_get(url, headers=headers)
+            async with SessionWithRetry() as session:
+                body = await session.http_get(url, headers=headers)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to fetch status for tenant_id=%s: %s", tenant_id, exc)
             return None
@@ -86,7 +86,8 @@ class StatusAPI:
         headers = self._auth_headers(token)
         headers.update({"Accept": "application/json"})
         try:
-            body = await self.session.http_get(url, headers=headers)
-            print(json.dumps(body, indent=2))
+            async with SessionWithRetry() as session:
+                body = await session.http_get(url, headers=headers)
+                print(json.dumps(body, indent=2))
         except aiohttp.ClientError as exc:
             LOG.error("Failed to fetch status from statusapi: %s", exc)
