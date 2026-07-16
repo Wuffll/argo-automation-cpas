@@ -10,5 +10,11 @@
     "poem-viewer": "SRCE-POEMVIEWER",
     "poem-admin": "SRCE-POEMADMIN",
     "monbox": "SRCE-MONBOX"
+  },
+  "INSTRUCT-ERIC": {
+    "connector": "INSTRUCT-ERIC-CONNECTOR",
+    "poem-viewer": "INSTRUCT-ERIC-POEMVIEWER",
+    "poem-admin": "INSTRUCT-ERIC-POEMADMIN",
+    "monbox": "INSTRUCT-ERIC-MONBOX"
   }
 }

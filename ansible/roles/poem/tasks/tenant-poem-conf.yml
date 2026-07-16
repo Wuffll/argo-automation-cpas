@@ -22,8 +22,8 @@
 
 - name: Check tenant poem.auto.conf sections - {{ item.tenant_name }}
   ansible.builtin.set_fact:
-    poem_general_section_exists: "{{ (('[GENERAL_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
-    poem_superuser_section_exists: "{{ (('[SUPERUSER_' ~ item.tenant_name ~ ']') in poem_conf_text.splitlines()) | bool }}"
+    poem_general_section_exists: "{{ (('[GENERAL_' ~ item.tenant_schema_name | upper ~ ']') in poem_conf_text.splitlines()) | bool }}"
+    poem_superuser_section_exists: "{{ (('[SUPERUSER_' ~ item.tenant_schema_name | upper ~ ']') in poem_conf_text.splitlines()) | bool }}"
 
 
 - name: Enable auto_fqdns in poem.auto.conf SECURITY section
@@ -47,7 +47,7 @@
     prepend_newline: true
     append_newline: true
     block: |
-      [GENERAL_{{ item.tenant_name }}]
+      [GENERAL_{{ item.tenant_schema_name | upper }}]
       Namespace = {{ item.tenant_namespace }}
       SamlLoginString = {{ item.tenant_samlloginstring }}
       SamlServiceName = {{ item.tenant_samlservicename }}
@@ -83,7 +83,7 @@
     prepend_newline: true
     append_newline: true
     block: |
-      [SUPERUSER_{{ item.tenant_name }}]
+      [SUPERUSER_{{ item.tenant_schema_name | upper }}]
       Name = {{ item.tenant_superuser_name }}
       Password = {{ item.tenant_superuser_password }}
       Email = {{ item.tenant_superuser_email }}

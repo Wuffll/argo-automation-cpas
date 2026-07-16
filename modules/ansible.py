@@ -5,7 +5,7 @@ import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
 from argo_automation_cpas.config import get_settings
-from argo_automation_cpas.restapi_tokens import RestAPITokens
+from argo_automation_cpas.tokens import RestAPITokens
 from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)
@@ -34,12 +34,15 @@ class Ansible:
 
         if add_tenants is not None:
             restapi_tokens = self.restapi_tokens.ensure_tokens(
-                add_tenants,
-                self.settings.ansible.poem_restapi_token,
+                add_tenants
             )
             entries = []
+
             for t in add_tenants:
                 entry = {"tenant_name": t}
+                # remove hyphen and underscore for PostgreSQL schema creation
+                schema_name = t.replace('-', '').replace('_', '').lower()
+                entry.update(tenant_schema_name=schema_name)
                 tokens = (component_tokens or {}).get(t) or {}
                 poem_tokens = {
                     "webapi_ro": tokens.get("poem-viewer"),
@@ -126,12 +129,9 @@ class Ansible:
 
         if component_tokens is None:
             webapi = WebAPI()
-            try:
-                component_tokens = webapi.tokens.load_tokens(
-                    self.settings.webapi.tokens_spool
-                )
-            finally:
-                await webapi.close()
+            component_tokens = webapi.tokens.load_tokens(
+                self.settings.webapi.tokens_spool
+            )
             if component_tokens:
                 LOG.info(
                     "Loaded tokens from spool %s for tenants: %s",

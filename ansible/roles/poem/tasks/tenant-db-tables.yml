@@ -8,7 +8,7 @@
     login_host: localhost
     login_user: "{{ poem_db_user }}"
     login_password: "{{ poem_db_password }}"
-    search_path: "{{ item.tenant_name | lower }}"
+    search_path: "{{ item.tenant_schema_name }}"
     query: SELECT username FROM users_custuser
   register: poem_tenant_query
   failed_when: false
@@ -28,7 +28,7 @@
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-tenant -t {{ item.tenant_name }} -d {{ item.tenant_fqdn }} --no-internal-metrics
+      poem-tenant -t {{ item.tenant_schema_name | upper }} -d {{ item.tenant_fqdn }} --no-internal-metrics
     chdir:
       "{{ poem_virtenv_path }}"
   when: not poem_tenant_tables_exists | from_yaml
