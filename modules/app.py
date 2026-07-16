@@ -405,189 +405,186 @@ class Application:
         restapi_tokens_client = RestAPITokens()
         restapi_tokens = restapi_tokens_client.load_tokens()
 
-        try:
-            token = await iam.fetch_token()
+        token = await iam.fetch_token()
 
-            allowed_tenants = self._get_allowed_tenants(ams_events)
+        allowed_tenants = self._get_allowed_tenants(ams_events)
 
-            component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
-            if any(component_tokens.values()):
-                webapi.tokens.save_tokens(
-                    component_tokens, self.settings.webapi.tokens_spool
+        component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
+        if any(component_tokens.values()):
+            webapi.tokens.save_tokens(
+                component_tokens, self.settings.webapi.tokens_spool
+            )
+
+        ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
+        if any(ams_component_tokens.values()):
+            ams.tokens.save_tokens(
+                ams_component_tokens, self.settings.ams.tokens_spool
+            )
+
+        monbox_init_events = []
+
+        for payload in ams_events:
+            props = payload.get("properties", {})
+            tenant_name = props["tenant_name"]
+            tenant_id = props["tenant_id"]
+            event = payload.get("name")
+
+            if self._check_if_tenant_filtered_out(tenant_name):
+                LOG.info(
+                    f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out"
                 )
+                continue
 
-            ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
-            if any(ams_component_tokens.values()):
-                ams.tokens.save_tokens(
-                    ams_component_tokens, self.settings.ams.tokens_spool
-                )
+            LOG.info(
+                "Processing tenant_name=%s tenant_id=%s name=%s",
+                tenant_name,
+                tenant_id,
+                event,
+            )
 
-            monbox_init_events = []
+            playbook, event_inventory = _event_playbook(self.settings, event)
 
-            for payload in ams_events:
-                props = payload.get("properties", {})
-                tenant_name = props["tenant_name"]
-                tenant_id = props["tenant_id"]
-                event = payload.get("name")
+            current_status = await status_api.get_job_status(
+                tenant_id, event, token
+            )
 
-                if self._check_if_tenant_filtered_out(tenant_name):
+            if playbook:
+                if current_status != "INITIALISED":
                     LOG.info(
-                        f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out"
+                        "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
+                        tenant_name,
+                        event,
+                        current_status,
                     )
                     continue
 
-                LOG.info(
-                    "Processing tenant_name=%s tenant_id=%s name=%s",
-                    tenant_name,
+                await status_api.update_job_status(
                     tenant_id,
                     event,
+                    "IN_PROGRESS",
+                    token,
                 )
 
-                playbook, event_inventory = _event_playbook(self.settings, event)
+                if playbook.startswith("connectors"):
+                    connector_token = webapi.find_connector_token(component_tokens)
+                    webapi_overrides = await webapi.fetch_topology_config(
+                        self.settings.webapi.url_api_config, token=connector_token
+                    )
+                    ok, _ = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        webapi_overrides=webapi_overrides,
+                        component_tokens=component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
+                    )
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
+                            message=(
+                                "Connector successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name,
+                            event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
+                            message=(
+                                "Connector configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+
+                elif playbook.startswith("poem"):
+                    ok, extravars = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        component_tokens=component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
+                    )
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
+                            message=(
+                                "POEM successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name,
+                            event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
+                            message=(
+                                "POEM configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+            elif _is_event_init_monbox(event):
+                LOG.info("Monbox initialization candidate tenant: " + tenant_name)
 
                 current_status = await status_api.get_job_status(
                     tenant_id, event, token
                 )
 
-                if playbook:
-                    if current_status != "INITIALISED":
-                        LOG.info(
-                            "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
-                            tenant_name,
-                            event,
-                            current_status,
-                        )
-                        continue
+                LOG.info(f"Tenant {tenant_name} has status: {current_status}")
 
-                    await status_api.update_job_status(
-                        tenant_id,
-                        event,
-                        "IN_PROGRESS",
-                        token,
-                    )
-
-                    if playbook.startswith("connectors"):
-                        connector_token = webapi.find_connector_token(component_tokens)
-                        webapi_overrides = await webapi.fetch_topology_config(
-                            self.settings.webapi.url_api_config, token=connector_token
-                        )
-                        ok, _ = await ansible.run(
-                            playbook,
-                            inventory=self.inventory or event_inventory,
-                            webapi_overrides=webapi_overrides,
-                            component_tokens=component_tokens,
-                            add_tenants=self.add_tenants or [tenant_name],
-                            remove_tenants=self.remove_tenants,
-                            show_artifacts=self.show_artifacts,
-                        )
-                        if ok:
-                            await status_api.update_job_status(
-                                tenant_id,
-                                event,
-                                "COMPLETED",
-                                token,
-                                message=(
-                                    "Connector successfully configured for tenant %s "
-                                    "by argo-automation-cpas" % tenant_name
-                                ),
-                            )
-                        else:
-                            LOG.warning(
-                                "Ansible run failed for tenant_name=%s event=%s",
-                                tenant_name,
-                                event,
-                            )
-                            await status_api.update_job_status(
-                                tenant_id,
-                                event,
-                                "FAILED",
-                                token,
-                                message=(
-                                    "Connector configuration failed for tenant %s "
-                                    "by argo-automation-cpas" % tenant_name
-                                ),
-                            )
-
-                    elif playbook.startswith("poem"):
-                        ok, extravars = await ansible.run(
-                            playbook,
-                            inventory=self.inventory or event_inventory,
-                            component_tokens=component_tokens,
-                            add_tenants=self.add_tenants or [tenant_name],
-                            remove_tenants=self.remove_tenants,
-                            show_artifacts=self.show_artifacts,
-                        )
-                        if ok:
-                            await status_api.update_job_status(
-                                tenant_id,
-                                event,
-                                "COMPLETED",
-                                token,
-                                message=(
-                                    "POEM successfully configured for tenant %s "
-                                    "by argo-automation-cpas" % tenant_name
-                                ),
-                            )
-                        else:
-                            LOG.warning(
-                                "Ansible run failed for tenant_name=%s event=%s",
-                                tenant_name,
-                                event,
-                            )
-                            await status_api.update_job_status(
-                                tenant_id,
-                                event,
-                                "FAILED",
-                                token,
-                                message=(
-                                    "POEM configuration failed for tenant %s "
-                                    "by argo-automation-cpas" % tenant_name
-                                ),
-                            )
-                elif _is_event_init_monbox(event):
-                    LOG.info("Monbox initialization candidate tenant: " + tenant_name)
-
-                    current_status = await status_api.get_job_status(
-                        tenant_id, event, token
-                    )
-
-                    LOG.info(f"Tenant {tenant_name} has status: {current_status}")
-
-                    if current_status != "INITIALISED":
-                        LOG.info(
-                            "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
-                            tenant_name,
-                            event,
-                            current_status,
-                        )
-                        continue
-
-                    # add tenant to list of monbox initialization
-                    monbox_init_events.append(payload)
-
-                else:
+                if current_status != "INITIALISED":
                     LOG.info(
-                        "Skipping tenant_name=%s event=%s: no playbook mapping",
+                        "Skipping tenant_name=%s event=%s: status=%s (expected INITIALISED)",
                         tenant_name,
                         event,
+                        current_status,
                     )
+                    continue
 
-            # processing monbox init events
-            start_monbox_init = len(monbox_init_events) > 0
-            if start_monbox_init:
-                try:
-                    await self._process_monbox_init_events(
-                        monbox_init_events,
-                        monboxgit,
-                        webapi,
-                        ams,
-                        iam,
-                        status_api,
-                        token,
-                        restapi_tokens,
-                    )
-                except:
-                    pass
+                # add tenant to list of monbox initialization
+                monbox_init_events.append(payload)
 
-        finally:
-            await status_api.close()
+            else:
+                LOG.info(
+                    "Skipping tenant_name=%s event=%s: no playbook mapping",
+                    tenant_name,
+                    event,
+                )
+
+        # processing monbox init events
+        start_monbox_init = len(monbox_init_events) > 0
+        if start_monbox_init:
+            try:
+                await self._process_monbox_init_events(
+                    monbox_init_events,
+                    monboxgit,
+                    webapi,
+                    ams,
+                    iam,
+                    status_api,
+                    token,
+                    restapi_tokens,
+                )
+            except:
+                pass
+
