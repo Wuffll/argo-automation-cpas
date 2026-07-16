@@ -14,11 +14,6 @@
   failed_when: false
 
 
-- name: vrdel debug
-  ansible.builtin.debug:
-    var: poem_tenant_query
-
-
 - name: Table users_custuser exist - {{ item.tenant_name }}
   ansible.builtin.set_fact:
     poem_tenant_tables_exists: |
