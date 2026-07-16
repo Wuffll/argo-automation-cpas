@@ -19,7 +19,7 @@ class WebAPI:
         if token:
             headers["x-api-key"] = token
         try:
-            async with SessionWithRetry() as session:
+            async with SessionWithRetry(base_url=self.settings.webapi.url) as session:
                 body = await session.http_get(url, headers=headers)
         except aiohttp.ClientError as exc:
             LOG.warning("Failed to fetch topology config from webapi: %s", exc)
