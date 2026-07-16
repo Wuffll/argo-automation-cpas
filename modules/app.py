@@ -290,26 +290,23 @@ class Application:
         if self.only_statusapi is not None:
             iam = IAM()
             status_api = StatusAPI()
-            try:
-                token = await iam.fetch_token()
-                if self.update_status is not None:
-                    if not self.event:
-                        LOG.error("--update-status requires --event")
-                        raise SystemExit(2)
-                    kwargs = {}
-                    if self.message is not None:
-                        kwargs["message"] = self.message
-                    await status_api.update_job_status(
-                        self.only_statusapi,
-                        self.event,
-                        self.update_status,
-                        token,
-                        **kwargs,
-                    )
-                else:
-                    await status_api.fetch_status(self.only_statusapi, token)
-            finally:
-                await status_api.close()
+            token = await iam.fetch_token()
+            if self.update_status is not None:
+                if not self.event:
+                    LOG.error("--update-status requires --event")
+                    raise SystemExit(2)
+                kwargs = {}
+                if self.message is not None:
+                    kwargs["message"] = self.message
+                await status_api.update_job_status(
+                    self.only_statusapi,
+                    self.event,
+                    self.update_status,
+                    token,
+                    **kwargs,
+                )
+            else:
+                await status_api.fetch_status(self.only_statusapi, token)
             return
 
         if self.only_ams:
