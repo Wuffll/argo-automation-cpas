@@ -280,6 +280,21 @@ def test_connector_init_eosc_service_data(mocker, ansiblerun, connector_init_eos
     app = Application()
     asyncio.run(app.run())
 
+    assert session_httpget.call_args_list[0] == mocker.call(
+        'https://API-STATUS_MON_ARGO/v1/automation/tenants/184da7ca-5a64-4810-aa39-18cfaddbd44b/status',
+        headers={
+            'Authorization': 'Bearer IAM_TOKEN', 'Accept': 'application/json'
+        }
+    )
+
+    assert session_httpget.call_args_list[1] == mocker.call(
+        '/api/v2/feeds/topology',
+        headers={
+            'Accept': 'application/json',
+            'x-api-key': 'AUTOMATION-CONNECTOR'
+        }
+    )
+
     assert statusapi_updatejobstatus.call_args_list[0] == mocker.call(
         connector_init_eosc_service_data.tenant_id,
         connector_init_eosc_service_data.event,
