@@ -55,23 +55,28 @@ class WebAPI:
         )
         return overrides
 
-    def find_connector_token(self, tokens):
-        return next(
-            (
-                t[component]
-                for t in tokens.values()
-                for component in t
-                if "connector" in component
-            ),
-            None,
-        )
+    def find_connector_token(self, component_tokens, tenant_name):
+        if not tenant_name:
+            return None
+
+        for name, tokens in (component_tokens or {}).items():
+            if str(name).upper() != tenant_name.upper():
+                continue
+            for component, token in (tokens or {}).items():
+                if "connector" in component and token:
+                    return token
+        return None
 
     async def run(self, allowed_tenants=[]):
         tokens = await self.tokens.refresh_tokens(allowed_tenants)
         if any(tokens.values()):
             self.tokens.save_tokens(tokens, self.settings.webapi.tokens_spool)
 
-        connector_token = self.find_connector_token(tokens)
+        connector_token = None
+        for tenant_name in tokens or {}:
+            connector_token = self.find_connector_token(tokens, tenant_name)
+            if connector_token:
+                break
         if connector_token:
             await self.fetch_topology_config(
                 self.settings.webapi.url_api_config, token=connector_token
