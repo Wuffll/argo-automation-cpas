@@ -12,9 +12,14 @@
   ansible.builtin.shell:
     cmd: |
       source {{ connector_virtenv_path }}/bin/activate
-      {{ connector_virtenv_path}}/usr/bin/topology-{{ item.tenant_topo_type | lower }}-connector.py \
+      {{ connector_virtenv_path }}/usr/bin/topology-{{ item.tenant_topo_type | lower }}-connector.py \
         -g {{ connector_virtenv_path }}/etc/global.conf \
         -c {{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf
+  register: topology_connector_result
+  failed_when:
+    - topology_connector_result.rc != 0 or
+      'ERROR' in (topology_connector_result.stdout | default('')) or
+      'ERROR' in (topology_connector_result.stderr | default(''))
   become_user: "{{ connector_owner }}"
   loop: "{{ connector_tenants }}"
   loop_control:
