@@ -463,7 +463,9 @@ class Application:
                 )
 
                 if playbook.startswith("connectors"):
-                    connector_token = webapi.find_connector_token(component_tokens)
+                    connector_token = webapi.find_connector_token(
+                        component_tokens, tenant_name
+                    )
                     webapi_overrides = await webapi.fetch_topology_config(
                         self.settings.webapi.url_api_config, token=connector_token
                     )
