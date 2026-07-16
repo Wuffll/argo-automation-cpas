@@ -32,10 +32,21 @@ class WebAPI:
 
         entry = data[0]
         overrides = {}
-        if "type" in entry:
-            overrides["connector_tenant_topo_type"] = entry["type"]
+
+        topo_type = entry.get('type', 'none')
+        if topo_type.lower() == 'eosc-service-catalog':
+            overrides["connector_tenant_topo_type"] = 'PROVIDER'
+        elif topo_type.lower() == 'csv':
+            overrides["connector_tenant_topo_type"] = 'CSV'
+
         if "feed_url" in entry:
             overrides["connector_tenant_topo_feed"] = entry["feed_url"]
+        if "feed_service_groups" in entry:
+            overrides["connector_tenant_topo_feedservicegroups"] = entry["feed_service_groups"]
+        if "feed_service_endpoints" in entry:
+            overrides["connector_tenant_topo_feedserviceendpoints"] = entry["feed_service_endpoints"]
+        if "feed_service_endpoints_extensions" in entry:
+            overrides["connector_tenant_topo_feedserviceendpointsext"] = entry["feed_service_endpoints_extensions"]
 
         LOG.info(
             "Topology config: topo_type=%s topo_feed=%s",

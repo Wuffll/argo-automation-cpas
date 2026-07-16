@@ -65,7 +65,6 @@ class StatusAPI:
         url = self._url(tenant_id)
         headers = self._auth_headers(token)
         headers.update({"Accept": "application/json"})
-        import pdb; pdb.set_trace()
 
         try:
             async with SessionWithRetry() as session:
