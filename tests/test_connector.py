@@ -179,7 +179,6 @@ def connector_init_eosc_service_data():
                 'tenant_cron_weights_disable': True,
                 'tenant_jobs': [{'dirname': 'CORE', 'name': 'CORE'}],
                 'tenant_name': 'AUTOMATION',
-                'tenant_topo_feed': 'http://dummy.csv',
                 'tenant_topo_feedserviceendpoints': 'https://cat.ni4os.eu/api/service/all',
                 'tenant_topo_feedserviceendpointsext': 'https://cat.ni4os.eu/api/configurationTemplateInstance/all',
                 'tenant_topo_feedservicegroups': 'https://cat.ni4os.eu/api/provider/all',
@@ -256,7 +255,7 @@ def test_connector_init_csv(mocker, connector_init_csv_data, ansible_runner_ok):
     assert statusapi_updatejobstatus.call_count == 2
 
 
-def test_connector_init_eosc_service_data(mocker, connector_init_eosc_service_data, ansible_runner_ok):
+def test_connector_init_eosc_service_data(mocker, ansiblerun, connector_init_eosc_service_data, ansible_runner_ok):
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
     ams_pull_messages.return_value = connector_init_eosc_service_data.ams_events
 
@@ -274,8 +273,9 @@ def test_connector_init_eosc_service_data(mocker, connector_init_eosc_service_da
 
     statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
 
-    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
-    ansible_runner_run.return_value = ansible_runner_ok
+    if not ansiblerun:
+        ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+        ansible_runner_run.return_value = ansible_runner_ok
 
     app = Application()
     asyncio.run(app.run())
