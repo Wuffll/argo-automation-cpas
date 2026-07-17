@@ -122,6 +122,10 @@ def connector_init_eosc_service_data():
             "Connector successfully configured for tenant AUTOMATION by "
             "argo-automation-cpas"
         ),
+        failed_message=(
+            "Connector configuration failed for tenant AUTOMATION by "
+            "argo-automation-cpas"
+        ),
         topology_feed_url=(
             "https://docs.google.com/spreadsheets/d/"
             "1xiptZgYG2bn78hwBCEP7esTDyfMvvEXFLfJY2HblfI8/export?gid=0&format=csv"
@@ -302,18 +306,29 @@ def test_connector_init_eosc_service_data(mocker, ansiblerun, connector_init_eos
         connector_init_eosc_service_data.iam_token,
     )
 
-    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
-    assert 'connector_tenants' in ansible_runner_run.\
-        call_args_list[0][1]['extravars']
-    assert ansible_runner_run.\
-        call_args_list[0][1]['extravars']['connector_tenants'] == connector_init_eosc_service_data.expected_connector_tenants
+    if not ansiblerun:
+        assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+        assert 'connector_tenants' in ansible_runner_run.\
+            call_args_list[0][1]['extravars']
+        assert ansible_runner_run.\
+            call_args_list[0][1]['extravars']['connector_tenants'] == connector_init_eosc_service_data.expected_connector_tenants
 
-    assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
-        connector_init_eosc_service_data.tenant_id,
-        connector_init_eosc_service_data.event,
-        'COMPLETED',
-        connector_init_eosc_service_data.iam_token,
-        message=connector_init_eosc_service_data.success_message
-    )
+        assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+            connector_init_eosc_service_data.tenant_id,
+            connector_init_eosc_service_data.event,
+            'COMPLETED',
+            connector_init_eosc_service_data.iam_token,
+            message=connector_init_eosc_service_data.success_message
+        )
 
-    assert statusapi_updatejobstatus.call_count == 2
+        assert statusapi_updatejobstatus.call_count == 2
+    else:
+        assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+            connector_init_eosc_service_data.tenant_id,
+            connector_init_eosc_service_data.event,
+            'FAILED',
+            connector_init_eosc_service_data.iam_token,
+            message=connector_init_eosc_service_data.failed_message
+        )
+
+        assert statusapi_updatejobstatus.call_count == 2
