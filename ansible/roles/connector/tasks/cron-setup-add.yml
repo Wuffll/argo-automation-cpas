@@ -1,5 +1,15 @@
 ---
 
+- name: Ensure tenant cron file does not exist
+  ansible.builtin.file:
+    path: "/etc/cron.d/{{ item.tenant_name | lower }}"
+    state: absent
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+  notify: Reload cron daemon
+
+
 - name: Set cron env variables
   community.general.cronvar:
     name: "{{ envvar.name }}"

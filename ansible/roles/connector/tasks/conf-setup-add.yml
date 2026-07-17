@@ -1,5 +1,14 @@
 ---
 
+- name: Ensure argo-connectors tenants customer.conf does not exist
+  ansible.builtin.file:
+    path: "{{ connector_virtenv_path }}/etc/{{ item.tenant_name | lower }}-customer.conf"
+    state: absent
+  loop: "{{ connector_tenants }}"
+  loop_control:
+    label: "{{ item.tenant_name }}"
+
+
 - name: Configure argo-connectors tenants - customer.conf
   ansible.builtin.template:
     src: customer.conf.j2
@@ -7,6 +16,7 @@
     owner: "{{ connector_owner }}"
     group: "{{ connector_group }}"
     mode: "0644"
+    force: true
   loop: "{{ connector_tenants }}"
   loop_control:
     label: "{{ item.tenant_name }}"
