@@ -91,58 +91,8 @@ def poem_init_data():
     )
 
 
-def test_poem_init(mocker, poem_init_data, ansible_runner_ok):
-    ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
-    ams_pull_messages.return_value = poem_init_data.ams_events
-
-    ams_has_sub = mocker.patch('argo_automation_cpas.ams.ArgoMessagingService.has_sub')
-    ams_has_sub.return_value = True
-
-    iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
-    iam_fetchtoken.return_value = poem_init_data.iam_token
-
-    statusapi_httpget = mocker.patch('argo_automation_cpas.statusapi.SessionWithRetry.http_get')
-    statusapi_httpget.return_value = poem_init_data.statusapi_jobs
-
-    statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
-
-    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
-    ansible_runner_run.return_value = ansible_runner_ok
-
-    app = Application()
-    asyncio.run(app.run())
-
-    assert statusapi_httpget.call_args_list[0] == mocker.call(
-        poem_init_data.status_url,
-        **poem_init_data.status_api_mock
-    )
-
-    assert statusapi_updatejobstatus.call_args_list[0] == mocker.call(
-        poem_init_data.tenant_id,
-        poem_init_data.event,
-        'IN_PROGRESS',
-        poem_init_data.iam_token,
-    )
-
-    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
-    assert 'poem_tenants' in ansible_runner_run.\
-        call_args_list[0][1]['extravars']
-    assert ansible_runner_run.\
-        call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data.expected_poem_tenants
-
-    assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
-        poem_init_data.tenant_id,
-        poem_init_data.event,
-        'COMPLETED',
-        poem_init_data.iam_token,
-        message=poem_init_data.success_message
-    )
-
-    assert statusapi_updatejobstatus.call_count == 2
-
-
 @pytest.fixture
-def poem_init_data_2():
+def poem_init_hyphen_tenant_data():
     return SimpleNamespace(
         iam_token="IAM_TOKEN",
         tenant_id="11111111-5a64-4810-aa39-18cfaddbd44b",
@@ -152,6 +102,10 @@ def poem_init_data_2():
         poemviewer_token="INSTRUCT-ERIC-POEMVIEWER",
         success_message=(
             "POEM successfully configured for tenant INSTRUCT-ERIC by "
+            "argo-automation-cpas"
+        ),
+        failed_message=(
+            "POEM configuration failed for tenant INSTRUCT-ERIC by "
             "argo-automation-cpas"
         ),
         status_url=(
@@ -213,41 +167,88 @@ def poem_init_data_2():
     )
 
 
-def test_poem_init_2(mocker, ansiblerun, poem_init_data_2, ansible_runner_ok):
+def test_poem_init(mocker, poem_init_data, ansible_runner_ok):
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
-    ams_pull_messages.return_value = poem_init_data_2.ams_events
+    ams_pull_messages.return_value = poem_init_data.ams_events
 
     ams_has_sub = mocker.patch('argo_automation_cpas.ams.ArgoMessagingService.has_sub')
     ams_has_sub.return_value = True
 
     iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
-    iam_fetchtoken.return_value = poem_init_data_2.iam_token
+    iam_fetchtoken.return_value = poem_init_data.iam_token
 
     statusapi_httpget = mocker.patch('argo_automation_cpas.statusapi.SessionWithRetry.http_get')
-    statusapi_httpget.return_value = poem_init_data_2.statusapi_jobs
+    statusapi_httpget.return_value = poem_init_data.statusapi_jobs
 
     statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
 
-    if ansiblerun:
-        ansible_runner_run = None
-        app = Application(show_artifacts=True)
-    else:
-        ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
-        ansible_runner_run.return_value = ansible_runner_ok
-        app = Application()
+    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+    ansible_runner_run.return_value = ansible_runner_ok
 
+    app = Application()
     asyncio.run(app.run())
 
     assert statusapi_httpget.call_args_list[0] == mocker.call(
-        poem_init_data_2.status_url,
-        **poem_init_data_2.status_api_mock
+        poem_init_data.status_url,
+        **poem_init_data.status_api_mock
     )
 
     assert statusapi_updatejobstatus.call_args_list[0] == mocker.call(
-        poem_init_data_2.tenant_id,
-        poem_init_data_2.event,
+        poem_init_data.tenant_id,
+        poem_init_data.event,
         'IN_PROGRESS',
-        poem_init_data_2.iam_token,
+        poem_init_data.iam_token,
+    )
+
+    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+    assert 'poem_tenants' in ansible_runner_run.\
+        call_args_list[0][1]['extravars']
+    assert ansible_runner_run.\
+        call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data.expected_poem_tenants
+
+    assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+        poem_init_data.tenant_id,
+        poem_init_data.event,
+        'COMPLETED',
+        poem_init_data.iam_token,
+        message=poem_init_data.success_message
+    )
+
+    assert statusapi_updatejobstatus.call_count == 2
+
+
+def test_poem_init_hyphen_tenant(mocker, ansiblerun, poem_init_hyphen_tenant_data, ansible_runner_ok):
+    ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
+    ams_pull_messages.return_value = poem_init_hyphen_tenant_data.ams_events
+
+    ams_has_sub = mocker.patch('argo_automation_cpas.ams.ArgoMessagingService.has_sub')
+    ams_has_sub.return_value = True
+
+    iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
+    iam_fetchtoken.return_value = poem_init_hyphen_tenant_data.iam_token
+
+    statusapi_httpget = mocker.patch('argo_automation_cpas.statusapi.SessionWithRetry.http_get')
+    statusapi_httpget.return_value = poem_init_hyphen_tenant_data.statusapi_jobs
+
+    statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
+
+    if not ansiblerun:
+        ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+        ansible_runner_run.return_value = ansible_runner_ok
+
+    app = Application()
+    asyncio.run(app.run())
+
+    assert statusapi_httpget.call_args_list[0] == mocker.call(
+        poem_init_hyphen_tenant_data.status_url,
+        **poem_init_hyphen_tenant_data.status_api_mock
+    )
+
+    assert statusapi_updatejobstatus.call_args_list[0] == mocker.call(
+        poem_init_hyphen_tenant_data.tenant_id,
+        poem_init_hyphen_tenant_data.event,
+        'IN_PROGRESS',
+        poem_init_hyphen_tenant_data.iam_token,
     )
 
     if not ansiblerun:
@@ -255,14 +256,24 @@ def test_poem_init_2(mocker, ansiblerun, poem_init_data_2, ansible_runner_ok):
         assert 'poem_tenants' in ansible_runner_run.\
             call_args_list[0][1]['extravars']
         assert ansible_runner_run.\
-            call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_data_2.expected_poem_tenants
+            call_args_list[0][1]['extravars']['poem_tenants'] == poem_init_hyphen_tenant_data.expected_poem_tenants
 
-    assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
-        poem_init_data_2.tenant_id,
-        poem_init_data_2.event,
-        'COMPLETED',
-        poem_init_data_2.iam_token,
-        message=poem_init_data_2.success_message
-    )
+        assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+            poem_init_hyphen_tenant_data.tenant_id,
+            poem_init_hyphen_tenant_data.event,
+            'COMPLETED',
+            poem_init_hyphen_tenant_data.iam_token,
+            message=poem_init_hyphen_tenant_data.success_message
+        )
 
-    assert statusapi_updatejobstatus.call_count == 2
+        assert statusapi_updatejobstatus.call_count == 2
+
+    else:
+        assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+            poem_init_hyphen_tenant_data.tenant_id,
+            poem_init_hyphen_tenant_data.event,
+            'FAILED',
+            poem_init_hyphen_tenant_data.iam_token,
+            message=poem_init_hyphen_tenant_data.failed_message
+        )
+        assert statusapi_updatejobstatus.call_count == 2
