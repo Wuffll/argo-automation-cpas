@@ -48,11 +48,20 @@ class WebAPI:
         if "feed_service_endpoints_extensions" in entry:
             overrides["connector_tenant_topo_feedserviceendpointsext"] = entry["feed_service_endpoints_extensions"]
 
-        LOG.info(
-            "Topology config: topo_type=%s topo_feed=%s",
-            overrides.get("connector_tenant_topo_type", "n/a"),
-            overrides.get("connector_tenant_topo_feed", "n/a"),
-        )
+        if topo_type.lower() == 'csv':
+            LOG.info(
+                "Topology config: topo_type=%s topo_feed=%s",
+                overrides.get("connector_tenant_topo_type", "n/a"),
+                overrides.get("connector_tenant_topo_feed", "n/a"),
+            )
+        elif topo_type.lower() == 'eosc-service-catalog':
+            LOG.info(
+                "Topology config: topo_type=%s topo_feed_servicegroups=%s topo_feed_service_endpoints=%s topo_feed_service_endpoints_ext=%s",
+                overrides.get("connector_tenant_topo_type", "n/a"),
+                overrides.get("connector_tenant_topo_feedservicegroups", "n/a"),
+                overrides.get("connector_tenant_topo_feedserviceendpoints", "n/a"),
+                overrides.get("connector_tenant_topo_feedserviceendpointsext", "n/a"),
+            )
         return overrides
 
     def find_connector_token(self, component_tokens, tenant_name):
