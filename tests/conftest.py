@@ -1,5 +1,10 @@
 import pytest
 
+from argo_automation_cpas.log import setup_logging
+
+
+setup_logging()
+
 
 def pytest_addoption(parser):
     parser.addoption(
