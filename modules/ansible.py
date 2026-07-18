@@ -101,8 +101,13 @@ class Ansible:
                         "Set tenant_webapi_token for tenant=%s from component_tokens",
                         key,
                     )
+                if (self.settings.ansible.connectors_default_service_type
+                   and entry.get('tenant_topo_type', '').lower() == 'PROVIDER'.lower()):
+                    entry['tenant_topo_defaultservicetype'] = self.settings.ansible.connectors_default_service_type
                 entries.append(entry)
+
             extravars["connector_tenants"] = entries
+
         if remove_tenants is not None:
             extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
 
@@ -144,6 +149,7 @@ class Ansible:
             extravars = self._connector_extravars(
                 webapi_overrides, component_tokens, add_tenants, remove_tenants
             )
+            import pdb; pdb.set_trace()
         if playbook.startswith("poem"):
             extravars = self._poem_extravars(
                 component_tokens, add_tenants, remove_tenants
