@@ -195,9 +195,10 @@ A template is provided in `config/argo-cpas.conf.template`.
 
 ### `[automation]` section
 
-| Option    | Description                                                                                                                                       | Example              |
-|-----------|---------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
-| `tenants` | Comma-separated list of tenant names the service manages. Used to filter AMS events and iterate over tenants for Web API token refresh.            | `TENANT-A, TENANT-B` |
+| Option           | Description                                                                                                                                       | Example              |
+|------------------|---------------------------------------------------------------------------------------------------------------------------------------------------|----------------------|
+| `tenants`        | Comma-separated list of tenant names the service manages. Used to filter AMS events and iterate over tenants for Web API token refresh.            | `TENANT-A, TENANT-B` |
+| `filter_tenants` | Comma-separated list of tenant-name prefixes to skip when processing AMS events.                                                                   | `TEST-`              |
 
 ### `[ams]` section
 
@@ -216,6 +217,7 @@ Configuration for the ARGO Messaging Service connection.
 | `ack`                   | Whether to acknowledge pulled messages in the main pipeline. `true` uses `pullack_sub` (pull + ack), `false` uses `pull_sub` (pull without ack). Default: `false`. | `false`                                                               |
 | `return_immediately`    | Whether pull requests return immediately when no messages are available. Default: `true`.                                                                          | `true`                                                                |
 | `events`                | Comma-separated list of event types the service reacts to. Default: `INIT_TOPOLOGY_CONNECTOR`.                                                                     | `INIT_TOPOLOGY_CONNECTOR`                                             |
+| `tokens_spool`          | Path where refreshed AMS component tokens are cached. Supports `%(VENV)s` interpolation.                                                                           | `%(VENV)svar/spool/ams_tokens.json`                                   |
 
 The service constructs the full AMS URL as `https://<host>` automatically. The `--only-ams` flag always pulls without ack regardless of the `ack` setting.
 
@@ -230,6 +232,7 @@ Configuration for the ARGO Web API.
 | `url_api_integrations`  | API path template for refreshing component tokens. Supports `{component}` and `{tenant_name}` placeholders. | `/api/v3/integrations/components/{component}/by-tenant-name/{tenant_name}/refresh` |
 | `token_component_admin` | Admin API token used for component token refresh requests.                                                  | _(secret)_                                                                         |
 | `components`            | Comma-separated list of component names whose tokens should be refreshed.                                   | `monbox, connector, poem-admin, poem-viewer`                                       |
+| `tokens_spool`          | Path where refreshed Web API component tokens are cached. Supports `%(VENV)s` interpolation.                 | `%(VENV)svar/spool/webapi_tokens.json`                                            |
 
 The full Web API URL is constructed as `https://<host>`. Refreshed tokens are cached in `<VENV>/var/spool/webapi_tokens.json`.
 
@@ -249,8 +252,9 @@ Configuration for the OIDC identity provider used to obtain access tokens.
 | `api`                | Full OIDC token endpoint URL.                        | `https://login-devel.einfra.grnet.gr/auth/realms/einfra/protocol/openid-connect/token` |
 | `oidc_client_id`     | OAuth2 client ID for the `client_credentials` grant. | `topology.connector.integration.service`                                               |
 | `oidc_client_secret` | OAuth2 client secret.                                | _(secret)_                                                                             |
+| `token_spool`        | Path where the IAM access token is cached. Supports `%(VENV)s` interpolation. | `%(VENV)svar/spool/iam_access.yaml`                                                    |
 
-Obtained tokens are cached in `<VENV>/var/spool/iam_access.yml` and reused until 30 seconds before expiry.
+Obtained tokens are cached in `token_spool` and reused until 30 seconds before expiry.
 
 ### `[ansible]` section (optional)
 
@@ -265,7 +269,23 @@ Configuration for the Ansible connector playbook runs.
 | `tokens_manual`        | Path to a YAML file containing manual connector tokens. The file must have a top-level `connector_tokens` mapping. Supports `%(VENV)s` interpolation.                                | _(empty)_        |
 | `connectors_playbook`  | Filename of the connectors playbook inside `ansible/project/`.                                                                                                                       | `connectors.yml` |
 | `connectors_inventory` | Filename of the connectors inventory inside `ansible/inventory/`.                                                                                                                    | `connectors.ini` |
+| `connectors_default_service_type` | Default service type assigned to PROVIDER topology tenants when no tenant-specific value is set.                                                                          | _(empty)_        |
+| `poem_playbook`        | Filename of the POEM playbook inside `ansible/project/`.                                                                                                                             | `poem.yml`       |
+| `poem_inventory`       | Filename of the POEM inventory inside `ansible/inventory/`.                                                                                                                          | `poem.ini`       |
+| `poem_fqdn_suffix`     | DNS suffix used to build POEM tenant FQDNs as `<tenant>.<poem_fqdn_suffix>`.                                                                                                          | `fqdn.suffix`    |
 | `poem_restapi_token`   | Path to the JSON file used to cache generated POEM REST-API tenant tokens. Supports `%(VENV)s` interpolation.                                                                        | `<VENV>/var/spool/restapi_tokens.json` |
+| `poem_superuserpassword` | Superuser password injected into POEM tenant extravars when set.                                                                                                                   | _(empty)_        |
+| `user_sensu`           | OS user used by Sensu-related automation.                                                                                                                                            | _(empty)_        |
+| `sensu_inventory`      | Filename of the Sensu inventory inside `ansible/inventory/`.                                                                                                                         | `sensu.ini`      |
+
+### Connector role behavior
+
+When tenants are added or updated, the connector role first removes the existing managed tenant files and then recreates them:
+
+- `{{ connector_virtenv_path }}/etc/<tenant>-customer.conf` is removed, then rendered from `customer.conf.j2` with `force: true`.
+- `/etc/cron.d/<tenant>` is removed, then recreated through `community.general.cronvar` and `ansible.builtin.cron`.
+
+This makes add/update runs replace stale customer configuration and cron entries while keeping cron management module-based.
 
 ### `[monboxgit]` section (optional)
 
@@ -279,7 +299,9 @@ Configuration for the monbox automation.
 | `git_branch_backend`       | Name of the branch for backend git commit changes.                 | `sensu_backend_auto_devel_mon_argo_grnet_gr`           |
 | `git_branch_agent`         | Name of the branch for agent git commit changes.                   | `sensu_agent_auto_devel_mon_argo_grnet_gr`             |
 | `backend_config_file_path` | Path to backend config file in the repo                            | `data/default.yaml`                                    |
-| `agent_config_file_path`   | Path to agent config file in the repo                              | `data/default.yaml`                                       |
+| `agent_config_file_path`   | Path to agent config file in the repo                              | `data/default.yaml`                                    |
+| `init_check_count`         | Number of monitoring-box initialization checks to run after init.   | `10`                                                   |
+| `init_check_interval`      | Seconds to wait between monitoring-box initialization checks.       | `150`                                                  |
 
 
 ### Ansible roles-defaults file (`roles-defaults.yml`)
