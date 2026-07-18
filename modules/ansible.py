@@ -149,7 +149,6 @@ class Ansible:
             extravars = self._connector_extravars(
                 webapi_overrides, component_tokens, add_tenants, remove_tenants
             )
-            import pdb; pdb.set_trace()
         if playbook.startswith("poem"):
             extravars = self._poem_extravars(
                 component_tokens, add_tenants, remove_tenants

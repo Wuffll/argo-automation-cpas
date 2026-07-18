@@ -31,6 +31,9 @@ TopoUIDServiceEndpoints = True
 {% if item.tenant_topo_feed | default(false) %}
 TopoFeed = {{ item.tenant_topo_feed }}
 {% endif %}
+{% if item.tenant_topo_defaultservicetype | default(false) %}
+TopoDefaultServiceType = {{ item.tenant_topo_defaultservicetype }}
+{% endif %}
 {% if item.tenant_topo_feedserviceendpoints | default(false) %}
 TopoFeedServiceEndpoints = {{ item.tenant_topo_feedserviceendpoints }}
 {% endif %}
