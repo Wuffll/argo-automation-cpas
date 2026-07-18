@@ -183,6 +183,7 @@ def connector_init_eosc_service_data():
                 'tenant_cron_weights_disable': True,
                 'tenant_jobs': [{'dirname': 'CORE', 'name': 'CORE'}],
                 'tenant_name': 'AUTOMATION',
+                'tenant_topo_defaultservicetype': 'webportal',
                 'tenant_topo_feedserviceendpoints': 'https://cat.ni4os.eu/api/service/all',
                 'tenant_topo_feedserviceendpointsext': 'https://cat.ni4os.eu/api/configurationTemplateInstance/all',
                 'tenant_topo_feedservicegroups': 'https://cat.ni4os.eu/api/provider/all',

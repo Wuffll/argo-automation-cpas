@@ -140,6 +140,7 @@ class Settings(SimpleNamespace):
             tokens=self._load_connector_tokens(tokens_file),
             connectors_playbook=ansible.get("connectors_playbook", "connectors.yml"),
             connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
+            connectors_default_service_type=ansible.get("connectors_default_service_type", ""),
             poem_playbook=ansible.get("poem_playbook", "poem.yml"),
             poem_inventory=ansible.get("poem_inventory", "poem.ini"),
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),

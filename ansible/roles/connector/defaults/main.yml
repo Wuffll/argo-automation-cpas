@@ -21,8 +21,8 @@ connector_cron_envvars:
   - name: VENVETC
     value: "{{ connector_virtenv_path }}/etc"
 
-connector_cron_default_minute: "7"
-connector_cron_default_hour: "0"
+connector_cron_default_minute: "*/4"
+connector_cron_default_hour: "*"
 connector_cron_downtimes_default_minute: "58"
 connector_cron_downtimes_default_hour: "21"
 
