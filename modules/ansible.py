@@ -12,20 +12,20 @@ LOG = logging.getLogger(__name__)
 
 
 class Ansible:
-    PREFIX = "connector_"
-    PREFIX2 = "poem_"
+    PREFIX_CONN = "connector_"
+    PREFIX_POEM = "poem_"
 
     def __init__(self):
         self.settings = get_settings()
         self.connector_tenant_defaults = {
-            k[len(self.PREFIX) :]: v
+            k[len(self.PREFIX_CONN) :]: v
             for k, v in self.settings.ansible.defaults.items()
-            if k.startswith(self.PREFIX + "tenant_")
+            if k.startswith(self.PREFIX_CONN + "tenant_")
         }
         self.poem_tenant_defaults = {
-            k[len(self.PREFIX2) :]: v
+            k[len(self.PREFIX_POEM) :]: v
             for k, v in self.settings.ansible.defaults.items()
-            if k.startswith(self.PREFIX2 + "tenant_")
+            if k.startswith(self.PREFIX_POEM + "tenant_")
         }
         self.restapi_tokens = RestAPITokens()
 
@@ -33,15 +33,13 @@ class Ansible:
         extravars = dict()
 
         if add_tenants is not None:
-            restapi_tokens = self.restapi_tokens.ensure_tokens(
-                add_tenants
-            )
+            restapi_tokens = self.restapi_tokens.ensure_tokens(add_tenants)
             entries = []
 
             for t in add_tenants:
                 entry = {"tenant_name": t}
                 # remove hyphen and underscore for PostgreSQL schema creation
-                schema_name = t.replace('-', '').replace('_', '').lower()
+                schema_name = t.replace("-", "").replace("_", "").lower()
                 entry.update(tenant_schema_name=schema_name)
                 tokens = (component_tokens or {}).get(t) or {}
                 poem_tokens = {
@@ -65,17 +63,15 @@ class Ansible:
 
         return extravars
 
-    def _connector_extravars(
-        self, webapi_overrides, component_tokens, add_tenants, remove_tenants
-    ):
+    def _connector_extravars(self, webapi_overrides, component_tokens, add_tenants, remove_tenants):
         for k, v in (webapi_overrides or {}).items():
-            if k.startswith(self.PREFIX + "tenant_"):
-                self.connector_tenant_defaults[k[len(self.PREFIX) :]] = v
+            if k.startswith(self.PREFIX_CONN + "tenant_"):
+                self.connector_tenant_defaults[k[len(self.PREFIX_CONN) :]] = v
 
         extravars = {
             k: v
             for k, v in self.settings.ansible.defaults.items()
-            if not k.startswith(self.PREFIX + "tenant_")
+            if not k.startswith(self.PREFIX_CONN + "tenant_")
         }
         if self.settings.ansible.user_connector:
             extravars["user_connector"] = self.settings.ansible.user_connector
@@ -101,9 +97,13 @@ class Ansible:
                         "Set tenant_webapi_token for tenant=%s from component_tokens",
                         key,
                     )
-                if (self.settings.ansible.connectors_default_service_type
-                   and entry.get('tenant_topo_type', '').lower() == 'PROVIDER'.lower()):
-                    entry['tenant_topo_defaultservicetype'] = self.settings.ansible.connectors_default_service_type
+                if (
+                    self.settings.ansible.connectors_default_service_type
+                    and entry.get("tenant_topo_type", "").lower() == "PROVIDER".lower()
+                ):
+                    entry["tenant_topo_defaultservicetype"] = (
+                        self.settings.ansible.connectors_default_service_type
+                    )
                 entries.append(entry)
 
             extravars["connector_tenants"] = entries
@@ -134,9 +134,7 @@ class Ansible:
 
         if component_tokens is None:
             webapi = WebAPI()
-            component_tokens = webapi.tokens.load_tokens(
-                self.settings.webapi.tokens_spool
-            )
+            component_tokens = webapi.tokens.load_tokens(self.settings.webapi.tokens_spool)
             if component_tokens:
                 LOG.info(
                     "Loaded tokens from spool %s for tenants: %s",
@@ -150,9 +148,7 @@ class Ansible:
                 webapi_overrides, component_tokens, add_tenants, remove_tenants
             )
         if playbook.startswith("poem"):
-            extravars = self._poem_extravars(
-                component_tokens, add_tenants, remove_tenants
-            )
+            extravars = self._poem_extravars(component_tokens, add_tenants, remove_tenants)
 
         envvars = {}
         if self.settings.general.strip_ansi:
