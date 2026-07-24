@@ -1,0 +1,27 @@
+[DEFAULT]
+VENV = {{ archiver_virtenv_path }}
+
+[General]
+LogName = ams-consumer-{{ item.tenant_name | default(archiver_tenant_name) }}
+ReportWritMsgEveryHours = 24
+AvroSchema = %(VENV)s/etc/metric_data.avsc
+
+[AMS]
+Host = {{ item.ams_host | default(archiver_ams_host) }}
+Project = {{ item.ams_project }}
+Token = {{ item.archiver_token }}
+Subscriptions = {{ item.ams_subscription | default(archiver_ams_subscription) }}
+PullMsgs = {{ item.ams_pullmsg | default(archiver_ams_pullmsg) }}
+PullIntervalSec = {{ item.ams_pullintsec | default(archiver_ams_pullintsec) }}
+ConnectionTimeout = {{ item.ams_conntimeout | default(archiver_ams_conntimeout) }}
+PullRetry = {{ item.ams_pullret | default(archiver_ams_pullret) }}
+PullRetrySleep = {{ item.ams_pullretsleep | default(archiver_ams_pullretsleep) }}
+
+[MsgRetention]
+PastDaysOk = 3
+FutureDaysOk = 1
+
+[Output]
+Directory = %(VENV)s/var/lib/{{ item.tenant_name | default(archiver_tenant_name) }}
+Filename = consumer_log_DATE.avro
+ErrorFilename = consumer_error_log_DATE.avro

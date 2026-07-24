@@ -65,9 +65,7 @@ class Settings(SimpleNamespace):
             syslog_facility=self._parse_syslog_facility(
                 general.get("syslog_facility", "user")
             ),
-            request_timeout=general.getfloat(
-                "request_timeout", DEFAULT_REQUEST_TIMEOUT
-            ),
+            request_timeout=general.getfloat("request_timeout", DEFAULT_REQUEST_TIMEOUT),
             verify_ssl=general.getboolean("verify_ssl", DEFAULT_VERIFY_SSL),
             retries=general.getint("retries", DEFAULT_RETRIES),
             retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
@@ -126,9 +124,7 @@ class Settings(SimpleNamespace):
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
-        poem_restapi_token = ansible.get(
-            "poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN
-        )
+        poem_restapi_token = ansible.get("poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN)
 
         self.ansible = Section(
             user_connector=ansible.get("user_connector", ""),
@@ -138,9 +134,15 @@ class Settings(SimpleNamespace):
             defaults=self._load_ansible_defaults(defaults_file),
             tokens_file=tokens_file,
             tokens=self._load_connector_tokens(tokens_file),
+            archiver_user=ansible.get("archiver_user", ""),
+            archiver_group=ansible.get("archiver_group", ""),
+            archiver_playbook=ansible.get("archiver_playbook", "archiver.yml"),
+            archiver_inventory=ansible.get("archiver_inventory", "archiver.ini"),
             connectors_playbook=ansible.get("connectors_playbook", "connectors.yml"),
             connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
-            connectors_default_service_type=ansible.get("connectors_default_service_type", ""),
+            connectors_default_service_type=ansible.get(
+                "connectors_default_service_type", ""
+            ),
             poem_playbook=ansible.get("poem_playbook", "poem.yml"),
             poem_inventory=ansible.get("poem_inventory", "poem.ini"),
             poem_fqdn_suffix=ansible.get("poem_fqdn_suffix", "fqdn.suffix"),
@@ -244,7 +246,7 @@ def load_config(path=None):
 _settings = None
 
 
-def get_settings(path=None):
+def get_settings(path=None) -> Settings:
     global _settings
     if _settings is None:
         _settings = load_config(path)

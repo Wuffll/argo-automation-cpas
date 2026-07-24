@@ -1,0 +1,10 @@
+---
+
+- name: Remove tenant ams-consumer-{tenant_name}.conf config file
+  ansible.builtin.file:
+    path: "{{ archiver_virtenv_path }}/etc/ams-consumer-{{ item.tenant_name }}.conf"
+    state: absent
+    owner: "{{ archiver_owner }}"
+    group: "{{ archiver_group }}"
+    mode: "0644"
+  loop: "{{ archiver_remove_tenants }}"

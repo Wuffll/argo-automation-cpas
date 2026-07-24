@@ -33,3 +33,7 @@ var/*
 
 # symlink
 argo_automation_cpas/*
+
+# Ansible generated files
+ansible/env/*
+ansible/inventory/hosts

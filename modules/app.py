@@ -5,7 +5,7 @@ import os
 from argo_automation_cpas.ams import AMS
 from argo_automation_cpas.ansible import Ansible
 from argo_automation_cpas.artifacts import clean_artifacts
-from argo_automation_cpas.config import get_settings
+from argo_automation_cpas.config import get_settings, Settings
 from argo_automation_cpas.iam import IAM
 from argo_automation_cpas.monboxgit import MonboxGit
 from argo_automation_cpas.statusapi import StatusAPI
@@ -22,8 +22,17 @@ def _event_playbook(settings, event):
             settings.ansible.connectors_playbook,
             settings.ansible.connectors_inventory,
         )
-    if event == "INIT_POEM":
-        return settings.ansible.poem_playbook, settings.ansible.poem_inventory
+    elif event == "INIT_POEM":
+        return (
+            settings.ansible.poem_playbook,
+            settings.ansible.poem_inventory,
+        )
+    elif event == "INIT_ARCHIVER":
+        return (
+            settings.ansible.archiver_playbook,
+            settings.ansible.archiver_inventory,
+        )
+
     return None, None
 
 
@@ -52,7 +61,7 @@ class Application:
         add_tenants=None,
         remove_tenants=None,
     ):
-        self.settings = get_settings()
+        self.settings: Settings = get_settings()
         self.only_ansible = only_ansible
         self.only_ams = only_ams
         self.filter_events = filter_events
@@ -134,11 +143,11 @@ class Application:
                     event,
                     "FAILED",
                     token,
-                    message=("Error: Monbox init ansible run for this tenant was unsuccessful."),
+                    message=(
+                        "Error: Monbox init ansible run for this tenant was unsuccessful."
+                    ),
                 )
-            raise RuntimeError(
-                "Monbox init ansible run was unsuccessful! Exiting early."
-            )
+            raise RuntimeError("Monbox init ansible run was unsuccessful! Exiting early.")
 
         # check if the monbox was initialized on tenants
         monbox_init_check_counter = self.settings.monboxgit.init_check_count
@@ -159,9 +168,10 @@ class Application:
 
             LOG.info(f"Monbox init check #{i + 1}")
 
-            all_tenants_inited, inited_tenants = (
-                await monboxgit.start_monbox_init_check()
-            )
+            (
+                all_tenants_inited,
+                inited_tenants,
+            ) = await monboxgit.start_monbox_init_check()
             if all_tenants_inited:
                 init_check_success = True
                 break
@@ -330,7 +340,8 @@ class Application:
             ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
             if any(ams_component_tokens.values()):
                 ams.tokens.save_tokens(
-                    ams_component_tokens, self.settings.ams.tokens_spool
+                    ams_component_tokens,
+                    self.settings.ams.tokens_spool,
                 )
             return
 
@@ -356,9 +367,7 @@ class Application:
             tenant_names = self.settings.automation.tenants
 
             if len(tenant_names) == 0:
-                LOG.error(
-                    "Only MonboxGit | tenant_names array is empty. Exiting early."
-                )
+                LOG.error("Only MonboxGit | tenant_names array is empty. Exiting early.")
                 return
 
             ams = AMS()
@@ -372,7 +381,12 @@ class Application:
                 return
 
             for tenant_name in tenant_names:
-                monboxgit.add_new_tenant(webapi, ams, tenant_name, restapi_tokens)
+                monboxgit.add_new_tenant(
+                    webapi,
+                    ams,
+                    tenant_name,
+                    restapi_tokens,
+                )
 
             success = monboxgit.commit_new_tenants()
             if not success:
@@ -409,13 +423,15 @@ class Application:
         component_tokens = await webapi.tokens.refresh_tokens(allowed_tenants)
         if any(component_tokens.values()):
             webapi.tokens.save_tokens(
-                component_tokens, self.settings.webapi.tokens_spool
+                component_tokens,
+                self.settings.webapi.tokens_spool,
             )
 
         ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
         if any(ams_component_tokens.values()):
             ams.tokens.save_tokens(
-                ams_component_tokens, self.settings.ams.tokens_spool
+                ams_component_tokens,
+                self.settings.ams.tokens_spool,
             )
 
         monbox_init_events = []
@@ -427,9 +443,7 @@ class Application:
             event = payload.get("name")
 
             if self._check_if_tenant_filtered_out(tenant_name):
-                LOG.info(
-                    f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out"
-                )
+                LOG.info(f"Info: Tenant {tenant_name} (id: {tenant_id}) filtered out")
                 continue
 
             LOG.info(
@@ -441,9 +455,7 @@ class Application:
 
             playbook, event_inventory = _event_playbook(self.settings, event)
 
-            current_status = await status_api.get_job_status(
-                tenant_id, event, token
-            )
+            current_status = await status_api.get_job_status(tenant_id, event, token)
 
             if playbook:
                 if current_status != "INITIALISED":
@@ -463,16 +475,9 @@ class Application:
                 )
 
                 if playbook.startswith("connectors"):
-                    connector_token = webapi.find_connector_token(
-                        component_tokens, tenant_name
-                    )
-                    webapi_overrides = await webapi.fetch_topology_config(
-                        self.settings.webapi.url_api_config, token=connector_token
-                    )
                     ok, _ = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
-                        webapi_overrides=webapi_overrides,
                         component_tokens=component_tokens,
                         add_tenants=self.add_tenants or [tenant_name],
                         remove_tenants=self.remove_tenants,
@@ -542,12 +547,53 @@ class Application:
                                 "by argo-automation-cpas" % tenant_name
                             ),
                         )
+
+                elif playbook.startswith("archiver"):
+                    ok, _ = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        component_tokens=component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
+                    )
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
+                            message=(
+                                "Archiver successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name,
+                            event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
+                            message=(
+                                "Archiver configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                else:
+                    LOG.error(
+                        "Invalid ansible playbook name: %s",
+                        playbook,
+                    )
+
             elif _is_event_init_monbox(event):
                 LOG.info("Monbox initialization candidate tenant: " + tenant_name)
 
-                current_status = await status_api.get_job_status(
-                    tenant_id, event, token
-                )
+                current_status = await status_api.get_job_status(tenant_id, event, token)
 
                 LOG.info(f"Tenant {tenant_name} has status: {current_status}")
 

@@ -1,6 +1,6 @@
 import asyncio
 import logging
-
+import json
 import ansible_runner
 
 from argo_automation_cpas.artifacts import print_artifacts
@@ -9,6 +9,16 @@ from argo_automation_cpas.tokens import RestAPITokens
 from argo_automation_cpas.webapi import WebAPI
 
 LOG = logging.getLogger(__name__)
+
+
+class ArchiverEntry:
+    def __init__(self, tenant_name: str, archiver_token: str):
+        self.tenant_name: str = tenant_name
+        self.ams_project: str = tenant_name.lower()
+        self.archiver_token: str = archiver_token
+
+    def toJSON(self):
+        return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
 
 
 class Ansible:
@@ -28,6 +38,44 @@ class Ansible:
             if k.startswith(self.PREFIX_POEM + "tenant_")
         }
         self.restapi_tokens = RestAPITokens()
+
+    def _archiver_extravars(self, component_tokens, add_tenants, remove_tenants):
+        extravars = dict()
+
+        if self.settings.ansible.user_connector:
+            extravars["archiver_user"] = self.settings.ansible.archiver_user
+
+        if self.settings.ansible.group_connector:
+            extravars["archiver_group"] = self.settings.ansible.archiver_group
+
+        webapi_token_by_tenant = {}
+        if component_tokens:
+            for tenant_name, components in component_tokens.items():
+                for component, token in (components or {}).items():
+                    if "archiver" in component and token:
+                        webapi_token_by_tenant[tenant_name.upper()] = token
+                        break
+
+        if add_tenants and len(add_tenants) > 0:
+            archiver_add_tenants: list[ArchiverEntry] = []
+
+            for tenant_name in add_tenants:
+                print(tenant_name)
+                archiver_token: str = webapi_token_by_tenant[tenant_name.upper()]
+                archiver_add_tenants.append(
+                    ArchiverEntry(tenant_name.lower(), archiver_token).__dict__
+                )
+
+            extravars["archiver_tenants"] = archiver_add_tenants
+
+        if remove_tenants and len(remove_tenants) > 0:
+            archiver_remove_tenants: list = []
+            for tenant_name in remove_tenants:
+                archiver_remove_tenants.append({"tenant_name": tenant_name})
+
+            extravars["archiver_remove_tenants"] = archiver_remove_tenants
+
+        return extravars
 
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
         extravars = dict()
@@ -63,7 +111,9 @@ class Ansible:
 
         return extravars
 
-    def _connector_extravars(self, webapi_overrides, component_tokens, add_tenants, remove_tenants):
+    def _connector_extravars(
+        self, webapi_overrides, component_tokens, add_tenants, remove_tenants
+    ):
         for k, v in (webapi_overrides or {}).items():
             if k.startswith(self.PREFIX_CONN + "tenant_"):
                 self.connector_tenant_defaults[k[len(self.PREFIX_CONN) :]] = v
@@ -134,7 +184,9 @@ class Ansible:
 
         if component_tokens is None:
             webapi = WebAPI()
-            component_tokens = webapi.tokens.load_tokens(self.settings.webapi.tokens_spool)
+            component_tokens = webapi.tokens.load_tokens(
+                self.settings.webapi.tokens_spool
+            )
             if component_tokens:
                 LOG.info(
                     "Loaded tokens from spool %s for tenants: %s",
@@ -148,7 +200,13 @@ class Ansible:
                 webapi_overrides, component_tokens, add_tenants, remove_tenants
             )
         if playbook.startswith("poem"):
-            extravars = self._poem_extravars(component_tokens, add_tenants, remove_tenants)
+            extravars = self._poem_extravars(
+                component_tokens, add_tenants, remove_tenants
+            )
+        if playbook.startswith("archiver"):
+            extravars = self._archiver_extravars(
+                component_tokens, add_tenants, remove_tenants
+            )
 
         envvars = {}
         if self.settings.general.strip_ansi:

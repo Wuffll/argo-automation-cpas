@@ -1,0 +1,18 @@
+---
+
+- name: Configure ams-consumer tenant instances - ams-consumer.conf
+  ansible.builtin.template:
+    src: ams-consumer.conf.j2
+    dest: "{{ archiver_virtenv_path }}/etc/ams-consumer-{{ item.tenant_name }}.conf"
+    mode: "0644"
+  loop: "{{ archiver_tenants }}"
+
+- name: Set permissions on ams-consumer.conf tenant configurations
+  ansible.builtin.file:
+    path: "{{ archiver_virtenv_path }}/etc/ams-consumer-{{ item.tenant_name }}.conf"
+    state: file
+    owner: "{{ archiver_owner }}"
+    group: "{{ archiver_group }}"
+    mode: "0644"
+  loop: "{{ archiver_tenants }}"
+  when:  archiver_owner is defined and group is defined
