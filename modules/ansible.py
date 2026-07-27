@@ -184,21 +184,23 @@ class Ansible:
         if private_key:
             kwargs["cmdline"] = "--private-key %s" % private_key
 
-        connector_tenants_without_webapi_token = [
-            tenant.get("tenant_name", "unknown")
-            for tenant in extravars.get("connector_tenants", [])
-            if (
-                not tenant.get("tenant_webapi_token")
-                or "{{" in str(tenant.get("tenant_webapi_token"))
-            )
-        ]
-        if playbook.startswith("connectors") and connector_tenants_without_webapi_token:
-            LOG.error(
-                "Refusing to run connector playbook=%s: tenant_webapi_token missing for tenants: %s",
-                playbook,
-                ", ".join(connector_tenants_without_webapi_token),
-            )
-            return False, kwargs
+        if playbook.startswith("connectors"):
+            connector_tenants_without_webapi_token = [
+                tenant.get("tenant_name", "unknown")
+                for tenant in extravars.get("connector_tenants", [])
+                if (
+                    not tenant.get("tenant_webapi_token")
+                    or "{{" in str(tenant.get("tenant_webapi_token"))
+                )
+            ]
+            if connector_tenants_without_webapi_token:
+                LOG.error(
+                    "Refusing to run connector playbook=%s: tenant_webapi_token "
+                    "missing for tenants: %s",
+                    playbook,
+                    ", ".join(connector_tenants_without_webapi_token),
+                )
+                return False, kwargs
 
         runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 
