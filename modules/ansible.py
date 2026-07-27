@@ -101,6 +101,18 @@ class Ansible:
                         "Set tenant_webapi_token for tenant=%s from component_tokens",
                         key,
                     )
+                else:
+                    manual_token = (
+                        self.settings.ansible.tokens.get(key, {}).get("webapi")
+                        or self.settings.ansible.tokens.get(key.lower(), {}).get("webapi")
+                        or self.settings.ansible.tokens.get("default", {}).get("webapi")
+                    )
+                    if manual_token:
+                        entry["tenant_webapi_token"] = manual_token
+                        LOG.info(
+                            "Set tenant_webapi_token for tenant=%s from manual tokens",
+                            key,
+                        )
                 if (self.settings.ansible.connectors_default_service_type
                    and entry.get('tenant_topo_type', '').lower() == 'PROVIDER'.lower()):
                     entry['tenant_topo_defaultservicetype'] = self.settings.ansible.connectors_default_service_type
@@ -171,6 +183,22 @@ class Ansible:
             kwargs["inventory"] = inventory
         if private_key:
             kwargs["cmdline"] = "--private-key %s" % private_key
+
+        connector_tenants_without_webapi_token = [
+            tenant.get("tenant_name", "unknown")
+            for tenant in extravars.get("connector_tenants", [])
+            if (
+                not tenant.get("tenant_webapi_token")
+                or "{{" in str(tenant.get("tenant_webapi_token"))
+            )
+        ]
+        if playbook.startswith("connectors") and connector_tenants_without_webapi_token:
+            LOG.error(
+                "Refusing to run connector playbook=%s: tenant_webapi_token missing for tenants: %s",
+                playbook,
+                ", ".join(connector_tenants_without_webapi_token),
+            )
+            return False, kwargs
 
         runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 
