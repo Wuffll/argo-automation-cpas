@@ -260,6 +260,33 @@ def test_connector_init_csv(mocker, connector_init_csv_data, ansible_runner_ok):
     assert statusapi_updatejobstatus.call_count == 2
 
 
+def test_only_ansible_connectors_fetches_topology_config(
+    mocker, connector_init_csv_data, ansible_runner_ok
+):
+    webapi_fetchtopologyconfig = mocker.patch(
+        'argo_automation_cpas.webapi.WebAPI.fetch_topology_config'
+    )
+    webapi_fetchtopologyconfig.return_value = connector_init_csv_data.webapi_topoconfig
+
+    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+    ansible_runner_run.return_value = ansible_runner_ok
+
+    app = Application(
+        only_ansible='connectors.yml',
+        add_tenants=[connector_init_csv_data.tenant_name],
+    )
+    asyncio.run(app.run())
+
+    assert webapi_fetchtopologyconfig.await_args_list[0] == mocker.call(
+        connector_init_csv_data.topology_config_url,
+        token=connector_init_csv_data.connector_token
+    )
+    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+    assert ansible_runner_run.call_args_list[0][1]['extravars'][
+        'connector_tenants'
+    ] == connector_init_csv_data.expected_connector_tenants
+
+
 def test_connector_init_eosc_service_data(mocker, ansiblerun, connector_init_eosc_service_data, ansible_runner_ok):
     ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
     ams_pull_messages.return_value = connector_init_eosc_service_data.ams_events

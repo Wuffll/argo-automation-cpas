@@ -71,6 +71,23 @@ class Application:
         self.add_tenants = add_tenants
         self.remove_tenants = remove_tenants
 
+    async def _fetch_connector_topology_overrides(
+        self, webapi, component_tokens, tenant_name=None
+    ):
+        connector_token = webapi.find_connector_token(component_tokens, tenant_name)
+
+        if not connector_token:
+            for candidate_tenant in component_tokens or {}:
+                connector_token = webapi.find_connector_token(
+                    component_tokens, candidate_tenant
+                )
+                if connector_token:
+                    break
+
+        return await webapi.fetch_topology_config(
+            self.settings.webapi.url_api_config, token=connector_token
+        )
+
     async def _process_monbox_init_events(
         self,
         init_events: list,
@@ -248,10 +265,24 @@ class Application:
             return
 
         if self.only_ansible is not None:
+            webapi_overrides = None
+            component_tokens = None
+            if self.only_ansible.startswith("connectors"):
+                webapi = WebAPI()
+                component_tokens = webapi.tokens.load_tokens(
+                    self.settings.webapi.tokens_spool
+                )
+                tenant_name = self.add_tenants[0] if self.add_tenants else None
+                webapi_overrides = await self._fetch_connector_topology_overrides(
+                    webapi, component_tokens, tenant_name
+                )
+
             ansible = Ansible()
             ok, extravars = await ansible.run(
                 self.only_ansible,
                 inventory=self.inventory,
+                webapi_overrides=webapi_overrides,
+                component_tokens=component_tokens,
                 add_tenants=self.add_tenants,
                 remove_tenants=self.remove_tenants,
                 show_artifacts=self.show_artifacts,
@@ -463,11 +494,8 @@ class Application:
                 )
 
                 if playbook.startswith("connectors"):
-                    connector_token = webapi.find_connector_token(
-                        component_tokens, tenant_name
-                    )
-                    webapi_overrides = await webapi.fetch_topology_config(
-                        self.settings.webapi.url_api_config, token=connector_token
+                    webapi_overrides = await self._fetch_connector_topology_overrides(
+                        webapi, component_tokens, tenant_name
                     )
                     ok, _ = await ansible.run(
                         playbook,

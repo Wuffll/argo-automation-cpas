@@ -95,7 +95,7 @@ poetry run argo-cpas --clean-artifacts connector
 
 | Flag                            | Description                                                                                                                       |
 |---------------------------------|-----------------------------------------------------------------------------------------------------------------------------------|
-| `--only-ansible [PLAYBOOK]`     | Run only the Ansible playbook without contacting AMS, Web API or IAM. Defaults to `init.yml` if no playbook is specified.         |
+| `--only-ansible [PLAYBOOK]`     | Run only the Ansible playbook without contacting AMS or IAM. For connector playbooks, Web API topology config is fetched first. Defaults to `init.yml` if no playbook is specified. |
 | `--inventory INVENTORY`         | Inventory file or directory to use instead of the default `ansible/inventory/`.                                                   |
 | `--add-tenants TENANT [...]`    | Tenant name(s) to add or update (populates `connector_tenants` extravars).                                                        |
 | `--remove-tenants TENANT [...]` | Tenant name(s) to remove (populates `connector_remove_tenants` extravars).                                                        |
