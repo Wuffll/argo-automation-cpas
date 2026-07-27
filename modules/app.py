@@ -475,9 +475,16 @@ class Application:
                 )
 
                 if playbook.startswith("connectors"):
+                    connector_token = webapi.find_connector_token(
+                        component_tokens, tenant_name
+                    )
+                    webapi_overrides = await webapi.fetch_topology_config(
+                        self.settings.webapi.url_api_config, token=connector_token
+                    )
                     ok, _ = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
+                        webapi_overrides=webapi_overrides,
                         component_tokens=component_tokens,
                         add_tenants=self.add_tenants or [tenant_name],
                         remove_tenants=self.remove_tenants,
