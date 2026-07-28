@@ -1,0 +1,8 @@
+---
+
+- name: Remove tenant directories
+  ansible.builtin.file:
+    path: "{{ archiver_virtenv_path }}/var/lib/{{ item.tenant_name }}"
+    state: absent
+    mode: "0755"
+  loop: "{{ archiver_remove_tenants }}"

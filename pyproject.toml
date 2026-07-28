@@ -83,6 +83,24 @@ argo_automation_cpas = "modules/"
 	"ansible/inventory/poem.ini",
 	"ansible/inventory/sensu.ini"
 ]
+"ansible/roles/archiver/defaults" = [
+	"ansible/roles/archiver/defaults/main.yml",
+]
+"ansible/roles/archiver/handlers" = [
+	"ansib/roles/archiver/handlers/main.yml",
+]
+"ansible/roles/archiver/tasks" = [
+	"ansible/roles/archiver/main.yml",
+	"ansible/roles/archiver/conf-setup.yml",
+	"ansible/roles/archiver/dir-setup.yml",
+	"ansible/roles/archiver/remove-dir-setup.yml",
+	"ansible/roles/archiver/remove-conf-setup.yml",
+	"ansible/roles/archiver/add-tenants.yml",
+	"ansible/roles/archiver/remove-tenants.yml",
+]
+"ansible/roles/archiver/templates" = [
+	"ansible/roles/archiver/templates/ams-consumer.conf.j2",
+]
 "ansible/roles/connector/defaults" = [
 	"ansible/roles/connector/defaults/main.yml",
 ]

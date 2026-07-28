@@ -1,0 +1,7 @@
+---
+
+- name: Remove configuration for tenants pending removal
+  ansible.builtin.import_tasks: ./remove-conf-setup.yml
+
+- name: Remove metric results directory for tenants pending removal
+  ansible.builtin.import_tasks: ./remove-dir-setup.yml

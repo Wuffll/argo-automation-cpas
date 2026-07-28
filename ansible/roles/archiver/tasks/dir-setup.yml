@@ -1,0 +1,19 @@
+---
+
+- name: Create metric result store directory
+  ansible.builtin.file:
+    path: "{{ archiver_virtenv_path }}/var/lib/{{ item.tenant_name }}"
+    state: directory
+    mode: "0755"
+  loop: "{{ archiver_tenants }}"
+
+
+- name: Set permissions on metric results store directory
+  ansible.builtin.file:
+    path: "{{ archiver_virtenv_path }}/var/lib/{{ item.tenant_name }}"
+    state: directory
+    owner: "{{ archiver_owner }}"
+    group: "{{ archiver_group }}"
+    mode: "0755"
+  loop: "{{ archiver_tenants }}"
+  when: archiver_owner is defined and archiver_group is defined

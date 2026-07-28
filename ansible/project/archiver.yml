@@ -1,0 +1,10 @@
+---
+
+- name: Playbook to configure archivers of metric results
+  hosts: all
+  become: true
+  roles:
+    - { role: archiver, archiver_owner: "{{ archiver_user }}", archiver_group: "{{ archiver_group }}" }
+
+
+# vim: ft=yaml.ansible

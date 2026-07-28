@@ -1,0 +1,20 @@
+---
+# defaults file for archiver
+
+archiver_infra: devel
+archiver_virtenv_path: /opt/ams-consumer
+
+archiver_tenant_name: tenantfoo
+
+archiver_ams_host: ams.host.grnet.gr
+archiver_ams_project: ams-project
+archiver_ams_token: ams-token
+archiver_ams_subscription: ams-sub
+archiver_ams_pullmsg: 100
+archiver_ams_pullintsec: 3
+archiver_ams_conntimeout: 180
+archiver_ams_pullret: 5
+archiver_ams_pullretsleep: 60
+
+archiver_owner: user
+archiver_group: group
