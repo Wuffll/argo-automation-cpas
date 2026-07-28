@@ -29,6 +29,17 @@ class Ansible:
         }
         self.restapi_tokens = RestAPITokens()
 
+    def _has_tenant_webapi_token(self, tenant):
+        token = tenant.get("tenant_webapi_token")
+        return bool(token) and "{{" not in str(token)
+
+    def _has_poem_tokens(self, tenant):
+        tokens = tenant.get("tokens", {})
+        return all(
+            bool(tokens.get(token_name)) and "{{" not in str(tokens.get(token_name))
+            for token_name in ("webapi_ro", "webapi_rw", "restapi")
+        )
+
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
         extravars = dict()
 
@@ -101,6 +112,18 @@ class Ansible:
                         "Set tenant_webapi_token for tenant=%s from component_tokens",
                         key,
                     )
+                else:
+                    manual_token = (
+                        self.settings.ansible.tokens.get(key, {}).get("webapi")
+                        or self.settings.ansible.tokens.get(key.lower(), {}).get("webapi")
+                        or self.settings.ansible.tokens.get("default", {}).get("webapi")
+                    )
+                    if manual_token:
+                        entry["tenant_webapi_token"] = manual_token
+                        LOG.info(
+                            "Set tenant_webapi_token for tenant=%s from manual tokens",
+                            key,
+                        )
                 if (self.settings.ansible.connectors_default_service_type
                    and entry.get('tenant_topo_type', '').lower() == 'PROVIDER'.lower()):
                     entry['tenant_topo_defaultservicetype'] = self.settings.ansible.connectors_default_service_type
@@ -171,6 +194,62 @@ class Ansible:
             kwargs["inventory"] = inventory
         if private_key:
             kwargs["cmdline"] = "--private-key %s" % private_key
+
+        if playbook.startswith("connectors"):
+            connector_tenants = extravars.get("connector_tenants", [])
+            connector_tenants_with_webapi_token = [
+                tenant
+                for tenant in connector_tenants
+                if self._has_tenant_webapi_token(tenant)
+            ]
+            connector_tenants_without_webapi_token = [
+                tenant.get("tenant_name", "unknown")
+                for tenant in connector_tenants
+                if not self._has_tenant_webapi_token(tenant)
+            ]
+            if connector_tenants_without_webapi_token:
+                LOG.warning(
+                    "Skipping connector tenants without tenant_webapi_token "
+                    "for playbook=%s: %s",
+                    playbook,
+                    ", ".join(connector_tenants_without_webapi_token),
+                )
+                extravars["connector_tenants"] = connector_tenants_with_webapi_token
+                kwargs["extravars"] = extravars
+            if connector_tenants and not connector_tenants_with_webapi_token:
+                LOG.error(
+                    "No connector tenants with tenant_webapi_token for playbook=%s",
+                    playbook,
+                )
+                return False, kwargs
+
+        if playbook.startswith("poem"):
+            poem_tenants = extravars.get("poem_tenants", [])
+            poem_tenants_with_tokens = [
+                tenant
+                for tenant in poem_tenants
+                if self._has_poem_tokens(tenant)
+            ]
+            poem_tenants_without_tokens = [
+                tenant.get("tenant_name", "unknown")
+                for tenant in poem_tenants
+                if not self._has_poem_tokens(tenant)
+            ]
+            if poem_tenants_without_tokens:
+                LOG.warning(
+                    "Skipping POEM tenants without required tokens "
+                    "for playbook=%s: %s",
+                    playbook,
+                    ", ".join(poem_tenants_without_tokens),
+                )
+                extravars["poem_tenants"] = poem_tenants_with_tokens
+                kwargs["extravars"] = extravars
+            if poem_tenants and not poem_tenants_with_tokens:
+                LOG.error(
+                    "No POEM tenants with required tokens for playbook=%s",
+                    playbook,
+                )
+                return False, kwargs
 
         runner = await asyncio.to_thread(ansible_runner.run, **kwargs)
 
