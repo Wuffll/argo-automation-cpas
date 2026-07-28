@@ -33,6 +33,13 @@ class Ansible:
         token = tenant.get("tenant_webapi_token")
         return bool(token) and "{{" not in str(token)
 
+    def _has_poem_tokens(self, tenant):
+        tokens = tenant.get("tokens", {})
+        return all(
+            bool(tokens.get(token_name)) and "{{" not in str(tokens.get(token_name))
+            for token_name in ("webapi_ro", "webapi_rw", "restapi")
+        )
+
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
         extravars = dict()
 
@@ -212,6 +219,34 @@ class Ansible:
             if connector_tenants and not connector_tenants_with_webapi_token:
                 LOG.error(
                     "No connector tenants with tenant_webapi_token for playbook=%s",
+                    playbook,
+                )
+                return False, kwargs
+
+        if playbook.startswith("poem"):
+            poem_tenants = extravars.get("poem_tenants", [])
+            poem_tenants_with_tokens = [
+                tenant
+                for tenant in poem_tenants
+                if self._has_poem_tokens(tenant)
+            ]
+            poem_tenants_without_tokens = [
+                tenant.get("tenant_name", "unknown")
+                for tenant in poem_tenants
+                if not self._has_poem_tokens(tenant)
+            ]
+            if poem_tenants_without_tokens:
+                LOG.warning(
+                    "Skipping POEM tenants without required tokens "
+                    "for playbook=%s: %s",
+                    playbook,
+                    ", ".join(poem_tenants_without_tokens),
+                )
+                extravars["poem_tenants"] = poem_tenants_with_tokens
+                kwargs["extravars"] = extravars
+            if poem_tenants and not poem_tenants_with_tokens:
+                LOG.error(
+                    "No POEM tenants with required tokens for playbook=%s",
                     playbook,
                 )
                 return False, kwargs

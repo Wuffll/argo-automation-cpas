@@ -87,3 +87,67 @@ async def test_connector_run_without_any_tenant_webapi_token_skips_ansible_runne
         assert ok is False
         assert kwargs["extravars"]["connector_tenants"] == []
         mock_runner.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_poem_run_with_some_missing_tokens_skips_only_missing_tenants():
+    to_thread_calls = []
+
+    async def fake_to_thread(func, **kwargs):
+        to_thread_calls.append((func, kwargs))
+        return SimpleNamespace(status="successful", rc=0)
+
+    restapi_tokens = {
+        "AUTOMATION": {"restapi": "AUTOMATION-RESTAPI"},
+        "READY": {"restapi": "READY-RESTAPI"},
+    }
+
+    with patch("argo_automation_cpas.ansible.asyncio.to_thread", new=fake_to_thread):
+        ansible = Ansible()
+        ansible.restapi_tokens.ensure_tokens = lambda tenants: restapi_tokens
+
+        ok, kwargs = await ansible.run(
+            "poem.yml",
+            component_tokens={
+                "AUTOMATION": {"poem-viewer": "AUTOMATION-POEMVIEWER"},
+                "READY": {
+                    "poem-viewer": "READY-POEMVIEWER",
+                    "poem-admin": "READY-POEMADMIN",
+                },
+            },
+            add_tenants=["AUTOMATION", "READY"],
+        )
+
+        assert ok is True
+        assert len(kwargs["extravars"]["poem_tenants"]) == 1
+        assert kwargs["extravars"]["poem_tenants"][0]["tenant_name"] == "READY"
+        assert kwargs["extravars"]["poem_tenants"][0]["tokens"] == {
+            "webapi_ro": "READY-POEMVIEWER",
+            "webapi_rw": "READY-POEMADMIN",
+            "restapi": "READY-RESTAPI",
+        }
+        assert len(to_thread_calls) == 1
+        assert to_thread_calls[0][1]["extravars"]["poem_tenants"] == (
+            kwargs["extravars"]["poem_tenants"]
+        )
+
+
+@pytest.mark.asyncio
+async def test_poem_run_without_any_complete_tenant_tokens_skips_ansible_runner():
+    with patch("argo_automation_cpas.ansible.ansible_runner.run") as mock_runner:
+        ansible = Ansible()
+        ansible.restapi_tokens.ensure_tokens = lambda tenants: {
+            "AUTOMATION": {"restapi": "AUTOMATION-RESTAPI"},
+        }
+
+        ok, kwargs = await ansible.run(
+            "poem.yml",
+            component_tokens={
+                "AUTOMATION": {"poem-viewer": "AUTOMATION-POEMVIEWER"},
+            },
+            add_tenants=["AUTOMATION"],
+        )
+
+        assert ok is False
+        assert kwargs["extravars"]["poem_tenants"] == []
+        mock_runner.assert_not_called()
