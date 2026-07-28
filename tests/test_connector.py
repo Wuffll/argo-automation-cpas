@@ -212,7 +212,9 @@ def test_connector_init_csv(mocker, connector_init_csv_data, ansible_runner_ok):
     iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
     iam_fetchtoken.return_value = connector_init_csv_data.iam_token
 
-    statusapi_httpget = mocker.patch('argo_automation_cpas.statusapi.SessionWithRetry.http_get')
+    statusapi_httpget = mocker.patch(
+        'argo_automation_cpas.statusapi.SessionWithRetry.http_get'
+    )
     statusapi_httpget.return_value = connector_init_csv_data.statusapi_jobs
 
     statusapi_updatejobstatus = mocker.patch('argo_automation_cpas.statusapi.StatusAPI.update_job_status')
@@ -258,6 +260,95 @@ def test_connector_init_csv(mocker, connector_init_csv_data, ansible_runner_ok):
     )
 
     assert statusapi_updatejobstatus.call_count == 2
+
+
+def test_only_ansible_connectors_fetches_topology_config(
+    mocker, connector_init_csv_data, ansible_runner_ok
+):
+    webapi_fetchtopologyconfig = mocker.patch(
+        'argo_automation_cpas.webapi.WebAPI.fetch_topology_config'
+    )
+    webapi_fetchtopologyconfig.return_value = connector_init_csv_data.webapi_topoconfig
+
+    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+    ansible_runner_run.return_value = ansible_runner_ok
+
+    app = Application(
+        only_ansible='connectors.yml',
+        add_tenants=[connector_init_csv_data.tenant_name],
+    )
+    asyncio.run(app.run())
+
+    assert webapi_fetchtopologyconfig.await_args_list[0] == mocker.call(
+        connector_init_csv_data.topology_config_url,
+        token=connector_init_csv_data.connector_token
+    )
+    assert 'extravars' in ansible_runner_run.call_args_list[0][1]
+    assert ansible_runner_run.call_args_list[0][1]['extravars'][
+        'connector_tenants'
+    ] == connector_init_csv_data.expected_connector_tenants
+
+
+def test_connector_init_without_tenant_webapi_token_marks_job_failed(
+    mocker, cpas_test_settings, connector_init_csv_data
+):
+    cpas_test_settings.ansible.tokens = {}
+
+    ams_pull_messages = mocker.patch('argo_automation_cpas.ams.AMS.pull_messages')
+    ams_pull_messages.return_value = connector_init_csv_data.ams_events
+
+    ams_has_sub = mocker.patch('argo_automation_cpas.ams.ArgoMessagingService.has_sub')
+    ams_has_sub.return_value = True
+
+    iam_fetchtoken = mocker.patch('argo_automation_cpas.iam.IAM.fetch_token')
+    iam_fetchtoken.return_value = connector_init_csv_data.iam_token
+
+    refresh_tokens = mocker.patch(
+        'argo_automation_cpas.tokens.ComponentTokens.refresh_tokens'
+    )
+    refresh_tokens.side_effect = [
+        {
+            connector_init_csv_data.tenant_name: {},
+        },
+        {},
+    ]
+
+    statusapi_httpget = mocker.patch(
+        'argo_automation_cpas.statusapi.SessionWithRetry.http_get'
+    )
+    statusapi_httpget.return_value = connector_init_csv_data.statusapi_jobs
+
+    statusapi_updatejobstatus = mocker.patch(
+        'argo_automation_cpas.statusapi.StatusAPI.update_job_status'
+    )
+
+    webapi_fetchtopologyconfig = mocker.patch(
+        'argo_automation_cpas.webapi.WebAPI.fetch_topology_config'
+    )
+    webapi_fetchtopologyconfig.return_value = connector_init_csv_data.webapi_topoconfig
+
+    ansible_runner_run = mocker.patch('argo_automation_cpas.ansible.ansible_runner.run')
+
+    app = Application()
+    asyncio.run(app.run())
+
+    ansible_runner_run.assert_not_called()
+    assert statusapi_updatejobstatus.call_args_list[0] == mocker.call(
+        connector_init_csv_data.tenant_id,
+        connector_init_csv_data.event,
+        'IN_PROGRESS',
+        connector_init_csv_data.iam_token,
+    )
+    assert statusapi_updatejobstatus.call_args_list[1] == mocker.call(
+        connector_init_csv_data.tenant_id,
+        connector_init_csv_data.event,
+        'FAILED',
+        connector_init_csv_data.iam_token,
+        message=(
+            "Connector configuration failed for tenant AUTOMATION "
+            "by argo-automation-cpas"
+        ),
+    )
 
 
 def test_connector_init_eosc_service_data(mocker, ansiblerun, connector_init_eosc_service_data, ansible_runner_ok):
