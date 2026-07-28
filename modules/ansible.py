@@ -29,6 +29,10 @@ class Ansible:
         }
         self.restapi_tokens = RestAPITokens()
 
+    def _has_tenant_webapi_token(self, tenant):
+        token = tenant.get("tenant_webapi_token")
+        return bool(token) and "{{" not in str(token)
+
     def _poem_extravars(self, component_tokens, add_tenants, remove_tenants):
         extravars = dict()
 
@@ -185,20 +189,30 @@ class Ansible:
             kwargs["cmdline"] = "--private-key %s" % private_key
 
         if playbook.startswith("connectors"):
+            connector_tenants = extravars.get("connector_tenants", [])
+            connector_tenants_with_webapi_token = [
+                tenant
+                for tenant in connector_tenants
+                if self._has_tenant_webapi_token(tenant)
+            ]
             connector_tenants_without_webapi_token = [
                 tenant.get("tenant_name", "unknown")
-                for tenant in extravars.get("connector_tenants", [])
-                if (
-                    not tenant.get("tenant_webapi_token")
-                    or "{{" in str(tenant.get("tenant_webapi_token"))
-                )
+                for tenant in connector_tenants
+                if not self._has_tenant_webapi_token(tenant)
             ]
             if connector_tenants_without_webapi_token:
-                LOG.error(
-                    "Refusing to run connector playbook=%s: tenant_webapi_token "
-                    "missing for tenants: %s",
+                LOG.warning(
+                    "Skipping connector tenants without tenant_webapi_token "
+                    "for playbook=%s: %s",
                     playbook,
                     ", ".join(connector_tenants_without_webapi_token),
+                )
+                extravars["connector_tenants"] = connector_tenants_with_webapi_token
+                kwargs["extravars"] = extravars
+            if connector_tenants and not connector_tenants_with_webapi_token:
+                LOG.error(
+                    "No connector tenants with tenant_webapi_token for playbook=%s",
+                    playbook,
                 )
                 return False, kwargs
 
