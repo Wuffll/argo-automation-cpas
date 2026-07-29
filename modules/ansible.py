@@ -254,7 +254,7 @@ class Ansible:
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
-            quiet=False,
+            quiet=True,
             envvars=envvars,
         )
 
