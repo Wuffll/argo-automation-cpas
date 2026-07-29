@@ -1,7 +1,6 @@
 ---
 # defaults file for archiver
 
-archiver_infra: devel
 archiver_virtenv_path: /opt/ams-consumer
 
 archiver_tenant_name: tenantfoo
