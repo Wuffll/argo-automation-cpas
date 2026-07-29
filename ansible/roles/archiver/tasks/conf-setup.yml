@@ -15,4 +15,4 @@
     group: "{{ archiver_group }}"
     mode: "0644"
   loop: "{{ archiver_tenants }}"
-  when:  archiver_owner is defined and group is defined
+  when:  archiver_owner is defined and archiver_group is defined
