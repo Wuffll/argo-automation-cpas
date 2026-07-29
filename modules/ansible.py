@@ -7,6 +7,7 @@ from argo_automation_cpas.artifacts import print_artifacts
 from argo_automation_cpas.config import get_settings
 from argo_automation_cpas.tokens import RestAPITokens
 from argo_automation_cpas.webapi import WebAPI
+from argo_automation_cpas.ams import AMS
 
 LOG = logging.getLogger(__name__)
 
@@ -14,7 +15,7 @@ LOG = logging.getLogger(__name__)
 class ArchiverEntry:
     def __init__(self, tenant_name: str, archiver_token: str):
         self.tenant_name: str = tenant_name
-        self.ams_project: str = tenant_name.lower()
+        self.ams_project: str = tenant_name.upper()
         self.archiver_token: str = archiver_token
 
     def toJSON(self):
@@ -39,29 +40,32 @@ class Ansible:
         }
         self.restapi_tokens = RestAPITokens()
 
-    def _archiver_extravars(self, component_tokens, add_tenants, remove_tenants):
+    def _archiver_extravars(self, ams_component_tokens, add_tenants, remove_tenants):
         extravars = dict()
 
         if self.settings.ansible.user_connector:
-            extravars["archiver_user"] = self.settings.ansible.archiver_user
+            extravars["user_archiver"] = self.settings.ansible.user_archiver
 
         if self.settings.ansible.group_connector:
-            extravars["archiver_group"] = self.settings.ansible.archiver_group
+            extravars["group_archiver"] = self.settings.ansible.group_archiver
 
-        webapi_token_by_tenant = {}
-        if component_tokens:
-            for tenant_name, components in component_tokens.items():
+        ams_token_by_tenant = {}
+        if ams_component_tokens:
+            for tenant_name, components in ams_component_tokens.items():
                 for component, token in (components or {}).items():
-                    if "archiver" in component and token:
-                        webapi_token_by_tenant[tenant_name.upper()] = token
+                    if "argo-archiver" in component and token:
+                        ams_token_by_tenant[tenant_name.lower()] = token
                         break
 
         if add_tenants and len(add_tenants) > 0:
             archiver_add_tenants: list[ArchiverEntry] = []
 
             for tenant_name in add_tenants:
-                print(tenant_name)
-                archiver_token: str = webapi_token_by_tenant[tenant_name.upper()]
+                archiver_token: str = ams_token_by_tenant.get(tenant_name.lower(), "")
+
+                if len(archiver_token) == 0:
+                    return dict()
+
                 archiver_add_tenants.append(
                     ArchiverEntry(tenant_name.lower(), archiver_token).__dict__
                 )
@@ -71,11 +75,12 @@ class Ansible:
         if remove_tenants and len(remove_tenants) > 0:
             archiver_remove_tenants: list = []
             for tenant_name in remove_tenants:
-                archiver_remove_tenants.append({"tenant_name": tenant_name})
+                archiver_remove_tenants.append({"tenant_name": tenant_name.upper()})
 
             extravars["archiver_remove_tenants"] = archiver_remove_tenants
 
         return extravars
+
     def _has_tenant_webapi_token(self, tenant):
         token = tenant.get("tenant_webapi_token")
         return bool(token) and "{{" not in str(token)
@@ -160,7 +165,9 @@ class Ansible:
                 else:
                     manual_token = (
                         self.settings.ansible.tokens.get(key, {}).get("webapi")
-                        or self.settings.ansible.tokens.get(key.lower(), {}).get("webapi")
+                        or self.settings.ansible.tokens.get(key.lower(), {}).get(
+                            "webapi"
+                        )
                         or self.settings.ansible.tokens.get("default", {}).get("webapi")
                     )
                     if manual_token:
@@ -169,9 +176,13 @@ class Ansible:
                             "Set tenant_webapi_token for tenant=%s from manual tokens",
                             key,
                         )
-                if (self.settings.ansible.connectors_default_service_type
-                   and entry.get('tenant_topo_type', '').lower() == 'PROVIDER'.lower()):
-                    entry['tenant_topo_defaultservicetype'] = self.settings.ansible.connectors_default_service_type
+                if (
+                    self.settings.ansible.connectors_default_service_type
+                    and entry.get("tenant_topo_type", "").lower() == "PROVIDER".lower()
+                ):
+                    entry["tenant_topo_defaultservicetype"] = (
+                        self.settings.ansible.connectors_default_service_type
+                    )
                 entries.append(entry)
 
             extravars["connector_tenants"] = entries
@@ -187,6 +198,7 @@ class Ansible:
         inventory=None,
         webapi_overrides=None,
         component_tokens=None,
+        ams_component_tokens=None,
         add_tenants=None,
         remove_tenants=None,
         show_artifacts=None,
@@ -222,9 +234,18 @@ class Ansible:
                 component_tokens, add_tenants, remove_tenants
             )
         if playbook.startswith("archiver"):
+            if ams_component_tokens is None:
+                ams = AMS()
+                ams_component_tokens = ams.tokens.load_tokens(
+                    self.settings.ams.tokens_spool
+                )
+
             extravars = self._archiver_extravars(
-                component_tokens, add_tenants, remove_tenants
+                ams_component_tokens, add_tenants, remove_tenants
             )
+
+            if not extravars:
+               return (False, dict())
 
         envvars = {}
         if self.settings.general.strip_ansi:
@@ -233,7 +254,7 @@ class Ansible:
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
-            quiet=True,
+            quiet=False,
             envvars=envvars,
         )
 
@@ -275,9 +296,7 @@ class Ansible:
         if playbook.startswith("poem"):
             poem_tenants = extravars.get("poem_tenants", [])
             poem_tenants_with_tokens = [
-                tenant
-                for tenant in poem_tenants
-                if self._has_poem_tokens(tenant)
+                tenant for tenant in poem_tenants if self._has_poem_tokens(tenant)
             ]
             poem_tenants_without_tokens = [
                 tenant.get("tenant_name", "unknown")
