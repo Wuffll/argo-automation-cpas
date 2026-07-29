@@ -75,7 +75,7 @@ class Ansible:
         if remove_tenants and len(remove_tenants) > 0:
             archiver_remove_tenants: list = []
             for tenant_name in remove_tenants:
-                archiver_remove_tenants.append({"tenant_name": tenant_name.upper()})
+                archiver_remove_tenants.append({"tenant_name": tenant_name.lower()})
 
             extravars["archiver_remove_tenants"] = archiver_remove_tenants
 
