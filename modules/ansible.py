@@ -64,7 +64,10 @@ class Ansible:
                 archiver_token: str = ams_token_by_tenant.get(tenant_name.lower(), "")
 
                 if len(archiver_token) == 0:
-                    return dict()
+                    LOG.warning("_archiver_extravars | Unable to find ams token for %s",
+                        tenant_name
+                    )
+                    continue
 
                 archiver_add_tenants.append(
                     ArchiverEntry(tenant_name.lower(), archiver_token).__dict__
