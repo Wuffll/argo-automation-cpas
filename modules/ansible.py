@@ -247,8 +247,8 @@ class Ansible:
                 ams_component_tokens, add_tenants, remove_tenants
             )
 
-            if not extravars:
-               return (False, dict())
+        if not extravars:
+            return (False, dict())
 
         envvars = {}
         if self.settings.general.strip_ansi:
