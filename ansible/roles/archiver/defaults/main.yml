@@ -1,7 +1,6 @@
 ---
 # defaults file for archiver
 
-archiver_infra: devel
 archiver_virtenv_path: /opt/ams-consumer
 
 archiver_tenant_name: tenantfoo
@@ -16,5 +15,5 @@ archiver_ams_conntimeout: 180
 archiver_ams_pullret: 5
 archiver_ams_pullretsleep: 60
 
-archiver_owner: user
-archiver_group: group
+owner_archiver: user
+group_archiver: group

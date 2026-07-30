@@ -380,7 +380,7 @@ class Application:
             LOG.info("Running OnlyMonboxGit")
             monboxgit = MonboxGit()
 
-            run_delete_tenant = not self.delete_tenant is None
+            run_delete_tenant = self.delete_tenant is not None
             valid_delete_tenant = self.delete_tenant != ""
 
             if run_delete_tenant:
@@ -587,7 +587,7 @@ class Application:
                     ok, _ = await ansible.run(
                         playbook,
                         inventory=self.inventory or event_inventory,
-                        component_tokens=component_tokens,
+                        ams_component_tokens=ams_component_tokens,
                         add_tenants=self.add_tenants or [tenant_name],
                         remove_tenants=self.remove_tenants,
                         show_artifacts=self.show_artifacts,

@@ -4,7 +4,7 @@
   hosts: all
   become: true
   roles:
-    - { role: archiver, archiver_owner: "{{ archiver_user }}", archiver_group: "{{ archiver_group }}" }
+    - { role: archiver, owner_archiver: "{{ user_archiver }}", group_archiver: "{{ group_archiver }}" }
 
 
 # vim: ft=yaml.ansible
