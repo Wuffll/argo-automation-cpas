@@ -11,8 +11,8 @@
   ansible.builtin.file:
     path: "{{ archiver_virtenv_path }}/etc/ams-consumer-{{ item.tenant_name }}.conf"
     state: file
-    owner: "{{ archiver_owner }}"
-    group: "{{ archiver_group }}"
+    owner: "{{ owner_archiver }}"
+    group: "{{ group_archiver }}"
     mode: "0644"
   loop: "{{ archiver_tenants }}"
-  when:  archiver_owner is defined and archiver_group is defined
+  when:  owner_archiver is defined and group_archiver is defined
