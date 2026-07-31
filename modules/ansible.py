@@ -126,6 +126,7 @@ class Ansible:
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
             extravars["poem_remove_tenants"] = [t for t in remove_tenants]
+            extravars["poem_tenants"] = []
 
         return extravars
 
