@@ -1,11 +1,18 @@
 ---
 
+- name: Set tenant removal facts - {{ item.tenant_name | default(item) }}
+  ansible.builtin.set_fact:
+    poem_remove_tenant_name: "{{ item.tenant_name | default(item) }}"
+    poem_remove_tenant_schema_name: >-
+      {{ item.tenant_schema_name
+         | default((item.tenant_name | default(item)) | replace('-', '') | replace('_', '') | lower) }}
 
-- name: Check if tenant exist - {{ item }}
+
+- name: Check if tenant exist - {{ poem_remove_tenant_name }}
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-tenant -l | grep -q {{ item }}
+      poem-tenant -l | grep -q {{ poem_remove_tenant_schema_name | upper }}
     chdir:
       "{{ poem_virtenv_path }}"
   register: shellresult
@@ -13,11 +20,11 @@
   changed_when: true
 
 
-- name: Remove POEM tenant - {{ item }}
+- name: Remove POEM tenant - {{ poem_remove_tenant_name }}
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-tenant -t {{ item }} -r
+      poem-tenant -t {{ poem_remove_tenant_schema_name | upper }} -r
     chdir:
       "{{ poem_virtenv_path }}"
   when: shellresult.rc == 0

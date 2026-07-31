@@ -1,0 +1,93 @@
+---
+
+- name: Set tenant poem.auto.conf removal facts - {{ item.tenant_name | default(item) }}
+  ansible.builtin.set_fact:
+    poem_remove_tenant_name: "{{ item.tenant_name | default(item) }}"
+    poem_remove_tenant_schema_name: >-
+      {{ item.tenant_schema_name
+         | default((item.tenant_name | default(item)) | replace('-', '') | replace('_', '') | lower) }}
+    poem_remove_tenant_fqdn: "{{ item.tenant_fqdn | default('') }}"
+
+
+- name: Set fallback tenant FQDN removal fact - {{ poem_remove_tenant_name }}
+  ansible.builtin.set_fact:
+    poem_remove_tenant_fqdn: "{{ poem_remove_tenant_name | lower }}.{{ poem_fqdn_suffix }}"
+  when:
+    - poem_remove_tenant_fqdn | length == 0
+    - poem_fqdn_suffix is defined
+    - poem_fqdn_suffix | length > 0
+
+
+- name: Check if poem.auto.conf exists - {{ poem_remove_tenant_name }}
+  ansible.builtin.stat:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+  register: poem_remove_conf_file_exists
+
+
+- name: Remove GENERAL section from poem.auto.conf - {{ poem_remove_tenant_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+    marker: "# {mark} ANSIBLE MANAGED GENERAL_{{ poem_remove_tenant_name }}"
+    state: absent
+  when: poem_remove_conf_file_exists.stat.exists
+
+
+- name: Remove SUPERUSER section from poem.auto.conf - {{ poem_remove_tenant_name }}
+  ansible.builtin.blockinfile:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+    marker: "# {mark} ANSIBLE MANAGED SUPERUSER_{{ poem_remove_tenant_name }}"
+    state: absent
+  when: poem_remove_conf_file_exists.stat.exists
+
+
+- name: Remove tenant FQDN from auto_fqdns - {{ poem_remove_tenant_name }}
+  ansible.builtin.lineinfile:
+    path: "{{ poem_auto_fqdns_file }}"
+    line: "{{ poem_remove_tenant_fqdn }}"
+    state: absent
+  when: poem_remove_tenant_fqdn | length > 0
+
+
+- name: Check if auto_fqdns exists - {{ poem_remove_tenant_name }}
+  ansible.builtin.stat:
+    path: "{{ poem_auto_fqdns_file }}"
+  register: poem_remove_auto_fqdns_file_exists
+
+
+- name: Read auto_fqdns - {{ poem_remove_tenant_name }}
+  ansible.builtin.slurp:
+    src: "{{ poem_auto_fqdns_file }}"
+  register: poem_remove_auto_fqdns_file
+  when: poem_remove_auto_fqdns_file_exists.stat.exists
+
+
+- name: Count remaining auto_fqdns entries - {{ poem_remove_tenant_name }}
+  ansible.builtin.set_fact:
+    poem_remove_auto_fqdns_remaining: >-
+      {{ (poem_remove_auto_fqdns_file.content | default('') | b64decode).splitlines()
+         | map('trim')
+         | reject('equalto', '')
+         | list
+         | length }}
+  when: poem_remove_auto_fqdns_file_exists.stat.exists
+
+
+- name: Remove empty auto_fqdns file - {{ poem_remove_tenant_name }}
+  ansible.builtin.file:
+    path: "{{ poem_auto_fqdns_file }}"
+    state: absent
+  when:
+    - poem_remove_auto_fqdns_file_exists.stat.exists
+    - poem_remove_auto_fqdns_remaining == 0
+
+
+- name: Disable auto_fqdns in poem.auto.conf SECURITY section
+  ansible.builtin.ini_file:
+    path: "{{ poem_virtenv_path }}/etc/poem/poem.auto.conf"
+    section: SECURITY
+    option: AllowedHosts
+    state: absent
+  when:
+    - poem_remove_conf_file_exists.stat.exists
+    - poem_remove_auto_fqdns_file_exists.stat.exists
+    - poem_remove_auto_fqdns_remaining == 0
