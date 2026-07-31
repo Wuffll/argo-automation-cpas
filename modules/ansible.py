@@ -192,6 +192,7 @@ class Ansible:
 
         if remove_tenants is not None:
             extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
+            extravars["connector_tenants"] = []
 
         return extravars
 
