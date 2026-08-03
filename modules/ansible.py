@@ -125,7 +125,17 @@ class Ansible:
                 entries.append({**entry, **self.poem_tenant_defaults})
             extravars["poem_tenants"] = entries
         if remove_tenants is not None:
-            extravars["poem_remove_tenants"] = [t for t in remove_tenants]
+            extravars["poem_remove_tenants"] = [
+                {
+                    "tenant_name": t,
+                    "tenant_schema_name": t.replace("-", "").replace("_", "").lower(),
+                    "tenant_fqdn": (
+                        f"{t.lower()}.{self.settings.ansible.poem_fqdn_suffix}"
+                    ),
+                }
+                for t in remove_tenants
+            ]
+            extravars["poem_tenants"] = []
 
         return extravars
 
@@ -192,6 +202,7 @@ class Ansible:
 
         if remove_tenants is not None:
             extravars["connector_remove_tenants"] = [t.upper() for t in remove_tenants]
+            extravars["connector_tenants"] = []
 
         return extravars
 

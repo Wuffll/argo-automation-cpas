@@ -1,11 +1,18 @@
 ---
 
+- name: Set tenant removal facts - {{ item.tenant_name | default(item) }}
+  ansible.builtin.set_fact:
+    poem_remove_tenant_name: "{{ item.tenant_name | default(item) }}"
+    poem_remove_tenant_schema_name: >-
+      {{ item.tenant_schema_name
+         | default((item.tenant_name | default(item)) | replace('-', '') | replace('_', '') | lower) }}
 
-- name: Check if tenant exist - {{ item }}
+
+- name: Check if tenant exist - {{ poem_remove_tenant_name }}
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-tenant -l | grep -q {{ item }}
+      poem-tenant -l | grep -q {{ poem_remove_tenant_schema_name | upper }}
     chdir:
       "{{ poem_virtenv_path }}"
   register: shellresult
@@ -13,66 +20,12 @@
   changed_when: true
 
 
-- name: Remove POEM tenant - {{ item }}
+- name: Remove POEM tenant - {{ poem_remove_tenant_name }}
   ansible.builtin.shell:
     cmd: |
       source {{ poem_virtenv_path }}/bin/activate
-      poem-tenant -t {{ item }} -r
+      poem-tenant -t {{ poem_remove_tenant_schema_name | upper }} -r
     chdir:
       "{{ poem_virtenv_path }}"
   when: shellresult.rc == 0
   changed_when: shellresult.rc == 0
-
-
-- name: Query whether RW WEB-API token exist - {{ item }}
-  vars:
-    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
-  community.postgresql.postgresql_query:
-    db: "{{ poem_db_name }}"
-    login_host: localhost
-    login_user: "{{ poem_db_user }}"
-    login_password: "{{ poem_db_password }}"
-    search_path: public
-    query: "SELECT 1 FROM poem_super_admin_webapikey where name='WEB-API-{{ item | upper }}'"
-  register: poem_token_query
-  failed_when: false
-
-
-- name: Remove POEM tenant RW token - {{ item }}
-  vars:
-    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
-  community.postgresql.postgresql_query:
-    db: "{{ poem_db_name }}"
-    login_host: localhost
-    login_user: "{{ poem_db_user }}"
-    login_password: "{{ poem_db_password }}"
-    search_path: public
-    query: "DELETE FROM poem_super_admin_webapikey where name='WEB-API-{{ item | upper }}'"
-  when: poem_token_query.rowcount == 1
-
-
-- name: Query whether RO WEB-API token exist - {{ item }}
-  vars:
-    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
-  community.postgresql.postgresql_query:
-    db: "{{ poem_db_name }}"
-    login_host: localhost
-    login_user: "{{ poem_db_user }}"
-    login_password: "{{ poem_db_password }}"
-    search_path: public
-    query: "SELECT 1 FROM poem_super_admin_webapikey where name='WEB-API-{{ item | upper }}-RO'"
-  register: poem_token_query
-  failed_when: false
-
-
-- name: Remove POEM tenant RO token - {{ item }}
-  vars:
-    ansible_python_interpreter: "{{ poem_virtenv_path }}/bin/python"
-  community.postgresql.postgresql_query:
-    db: "{{ poem_db_name }}"
-    login_host: localhost
-    login_user: "{{ poem_db_user }}"
-    login_password: "{{ poem_db_password }}"
-    search_path: public
-    query: "DELETE FROM poem_super_admin_webapikey where name='WEB-API-{{ item | upper }}-RO'"
-  when: poem_token_query.rowcount == 1

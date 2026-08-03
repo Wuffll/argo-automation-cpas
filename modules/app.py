@@ -277,7 +277,7 @@ class Application:
         if self.only_ansible is not None:
             webapi_overrides = None
             component_tokens = None
-            if self.only_ansible.startswith("connectors"):
+            if self.only_ansible.startswith("connectors") and not self.remove_tenants:
                 webapi = WebAPI()
                 component_tokens = webapi.tokens.load_tokens(
                     self.settings.webapi.tokens_spool

@@ -43,3 +43,13 @@
   ansible.builtin.include_tasks: ./remove-tenants.yml
   loop: "{{ poem_remove_tenants }}"
   when: poem_remove_tenants | length > 0
+  loop_control:
+    label: "{{ item.tenant_name | default(item) }}"
+
+
+- name: Remove tenant config files
+  ansible.builtin.include_tasks: ./remove-tenant-poem-conf.yml
+  loop: "{{ poem_remove_tenants }}"
+  when: poem_remove_tenants | length > 0
+  loop_control:
+    label: "{{ item.tenant_name | default(item) }}"
