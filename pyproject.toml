@@ -76,10 +76,12 @@ argo_automation_cpas = "modules/"
 	"ansible/project/ansible.cfg",
 	"ansible/project/init.yml",
 	"ansible/project/connectors.yml",
+	"ansible/project/archiver.yml",
 	"ansible/project/poem.yml",
 ]
 "ansible/inventory" = [
 	"ansible/inventory/connectors.ini",
+	"ansible/inventory/archiver.ini",
 	"ansible/inventory/poem.ini",
 	"ansible/inventory/sensu.ini"
 ]
@@ -87,16 +89,16 @@ argo_automation_cpas = "modules/"
 	"ansible/roles/archiver/defaults/main.yml",
 ]
 "ansible/roles/archiver/handlers" = [
-	"ansib/roles/archiver/handlers/main.yml",
+	"ansible/roles/archiver/handlers/main.yml",
 ]
 "ansible/roles/archiver/tasks" = [
-	"ansible/roles/archiver/main.yml",
-	"ansible/roles/archiver/conf-setup.yml",
-	"ansible/roles/archiver/dir-setup.yml",
-	"ansible/roles/archiver/remove-dir-setup.yml",
-	"ansible/roles/archiver/remove-conf-setup.yml",
-	"ansible/roles/archiver/add-tenants.yml",
-	"ansible/roles/archiver/remove-tenants.yml",
+	"ansible/roles/archiver/tasks/main.yml",
+	"ansible/roles/archiver/tasks/conf-setup.yml",
+	"ansible/roles/archiver/tasks/dir-setup.yml",
+	"ansible/roles/archiver/tasks/remove-dir-setup.yml",
+	"ansible/roles/archiver/tasks/remove-conf-setup.yml",
+	"ansible/roles/archiver/tasks/add-tenants.yml",
+	"ansible/roles/archiver/tasks/remove-tenants.yml",
 ]
 "ansible/roles/archiver/templates" = [
 	"ansible/roles/archiver/templates/ams-consumer.conf.j2",
