@@ -359,13 +359,16 @@ class Application:
             config_filter_tenants = self.settings.automation.tenants
 
             allowed_tenants = []
-            if len(config_filter_tenants) != 0:
-                allowed_tenants = self._get_allowed_tenants_from_array(
-                    config_filter_tenants
-                )
+            if self.add_tenants:
+                allowed_tenants = self.add_tenants
             else:
-                ams_events = ams.pull_messages()
-                allowed_tenants = self._get_allowed_tenants(ams_events)
+                if len(config_filter_tenants) != 0:
+                    allowed_tenants = self._get_allowed_tenants_from_array(
+                        config_filter_tenants
+                    )
+                else:
+                    ams_events = ams.pull_messages()
+                    allowed_tenants = self._get_allowed_tenants(ams_events)
 
             LOG.info("Only AMS | Refreshing AMS tokens!")
             ams_component_tokens = await ams.tokens.refresh_tokens(allowed_tenants)
@@ -374,6 +377,7 @@ class Application:
                     ams_component_tokens,
                     self.settings.ams.tokens_spool,
                 )
+
             return
 
         if self.only_monbox_git:
