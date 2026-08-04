@@ -32,7 +32,6 @@ def test_onlyams_tenant_without_tokens(mocker):
     app.add_tenants = ["NEWTENANT"]
     mocker.patch('argo_automation_cpas.ams.ArgoMessagingService')
     ams_httpost = mocker.patch('argo_automation_cpas.tokens.SessionWithRetry.http_post')
-    ams_httpost = mocker.patch('argo_automation_cpas.tokens.SessionWithRetry.http_post')
     mock_savetokens = mocker.patch('argo_automation_cpas.tokens.ComponentTokens.save_tokens')
 
     ams_httpost.side_effect = [
@@ -68,6 +67,54 @@ def test_onlyams_tenant_without_tokens(mocker):
             'NEWTENANT': {
                 'argo-monbox': 'TOKEN1',
                 'argo-archiver': 'TOKEN2'
+            },
+            "NEWTENANT2": {
+                "argo-monbox": "NEWTENANT2-ARGOMONBOX"
+            }
+        },
+        'tests/tokens_ams.json'
+    )
+
+
+def test_onlyams_tenant_with_monbox_token(mocker):
+    app = Application()
+
+    app.only_ams = True
+    app.add_tenants = ["NEWTENANT2"]
+    mocker.patch('argo_automation_cpas.ams.ArgoMessagingService')
+    ams_httpost = mocker.patch('argo_automation_cpas.tokens.SessionWithRetry.http_post')
+    mock_savetokens = mocker.patch('argo_automation_cpas.tokens.ComponentTokens.save_tokens')
+
+    ams_httpost.side_effect = [
+        dict(data={'api_key': 'TOKEN1'}),
+    ]
+
+    asyncio.run(app.run())
+
+    assert ams_httpost.called
+    assert ams_httpost.call_count == 1
+    assert ams_httpost.call_args_list[0][0][0] == \
+        '/v1/integrations/argo-archiver/by-project-name/NEWTENANT2/refresh'
+
+    assert mock_savetokens.called
+    assert mock_savetokens.call_count == 1
+    assert mock_savetokens.call_args_list[0] == mocker.call(
+        {
+            'SRCE': {
+                'argo-monbox': 'SRCE-ARGOMONBOX',
+                'argo-archiver': 'SRCE-ARGOARCHIVER'
+            },
+            'AUTOMATION': {
+                'argo-monbox': 'AUTOMATION-ARGOMONBOX',
+                'argo-archiver': 'AUTOMATION-ARGOARCHIVER'
+            },
+            'INSTRUCT-ERIC': {
+                'argo-monbox': 'INSTRUCT-ERIC-ARGOMONBOX',
+                'argo-archiver': 'INSTRUCT-ERIC-ARGOARCHIVER'
+            },
+            'NEWTENANT2': {
+                'argo-monbox': 'NEWTENANT2-ARGOMONBOX',
+                'argo-archiver': 'TOKEN1'
             }
         },
         'tests/tokens_ams.json'

@@ -10,5 +10,8 @@
   "INSTRUCT-ERIC": {
     "argo-monbox": "INSTRUCT-ERIC-ARGOMONBOX",
     "argo-archiver": "INSTRUCT-ERIC-ARGOARCHIVER"
+  },
+  "NEWTENANT2": {
+    "argo-monbox": "NEWTENANT2-ARGOMONBOX"
   }
 }
