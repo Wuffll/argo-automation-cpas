@@ -12,7 +12,7 @@ def cpas_test_settings(mocker):
     return settings
 
 
-def test_onlyams_tenantwithtokens(mocker):
+def test_onlyams_tenant_with_cached_tokens(mocker):
     app = Application()
 
     app.only_ams = True
@@ -25,7 +25,7 @@ def test_onlyams_tenantwithtokens(mocker):
     assert not ams_httpost.called
 
 
-def test_onlyams_tenantwithtokens(mocker):
+def test_onlyams_tenant_without_tokens(mocker):
     app = Application()
 
     app.only_ams = True
@@ -44,6 +44,10 @@ def test_onlyams_tenantwithtokens(mocker):
 
     assert ams_httpost.called
     assert ams_httpost.call_count == 2
+    assert ams_httpost.call_args_list[0][0][0] == \
+        '/v1/integrations/argo-monbox/by-project-name/NEWTENANT/refresh'
+    assert ams_httpost.call_args_list[1][0][0] == \
+        '/v1/integrations/argo-archiver/by-project-name/NEWTENANT/refresh'
 
     assert mock_savetokens.called
     assert mock_savetokens.call_count == 1
