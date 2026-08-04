@@ -13,10 +13,11 @@ LOG = logging.getLogger(__name__)
 
 
 class ArchiverEntry:
-    def __init__(self, tenant_name: str, archiver_token: str):
+    def __init__(self, tenant_name: str, archiver_token: str, ams_host: str):
         self.tenant_name: str = tenant_name
         self.ams_project: str = tenant_name.upper()
         self.archiver_token: str = archiver_token
+        self.ams_host: str = ams_host
 
     def toJSON(self):
         return json.dumps(self, default=lambda o: o.__dict__, sort_keys=True, indent=4)
@@ -70,7 +71,10 @@ class Ansible:
                     continue
 
                 archiver_add_tenants.append(
-                    ArchiverEntry(tenant_name.lower(), archiver_token).__dict__
+                    ArchiverEntry(
+                        tenant_name.lower(), archiver_token,
+                        self.settings.ams.host
+                    ).__dict__
                 )
 
             extravars["archiver_tenants"] = archiver_add_tenants
