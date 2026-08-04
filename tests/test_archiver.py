@@ -65,7 +65,8 @@ def archiver_init_data():
             {
                 'tenant_name': 'automation',
                 'ams_project': 'AUTOMATION',
-                'archiver_token': 'AUTOMATION-ARGOARCHIVER'
+                'archiver_token': 'AUTOMATION-ARGOARCHIVER',
+                'ams_host': 'host-API_DEVEL_MSG_ARGO'
             }
         ],
         status_api_mock={
