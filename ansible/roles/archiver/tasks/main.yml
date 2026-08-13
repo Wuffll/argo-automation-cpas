@@ -6,24 +6,20 @@
     cmd: |
       source {{ archiver_virtenv_path }}/bin/activate
       #      pip3 list | grep ams-consumer
-    chdir:
-      "{{ archiver_virtenv_path }}"
-  register:
-    out_pipinst
+    chdir: "{{ archiver_virtenv_path }}"
+  register: out_pipinst
   ignore_errors: true
   changed_when: false
 
-
-- name: Set is_installed fact
+- name: Set archiver_is_installed fact
   ansible.builtin.set_fact:
-    is_installed: "{{ out_pipinst.rc == 0 }}"
+    archiver_is_installed: "{{ out_pipinst.rc == 0 }}"
 
 - name: Setup newly added tenants
   ansible.builtin.import_tasks: ./add-tenants.yml
-  when: is_installed and archiver_tenants is defined
+  when: archiver_is_installed and archiver_tenants is defined
 
 - name: Process removal of pending tenants
   ansible.builtin.import_tasks: ./remove-tenants.yml
-  when: is_installed and archiver_remove_tenants is defined
-
+  when: archiver_is_installed and archiver_remove_tenants is defined
 # vim: ft=yaml.ansible

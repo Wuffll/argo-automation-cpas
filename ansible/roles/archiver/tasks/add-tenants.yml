@@ -1,5 +1,4 @@
 ---
-
 - name: Set up configuration
   ansible.builtin.import_tasks: ./conf-setup.yml
 
@@ -8,7 +7,7 @@
 
 - name: Start and enable ams-consumers
   ansible.builtin.systemd_service:
-    name: "ams-consumer@{{item.tenant_name}}.service"
+    name: "ams-consumer@{{ item.tenant_name }}.service"
     state: started
     enabled: true
   loop: "{{ archiver_tenants }}"

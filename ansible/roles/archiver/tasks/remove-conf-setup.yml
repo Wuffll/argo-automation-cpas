@@ -1,5 +1,4 @@
 ---
-
 - name: Remove tenant ams-consumer-{tenant_name}.conf config file
   ansible.builtin.file:
     path: "{{ archiver_virtenv_path }}/etc/ams-consumer-{{ item.tenant_name }}.conf"

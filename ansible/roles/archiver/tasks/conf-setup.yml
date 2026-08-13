@@ -1,5 +1,4 @@
 ---
-
 - name: Configure ams-consumer tenant instances - ams-consumer.conf
   ansible.builtin.template:
     src: ams-consumer.conf.j2
@@ -15,4 +14,4 @@
     group: "{{ group_archiver }}"
     mode: "0644"
   loop: "{{ archiver_tenants }}"
-  when:  owner_archiver is defined and group_archiver is defined
+  when: owner_archiver is defined and group_archiver is defined
