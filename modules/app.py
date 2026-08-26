@@ -32,6 +32,11 @@ def _event_playbook(settings, event):
             settings.ansible.archiver_playbook,
             settings.ansible.archiver_inventory,
         )
+    elif event == "INIT_PERF_DATA":
+        return (
+            settings.ansible.perf_data_playbook,
+            settings.ansible.perf_data_inventory,
+        )
 
     return None, None
 
@@ -164,7 +169,9 @@ class Application:
                         "Error: Monbox init ansible run for this tenant was unsuccessful."
                     ),
                 )
-            raise RuntimeError("Monbox init ansible run was unsuccessful! Exiting early.")
+            raise RuntimeError(
+                "Monbox init ansible run was unsuccessful! Exiting early."
+            )
 
         # check if the monbox was initialized on tenants
         monbox_init_check_counter = self.settings.monboxgit.init_check_count
@@ -289,7 +296,7 @@ class Application:
 
             ansible = Ansible()
             ok, extravars = await ansible.run(
-                self.only_ansible,
+                playbook=self.only_ansible,
                 inventory=self.inventory,
                 webapi_overrides=webapi_overrides,
                 component_tokens=component_tokens,
@@ -402,7 +409,9 @@ class Application:
             tenant_names = self.settings.automation.tenants
 
             if len(tenant_names) == 0:
-                LOG.error("Only MonboxGit | tenant_names array is empty. Exiting early.")
+                LOG.error(
+                    "Only MonboxGit | tenant_names array is empty. Exiting early."
+                )
                 return
 
             ams = AMS()
@@ -623,6 +632,44 @@ class Application:
                                 "by argo-automation-cpas" % tenant_name
                             ),
                         )
+                elif playbook.startswith("performance_data"):
+                    ok, _ = await ansible.run(
+                        playbook,
+                        inventory=self.inventory or event_inventory,
+                        ams_component_tokens=ams_component_tokens,
+                        add_tenants=self.add_tenants or [tenant_name],
+                        remove_tenants=self.remove_tenants,
+                        show_artifacts=self.show_artifacts,
+                    )
+                    if ok:
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "COMPLETED",
+                            token,
+                            message=(
+                                "Performance data monitoring "
+                                "successfully configured for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
+                    else:
+                        LOG.warning(
+                            "Ansible run failed for tenant_name=%s event=%s",
+                            tenant_name,
+                            event,
+                        )
+                        await status_api.update_job_status(
+                            tenant_id,
+                            event,
+                            "FAILED",
+                            token,
+                            message=(
+                                "Performance data monitoring "
+                                "configuration failed for tenant %s "
+                                "by argo-automation-cpas" % tenant_name
+                            ),
+                        )
                 else:
                     LOG.error(
                         "Invalid ansible playbook name: %s",
@@ -632,7 +679,9 @@ class Application:
             elif _is_event_init_monbox(event):
                 LOG.info("Monbox initialization candidate tenant: " + tenant_name)
 
-                current_status = await status_api.get_job_status(tenant_id, event, token)
+                current_status = await status_api.get_job_status(
+                    tenant_id, event, token
+                )
 
                 LOG.info(f"Tenant {tenant_name} has status: {current_status}")
 

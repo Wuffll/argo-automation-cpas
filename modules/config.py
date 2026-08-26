@@ -65,7 +65,9 @@ class Settings(SimpleNamespace):
             syslog_facility=self._parse_syslog_facility(
                 general.get("syslog_facility", "user")
             ),
-            request_timeout=general.getfloat("request_timeout", DEFAULT_REQUEST_TIMEOUT),
+            request_timeout=general.getfloat(
+                "request_timeout", DEFAULT_REQUEST_TIMEOUT
+            ),
             verify_ssl=general.getboolean("verify_ssl", DEFAULT_VERIFY_SSL),
             retries=general.getint("retries", DEFAULT_RETRIES),
             retry_delay=general.getfloat("retry_delay", DEFAULT_RETRY_DELAY),
@@ -124,7 +126,9 @@ class Settings(SimpleNamespace):
         if tokens_file and not os.path.isabs(tokens_file):
             tokens_file = os.path.join(self.config_dir, tokens_file)
 
-        poem_restapi_token = ansible.get("poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN)
+        poem_restapi_token = ansible.get(
+            "poem_restapi_token", DEFAULT_POEM_RESTAPI_TOKEN
+        )
 
         self.ansible = Section(
             user_connector=ansible.get("user_connector", ""),
@@ -138,6 +142,12 @@ class Settings(SimpleNamespace):
             group_archiver=ansible.get("group_archiver", ""),
             archiver_playbook=ansible.get("archiver_playbook", "archiver.yml"),
             archiver_inventory=ansible.get("archiver_inventory", "archiver.ini"),
+            perf_data_playbook=ansible.get(
+                "perf_data_playbook", "performance_data.y,l"
+            ),
+            perf_data_inventory=ansible.get(
+                "perf_data_inventory", "performance_data.ini"
+            ),
             connectors_playbook=ansible.get("connectors_playbook", "connectors.yml"),
             connectors_inventory=ansible.get("connectors_inventory", "connectors.ini"),
             connectors_default_service_type=ansible.get(

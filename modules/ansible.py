@@ -65,15 +65,15 @@ class Ansible:
                 archiver_token: str = ams_token_by_tenant.get(tenant_name.lower(), "")
 
                 if len(archiver_token) == 0:
-                    LOG.warning("_archiver_extravars | Unable to find ams token for %s",
-                        tenant_name
+                    LOG.warning(
+                        "_archiver_extravars | Unable to find ams token for %s",
+                        tenant_name,
                     )
                     continue
 
                 archiver_add_tenants.append(
                     ArchiverEntry(
-                        tenant_name.lower(), archiver_token,
-                        self.settings.ams.host
+                        tenant_name.lower(), archiver_token, self.settings.ams.host
                     ).__dict__
                 )
 
@@ -85,6 +85,27 @@ class Ansible:
                 archiver_remove_tenants.append({"tenant_name": tenant_name.lower()})
 
             extravars["archiver_remove_tenants"] = archiver_remove_tenants
+
+        return extravars
+
+    def _perf_data_extravars(self, add_tenants, remove_tenants):
+        extravars = dict()
+
+        if add_tenants and len(add_tenants) > 0:
+            perf_data_add_tenants: list = []
+
+            tenant_name: str = ""
+            for tenant_name in add_tenants:
+                perf_data_add_tenants.append({"tenant_name": tenant_name.lower()})
+
+            extravars["performance_data_new_tenants"] = perf_data_add_tenants
+
+        if remove_tenants and len(remove_tenants) > 0:
+            perf_data_remove_tenants: list = []
+            for tenant_name in remove_tenants:
+                perf_data_remove_tenants.append({"tenant_name": tenant_name.lower()})
+
+            extravars["performance_data_remove_tenants"] = perf_data_remove_tenants
 
         return extravars
 
@@ -257,12 +278,11 @@ class Ansible:
                 ams_component_tokens = ams.tokens.load_tokens(
                     self.settings.ams.tokens_spool
                 )
-
-            extravars = self._archiver_extravars(
-                ams_component_tokens, add_tenants, remove_tenants
-            )
+        if playbook.startswith("performance_data"):
+            extravars = self._perf_data_extravars(add_tenants, remove_tenants)
 
         if not extravars:
+            LOG.error("extravars is None!")
             return (False, dict())
 
         envvars = {}
@@ -272,7 +292,7 @@ class Ansible:
         kwargs = dict(
             private_data_dir=self.settings.ansible_private_data_dir,
             playbook=playbook,
-            quiet=True,
+            quiet=False,
             envvars=envvars,
         )
 
