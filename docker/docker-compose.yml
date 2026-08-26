@@ -26,6 +26,10 @@ services:
       - ../var/:$VENV/var
       - ../ansible:$VENV/ansible
       - ../modules/:$VENV/lib/python3.12/site-packages/argo_automation_cpas
+      - ../../argoeu-automation-repo:/opt/argoeu-automation-repo
+      - ./perf_data/setup-perf.sh:/home/user/setup-perf.sh
+      - ./perf_data/remove-perf.sh:/home/user/remove-perf.sh
+      - ./perf_data/ssh-config:/home/user/.ssh/config
       - type: bind
         source: ${SSH_AUTH_SOCK}
         target: ${SSH_AUTH_SOCK}
@@ -125,6 +129,38 @@ services:
     networks:
       argo-automation-play:
         ipv4_address: 172.21.0.17
+  performance_data:
+    env_file:
+      - compose.env
+    image: ${IMAGES4}
+    command: sudo /usr/bin/supervisord -nc /etc/supervisord.conf
+    entrypoint: /sbin/init
+    container_name: performance_data
+    hostname: performance_data
+    cgroup: host
+    tty: true
+    tmpfs:
+      - /run
+      - /tmp
+    stdin_open: true
+    user: root
+    volumes:
+      - /sys/fs/cgroup:/sys/fs/cgroup
+      - $HOME:/mnt
+      - $HOME/.docker_zsh_history:/home/user/.zsh_history
+      - /dev/log:/dev/log
+      - /etc/localtime:/etc/localtime:ro
+      - type: bind
+        source: ${SSH_AUTH_SOCK}
+        target: ${SSH_AUTH_SOCK}
+    environment:
+      - SSH_AUTH_SOCK
+    networks:
+      argo-automation-play:
+        ipv4_address: 172.21.0.18
+    ports:
+      - "3000:3000"
+      - "8086:8086"
 
 networks:
   argo-automation-play:

@@ -1,0 +1,4 @@
+Host performance_data
+    User user
+    IdentityFile /home/user/.ssh/sshkey
+    IdentitiesOnly yes
