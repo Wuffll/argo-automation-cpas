@@ -1,0 +1,3 @@
+---
+- name: Create bucket and dashboard for tenants
+  ansible.builtin.import_tasks: ./create-bucket-dashboard.yml

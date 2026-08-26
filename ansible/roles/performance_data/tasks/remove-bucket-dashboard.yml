@@ -1,0 +1,65 @@
+---
+# Remove Grafana dashboards and InfluxDB buckets for specified tenants
+# Usage: ansible-playbook remove-tenant.yml -e '{"performance_data_remove_tenants": ["tenant1", "tenant2"]}'
+
+- name: Read InfluxDB admin token
+  ansible.builtin.slurp:
+    src: "{{ performance_data_influxdb_admin_token_path }}"
+  register: performance_data_admin_token_file
+  failed_when: false
+
+- name: Set admin token fact
+  ansible.builtin.set_fact:
+    performance_data_influx_admin_token: "{{ performance_data_admin_token_file.content | b64decode | trim }}"
+  when: performance_data_admin_token_file.content is defined
+
+- name: Get password
+  ansible.builtin.slurp:
+    src: "{{ performance_data_grafana_admin_pass_path }}"
+  register: grafana_pass_b64
+
+- name: Set password fact
+  ansible.builtin.set_fact:
+    grafana_pass: "{{ grafana_pass_b64.content | b64decode | trim }}"
+
+- name: Remove Grafana dashboard for each tenant
+  community.grafana.grafana_dashboard:
+    url: "{{ performance_data_grafana_url }}"
+    url_username: admin
+    url_password: "{{ grafana_pass }}"
+    uid: "{{ item.tenant_name }}"
+    state: absent
+  loop: "{{ performance_data_remove_tenants }}"
+  failed_when: false
+
+- name: Remove dashboard JSON files from /tmp
+  ansible.builtin.file:
+    path: "/tmp/dashboard-{{ item.tenant_name }}.json"
+    state: absent
+  loop: "{{ performance_data_remove_tenants }}"
+  changed_when: false
+
+- name: Find InfluxDB bucket ID for each tenant
+  ansible.builtin.uri:
+    url: "{{ performance_data_influxdb_url }}/api/v2/buckets?name={{ item.tenant_name }}"
+    method: GET
+    headers:
+      Authorization: "Token {{ performance_data_influx_admin_token }}"
+    return_content: true
+    status_code: [200, 404]
+  loop: "{{ performance_data_remove_tenants }}"
+  register: performance_data_bucket_lookup
+  changed_when: false
+  failed_when: false
+
+- name: Delete InfluxDB bucket for each tenant
+  ansible.builtin.uri:
+    url: "{{ performance_data_influxdb_url }}/api/v2/buckets/{{ item.json.buckets[0].id }}"
+    method: DELETE
+    headers:
+      Authorization: "Token {{ performance_data_influx_admin_token }}"
+    status_code: 204
+  loop: "{{ performance_data_bucket_lookup.results }}"
+  when: item.json.buckets is defined and item.json.buckets | length > 0
+  loop_control:
+    label: "{{ item.item }}"

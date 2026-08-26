@@ -1,0 +1,21 @@
+---
+# main.yml
+
+- name: Gather package facts
+  ansible.builtin.package_facts:
+    manager: auto
+
+- name: Check package prerequisites
+  ansible.builtin.import_tasks: ./set-package-prereqs-facts.yml
+
+- name: Assert packages are installed
+  ansible.builtin.include_tasks: ./assert-packages-found.yml
+
+- name: Setup tenants
+  ansible.builtin.include_tasks: ./setup-tenants.yml
+  when: performance_data_new_tenants is defined
+
+- name: Remove tenants
+  ansible.builtin.include_tasks: ./remove-tenants.yml
+  when: performance_data_remove_tenants is defined
+# vim: ft=yaml.ansible

@@ -1,0 +1,7 @@
+---
+- name: Playbook to configure archivers of metric results
+  hosts: all
+  become: true
+  roles:
+    - { role: performance_data }
+# vim: ft=yaml.ansible

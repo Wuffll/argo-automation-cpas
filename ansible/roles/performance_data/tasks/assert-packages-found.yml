@@ -1,0 +1,7 @@
+---
+- name: Assert that grafana and influxdb are installed
+  ansible.builtin.assert:
+    that:
+      - performance_data_influxdb_installed == True
+      - performance_data_grafana_installed == True
+    fail_msg: "Make sure grafana and influxdb are installed before adding tenants."

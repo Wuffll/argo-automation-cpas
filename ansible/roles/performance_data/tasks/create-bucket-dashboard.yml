@@ -1,0 +1,68 @@
+---
+- name: Read admin token from disk
+  ansible.builtin.slurp:
+    src: "{{ performance_data_influxdb_admin_token_path }}"
+  register: performance_data_admin_token_b64
+  changed_when: false
+  failed_when: false
+
+- name: Decode admin token and store as fact
+  ansible.builtin.set_fact:
+    performance_data_admin_token: "{{ performance_data_admin_token_b64.content | b64decode | trim }}"
+
+- name: Get InfluxDB org ID (from monitor host's admin token)
+  ansible.builtin.uri:
+    url: "{{ performance_data_influxdb_url }}/api/v2/orgs?org={{ performance_data_influxdb_org }}"
+    headers:
+      Authorization: "Token {{ performance_data_admin_token }}"
+    return_content: true
+  register: performance_data_org_info
+  changed_when: false
+
+- name: Create (idempotent) bucket for node
+  ansible.builtin.uri:
+    url: "{{ performance_data_influxdb_url }}/api/v2/buckets"
+    method: POST
+    headers:
+      Authorization: "Token {{ performance_data_admin_token }}"
+    body_format: json
+    body:
+      name: "{{ item.tenant_name }}"
+      orgID: "{{ performance_data_org_info.json.orgs[0].id }}"
+      # retentionRules:
+      #   - type: expire
+      #     everySeconds: 7776000   # 90d
+    status_code: [201, 422] # 422 = already exists
+  register: performance_data_bucket_create
+  changed_when: performance_data_bucket_create.status == 201
+  loop: "{{ performance_data_new_tenants }}"
+
+- name: Get password
+  ansible.builtin.slurp:
+    src: "{{ performance_data_grafana_admin_pass_path }}"
+  register: grafana_pass_b64
+
+- name: Set password fact
+  ansible.builtin.set_fact:
+    grafana_pass: "{{ grafana_pass_b64.content | b64decode | trim }}"
+
+- name: Prepare dashboard JSON from template
+  ansible.builtin.template:
+    src: grafana-dashboard-template.json.j2
+    dest: "/tmp/dashboard-{{ item.tenant_name }}.json"
+    mode: "0644"
+  vars:
+    performance_data_tenant_name: "{{ item.tenant_name }}"
+  changed_when: false
+  loop: "{{ performance_data_new_tenants }}"
+
+- name: Get current version of dashboard (for idempotent update)
+  community.grafana.grafana_dashboard:
+    url: "{{ performance_data_grafana_url }}"
+    url_username: admin
+    url_password: "{{ grafana_pass }}"
+    slug: "node-{{ item.tenant_name }}"
+    state: present
+    path: "/tmp/dashboard-{{ item.tenant_name }}.json"
+    overwrite: true
+  loop: "{{ performance_data_new_tenants }}"

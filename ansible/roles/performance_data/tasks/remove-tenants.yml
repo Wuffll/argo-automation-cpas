@@ -1,0 +1,3 @@
+---
+- name: Remove bucket and dashboard for tenants
+  ansible.builtin.import_tasks: ./remove-bucket-dashboard.yml

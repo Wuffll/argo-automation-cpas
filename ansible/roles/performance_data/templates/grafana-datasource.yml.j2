@@ -1,0 +1,14 @@
+apiVersion: 1
+datasources:
+  - name: InfluxDB
+    uid: influxdb-ds
+    type: influxdb
+    access: proxy
+    url: {{ performance_data_influxdb_url }}
+    isDefault: true
+    jsonData:
+      version: Flux
+      organization: {{ performance_data_influxdb_org }}
+      defaultBucket: default
+    secureJsonData:
+      token: {{ performance_data_influxdb_read_token }}

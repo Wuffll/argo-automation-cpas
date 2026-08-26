@@ -1,0 +1,8 @@
+---
+- name: Set performance_data_influxdb_installed fact
+  ansible.builtin.set_fact:
+    performance_data_influxdb_installed: "{{ 'influxdb2' in ansible_facts.packages | default({}) }}"
+
+- name: Set performance_data_grafana_installed fact
+  ansible.builtin.set_fact:
+    performance_data_grafana_installed: "{{ 'grafana' in ansible_facts.packages | default({}) }}"
