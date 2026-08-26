@@ -23,6 +23,7 @@ docker/sshkey*
 
 # Ignore IDE cache
 .idea
+.vscode
 
 # Config secrets
 config/argo-cpas/keys/*
