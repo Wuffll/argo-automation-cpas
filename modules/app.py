@@ -32,7 +32,7 @@ def _event_playbook(settings, event):
             settings.ansible.archiver_playbook,
             settings.ansible.archiver_inventory,
         )
-    elif event == "INIT_PERF_DATA":
+    elif event == "INIT_PERFORMANCE_DATA":
         return (
             settings.ansible.perf_data_playbook,
             settings.ansible.perf_data_inventory,
