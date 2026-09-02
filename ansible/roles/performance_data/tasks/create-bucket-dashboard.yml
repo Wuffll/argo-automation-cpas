@@ -41,10 +41,12 @@
   ansible.builtin.slurp:
     src: "{{ performance_data_grafana_admin_pass_path }}"
   register: grafana_pass_b64
+  no_log: true
 
 - name: Set password fact
   ansible.builtin.set_fact:
     grafana_pass: "{{ grafana_pass_b64.content | b64decode | trim }}"
+  no_log: true
 
 - name: Prepare dashboard JSON from template
   ansible.builtin.template:
